@@ -4,14 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bot, User, Send, Paperclip, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/stores/auth-store';
 import { supabase } from '@/lib/supabase/client';
@@ -19,6 +11,8 @@ import { validateWebsite } from '@/lib/website-validation';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { QUESTIONNAIRE } from '@/lib/onboarding-questionnaire';
+
+const QUESTION_ORDER = ['primary_sector', 'product_status', 'funding_stage', 'round_target', 'entity_type', 'revenue_model'] as const;
 
 type Step = 'website' | 'pitch_deck' | 'questionnaire' | 'calculating' | 'thesis_document' | 'done';
 
@@ -38,7 +32,7 @@ const AFTER_WEBSITE =
   "Thanks! Now please upload your pitch deck (PDF). Use the attachment button below to upload the file.";
 
 const AFTER_PITCH_DECK =
-  "We've saved your pitch deck. Almost done! Please answer 6 quick questions below so we can calculate your readiness score.";
+  "We've saved your pitch deck. Almost done! I'll ask you 6 quick questions so we can calculate your readiness score. Let's start—";
 
 const INVESTOR_INITIAL =
   "Welcome! To get you set up, we'll need your firm's website and your thesis fit document (PDF). First, please paste your website URL below.";
@@ -71,6 +65,9 @@ export default function OnboardingChatPage() {
     round_target: '',
     entity_type: '',
   });
+  const [questionnaireIndex, setQuestionnaireIndex] = useState(0);
+  const [pendingOtherFor, setPendingOtherFor] = useState<keyof typeof questionnaireOther | null>(null);
+  const [otherInputValue, setOtherInputValue] = useState('');
   const [submittingQuestionnaire, setSubmittingQuestionnaire] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -109,10 +106,13 @@ export default function OnboardingChatPage() {
       // Resume at correct step for startups (e.g. returned after pitch deck, need questionnaire)
       if (!cancelled && user.org_type === 'startup' && statusJson.step === 'questionnaire') {
         setStep('questionnaire');
+        const firstQ = QUESTIONNAIRE[QUESTION_ORDER[0]];
         setMessages([
           { id: '1', role: 'assistant', content: STARTUP_INITIAL, at: new Date() },
           { id: '2', role: 'assistant', content: AFTER_PITCH_DECK, at: new Date() },
+          { id: '3', role: 'assistant', content: firstQ.question, at: new Date() },
         ]);
+        setQuestionnaireIndex(0);
       }
     })();
     return () => { cancelled = true; };
@@ -242,7 +242,10 @@ export default function OnboardingChatPage() {
         return;
       }
       addMessage('assistant', AFTER_PITCH_DECK);
+      const firstQ = QUESTIONNAIRE[QUESTION_ORDER[0]];
+      addMessage('assistant', firstQ.question);
       setStep('questionnaire');
+      setQuestionnaireIndex(0);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Upload failed');
     }
@@ -295,21 +298,26 @@ export default function OnboardingChatPage() {
     setUploading(false);
   };
 
-  const submitQuestionnaire = async () => {
-    const { primary_sector, product_status, funding_stage, round_target, entity_type, revenue_model } = questionnaire;
+  const submitQuestionnaire = async (
+    override?: Partial<typeof questionnaire>,
+    otherOverride?: Partial<typeof questionnaireOther>
+  ) => {
+    const data = { ...questionnaire, ...override };
+    const otherData = { ...questionnaireOther, ...otherOverride };
+    const { primary_sector, product_status, funding_stage, round_target, entity_type, revenue_model } = data;
     if (!primary_sector || !product_status || !funding_stage || !round_target || !entity_type || !revenue_model) {
       toast.error('Please answer all 6 questions.');
       return;
     }
-    if (primary_sector === 'other' && !questionnaireOther.primary_sector.trim()) {
+    if (primary_sector === 'other' && !(otherData.primary_sector || '').trim()) {
       toast.error('Please specify your primary sector when you selected Other.');
       return;
     }
-    if (round_target === 'other' && !questionnaireOther.round_target.trim()) {
+    if (round_target === 'other' && !(otherData.round_target || '').trim()) {
       toast.error('Please specify your round target when you selected Other.');
       return;
     }
-    if (entity_type === 'other' && !questionnaireOther.entity_type.trim()) {
+    if (entity_type === 'other' && !(otherData.entity_type || '').trim()) {
       toast.error('Please specify your entity type when you selected Other.');
       return;
     }
@@ -331,10 +339,10 @@ export default function OnboardingChatPage() {
           round_target,
           entity_type,
           revenue_model,
-          ...(primary_sector === 'other' && { primary_sector_other: questionnaireOther.primary_sector.trim() }),
-          ...(round_target === 'other' && { round_target_other: questionnaireOther.round_target.trim() }),
-          ...(entity_type === 'other' && { entity_type_other: questionnaireOther.entity_type.trim() }),
-        }),
+          ...(primary_sector === 'other' && { primary_sector_other: (otherData.primary_sector || '').trim() }),
+          ...(round_target === 'other' && { round_target_other: (otherData.round_target || '').trim() }),
+          ...(entity_type === 'other' && { entity_type_other: (otherData.entity_type || '').trim() }),
+        } as Record<string, string>),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -349,6 +357,60 @@ export default function OnboardingChatPage() {
       toast.error(e instanceof Error ? e.message : 'Something went wrong');
     }
     setSubmittingQuestionnaire(false);
+  };
+
+  const selectOption = (key: (typeof QUESTION_ORDER)[number], value: string, label: string) => {
+    if (value === 'other') {
+      setPendingOtherFor(key);
+      setOtherInputValue('');
+      return;
+    }
+    applyOption(key, value, label);
+  };
+
+  const applyOption = (key: (typeof QUESTION_ORDER)[number], value: string, label: string) => {
+    const idx = QUESTION_ORDER.indexOf(key);
+    const updated = { ...questionnaire, [key]: value };
+    setQuestionnaire(updated);
+    addMessage('user', label);
+    setPendingOtherFor(null);
+    setOtherInputValue('');
+    setQuestionnaireIndex(idx + 1);
+    if (idx >= 5) {
+      submitQuestionnaire({ [key]: value });
+      return;
+    }
+    const nextKey = QUESTION_ORDER[idx + 1];
+    const nextQ = QUESTIONNAIRE[nextKey];
+    addMessage('assistant', nextQ.question);
+  };
+
+  const submitOtherInput = () => {
+    if (!pendingOtherFor || !otherInputValue.trim()) return;
+    const val = otherInputValue.trim();
+    const key = pendingOtherFor;
+    const idx = QUESTION_ORDER.indexOf(key);
+    if (pendingOtherFor === 'primary_sector') {
+      setQuestionnaireOther((p) => ({ ...p, primary_sector: val }));
+      setQuestionnaire((p) => ({ ...p, primary_sector: 'other' }));
+    } else if (pendingOtherFor === 'round_target') {
+      setQuestionnaireOther((p) => ({ ...p, round_target: val }));
+      setQuestionnaire((p) => ({ ...p, round_target: 'other' }));
+    } else {
+      setQuestionnaireOther((p) => ({ ...p, entity_type: val }));
+      setQuestionnaire((p) => ({ ...p, entity_type: 'other' }));
+    }
+    addMessage('user', val);
+    setPendingOtherFor(null);
+    setOtherInputValue('');
+    setQuestionnaireIndex(idx + 1);
+    if (idx >= 5) {
+      submitQuestionnaire({ [key]: 'other' }, { [key]: val });
+      return;
+    }
+    const nextKey = QUESTION_ORDER[idx + 1];
+    const nextQ = QUESTIONNAIRE[nextKey];
+    addMessage('assistant', nextQ.question);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -420,171 +482,56 @@ export default function OnboardingChatPage() {
             <p className="text-sm text-muted-foreground">Calculating your readiness score… This may take a minute.</p>
           </div>
         )}
-        {showQuestionnaireStep && (
-          <div className="space-y-4 max-w-lg">
-            <p className="text-sm text-muted-foreground">
-              Please answer all 6 questions below. Pick one option for each—this helps us calculate your readiness score.
-            </p>
-            <div className="grid gap-5">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium leading-snug">
-                  {QUESTIONNAIRE.primary_sector.question}
-                </Label>
-                <Select
-                  value={questionnaire.primary_sector}
-                  onValueChange={(v) => setQuestionnaire((p) => ({ ...p, primary_sector: v }))}
-                >
-                  <SelectTrigger className="bg-obsidian-800 border-obsidian-600">
-                    <SelectValue placeholder="Choose one option…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {QUESTIONNAIRE.primary_sector.options.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {questionnaire.primary_sector === 'other' && (
-                  <Input
-                    placeholder="Please specify your primary sector…"
-                    value={questionnaireOther.primary_sector}
-                    onChange={(e) => setQuestionnaireOther((p) => ({ ...p, primary_sector: e.target.value }))}
-                    className="bg-obsidian-800 border-obsidian-600 mt-2"
-                  />
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium leading-snug">
-                  {QUESTIONNAIRE.product_status.question}
-                </Label>
-                <Select
-                  value={questionnaire.product_status}
-                  onValueChange={(v) => setQuestionnaire((p) => ({ ...p, product_status: v }))}
-                >
-                  <SelectTrigger className="bg-obsidian-800 border-obsidian-600">
-                    <SelectValue placeholder="Choose one option…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {QUESTIONNAIRE.product_status.options.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium leading-snug">
-                  {QUESTIONNAIRE.funding_stage.question}
-                </Label>
-                <Select
-                  value={questionnaire.funding_stage}
-                  onValueChange={(v) => setQuestionnaire((p) => ({ ...p, funding_stage: v }))}
-                >
-                  <SelectTrigger className="bg-obsidian-800 border-obsidian-600">
-                    <SelectValue placeholder="Choose one option…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {QUESTIONNAIRE.funding_stage.options.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium leading-snug">
-                  {QUESTIONNAIRE.round_target.question}
-                </Label>
-                <Select
-                  value={questionnaire.round_target}
-                  onValueChange={(v) => setQuestionnaire((p) => ({ ...p, round_target: v }))}
-                >
-                  <SelectTrigger className="bg-obsidian-800 border-obsidian-600">
-                    <SelectValue placeholder="Choose one option…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {QUESTIONNAIRE.round_target.options.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {questionnaire.round_target === 'other' && (
-                  <Input
-                    placeholder="Please specify your target amount (e.g. $750K)…"
-                    value={questionnaireOther.round_target}
-                    onChange={(e) => setQuestionnaireOther((p) => ({ ...p, round_target: e.target.value }))}
-                    className="bg-obsidian-800 border-obsidian-600 mt-2"
-                  />
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium leading-snug">
-                  {QUESTIONNAIRE.entity_type.question}
-                </Label>
-                <Select
-                  value={questionnaire.entity_type}
-                  onValueChange={(v) => setQuestionnaire((p) => ({ ...p, entity_type: v }))}
-                >
-                  <SelectTrigger className="bg-obsidian-800 border-obsidian-600">
-                    <SelectValue placeholder="Choose one option…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {QUESTIONNAIRE.entity_type.options.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {questionnaire.entity_type === 'other' && (
-                  <Input
-                    placeholder="Please specify your entity type…"
-                    value={questionnaireOther.entity_type}
-                    onChange={(e) => setQuestionnaireOther((p) => ({ ...p, entity_type: e.target.value }))}
-                    className="bg-obsidian-800 border-obsidian-600 mt-2"
-                  />
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium leading-snug">
-                  {QUESTIONNAIRE.revenue_model.question}
-                </Label>
-                <Select
-                  value={questionnaire.revenue_model}
-                  onValueChange={(v) => setQuestionnaire((p) => ({ ...p, revenue_model: v }))}
-                >
-                  <SelectTrigger className="bg-obsidian-800 border-obsidian-600">
-                    <SelectValue placeholder="Choose one option…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {QUESTIONNAIRE.revenue_model.options.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+        {showQuestionnaireStep && !submittingQuestionnaire && (
+          <div className="flex gap-3 max-w-[85%]">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-electric-blue/20 text-electric-blue">
+              <Bot className="w-4 h-4" />
             </div>
-            <Button
-              onClick={submitQuestionnaire}
-              disabled={
-                submittingQuestionnaire ||
-                Object.values(questionnaire).some((v) => !v) ||
-                (questionnaire.primary_sector === 'other' && !questionnaireOther.primary_sector.trim()) ||
-                (questionnaire.round_target === 'other' && !questionnaireOther.round_target.trim()) ||
-                (questionnaire.entity_type === 'other' && !questionnaireOther.entity_type.trim())
-              }
-              className="bg-electric-blue hover:bg-electric-blue/90"
-            >
-              {submittingQuestionnaire ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Submit
-            </Button>
+            <div className="flex-1 space-y-3">
+              {pendingOtherFor ? (
+                <div className="rounded-xl bg-obsidian-800 px-4 py-3 space-y-2">
+                  <p className="text-sm text-foreground">
+                    {pendingOtherFor === 'primary_sector' && 'Please specify your primary sector…'}
+                    {pendingOtherFor === 'round_target' && 'Please specify your target amount (e.g. $750K)…'}
+                    {pendingOtherFor === 'entity_type' && 'Please specify your entity type…'}
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Type your answer…"
+                      value={otherInputValue}
+                      onChange={(e) => setOtherInputValue(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && submitOtherInput()}
+                      className="bg-obsidian-900 border-obsidian-600 flex-1"
+                      autoFocus
+                    />
+                    <Button
+                      size="sm"
+                      onClick={submitOtherInput}
+                      disabled={!otherInputValue.trim()}
+                      className="bg-electric-blue hover:bg-electric-blue/90"
+                    >
+                      Send
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl bg-obsidian-800 px-4 py-3">
+                  <p className="text-xs text-muted-foreground mb-3">Choose an option:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {QUESTIONNAIRE[QUESTION_ORDER[questionnaireIndex]].options.map((o) => (
+                      <button
+                        key={o.value}
+                        type="button"
+                        onClick={() => selectOption(QUESTION_ORDER[questionnaireIndex], o.value, o.label)}
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-obsidian-700 hover:bg-electric-blue/20 hover:border-electric-blue/40 border border-transparent text-foreground transition-colors"
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

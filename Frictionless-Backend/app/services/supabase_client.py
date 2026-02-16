@@ -319,7 +319,6 @@ def upsert_task_groups_and_tasks(
 
         task_rows = []
         for t_order, t in enumerate(tasks_data):
-            pts = t.get("potential_points")
             task_row: dict = {
                 "group_id": group_id,
                 "title": t.get("title") or "Improvement task",
@@ -330,13 +329,9 @@ def upsert_task_groups_and_tasks(
                 "updated_at": now,
                 "created_at": now,
             }
-            if pts is not None:
-                task_row["potential_points"] = int(pts) if isinstance(pts, (int, float)) else 0
-            rubric_sub = t.get("rubric_subcategory")
-            if isinstance(rubric_sub, str) and rubric_sub.strip():
-                task_row["rubric_subcategory"] = rubric_sub.strip()
             if created_by:
                 task_row["created_by"] = created_by
+            # Skip potential_points, rubric_subcategory until migrations are run (docs/supabase_tasks_*.sql)
             tr = supabase.table("tasks").insert(task_row).execute()
             if tr.data:
                 task_rows.extend(tr.data)
@@ -360,7 +355,7 @@ def get_task_groups_with_tasks(supabase: Client, startup_org_id: str) -> list[di
     group_ids = [g["id"] for g in groups]
     tr = (
         supabase.table("tasks")
-        .select("id, group_id, title, description, status, due_at, sort_order, requires_rescore, potential_points, completed_at, completed_by, created_at, updated_at")
+        .select("id, group_id, title, description, status, due_at, sort_order, requires_rescore, completed_at, completed_by, created_at, updated_at")
         .in_("group_id", group_ids)
         .is_("deleted_at", "null")
         .order("sort_order")
@@ -440,7 +435,7 @@ def get_task_by_id(supabase: Client, task_id: str) -> dict | None:
 def get_task_and_startup_org_id(supabase: Client, task_id: str) -> tuple[dict | None, str | None]:
     """Get task row and its startup_org_id. Returns (task_row, startup_org_id) or (None, None)."""
     tr = supabase.table("tasks").select(
-        "id, group_id, title, description, requires_rescore, rubric_subcategory, potential_points"
+        "id, group_id, title, description, requires_rescore"
     ).eq("id", task_id).execute()
     rows = tr.data or []
     if not rows:
