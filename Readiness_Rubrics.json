@@ -1,0 +1,1247 @@
+{
+  "foundational_setup": {
+    "Category_Name": "Foundational Setup",
+    "maximum_point": 65,
+    "weight": 15,
+    "A1_corporate_cap_table_ip_hygiene": [
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Corporate Cap Table IP Hygiene",
+        "subcategory_name": "company.entity_type",
+        "maximum_points": 8,
+        "Question": "Entity type (e.g., C-Corp, LLC, Ltd)",
+        "options": {
+          "C-Corp (or local equivalent)": 8,
+          "LLC (conversion planned)": 5,
+          "LLC (no conversion plan)": 2,
+          "Other / Unknown": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Corporate Cap Table IP Hygiene",
+        "subcategory_name": "company.incorporation_jurisdiction",
+        "maximum_points": 2,
+        "Question": "Incorporation jurisdiction (country / state)",
+        "options": {
+          "Provided": 2,
+          "Missing / Unknown": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Corporate Cap Table IP Hygiene",
+        "subcategory_name": "legal.cap_table_available",
+        "maximum_points": 5,
+        "Question": "Cap table available to share? (redacted OK)",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Corporate Cap Table IP Hygiene",
+        "subcategory_name": "legal.ip_assignments_signed",
+        "maximum_points": 5,
+        "Question": "All founders / contractors signed IP assignment agreements?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Corporate Cap Table IP Hygiene",
+        "subcategory_name": "risk.legal_disputes",
+        "maximum_points": 5,
+        "Question": "Any pending legal disputes or IP claims?",
+        "options": {
+          "No": 5,
+          "Yes (disclosed)": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      }
+    ],
+    "A2_diligence_artifacts_documentation": [
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Diligence Artifacts Documentation",
+        "subcategory_name": "company.pitch_deck_link",
+        "maximum_points": 5,
+        "Question": "Pitch deck link (PDF or upload)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Diligence Artifacts Documentation",
+        "subcategory_name": "company.demo_link",
+        "maximum_points": 5,
+        "Question": "Demo link (video, live product, or sample)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Diligence Artifacts Documentation",
+        "subcategory_name": "company.data_room_link",
+        "maximum_points": 5,
+        "Question": "Data room link (if available)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Diligence Artifacts Documentation",
+        "subcategory_name": "funds.cap_table_link",
+        "maximum_points": 5,
+        "Question": "Cap table link",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Diligence Artifacts Documentation",
+        "subcategory_name": "fin.financial_model_link",
+        "maximum_points": 5,
+        "Question": "Financial model / projections link",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      }
+    ],
+    "A3_privacy_risk_compliance_basics": [
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Privacy Risk Compliance Basics",
+        "subcategory_name": "security.privacy_policy_published",
+        "maximum_points": 5,
+        "Question": "Published privacy policy? (if collecting customer data)",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Privacy Risk Compliance Basics",
+        "subcategory_name": "risk.security_incidents",
+        "maximum_points": 5,
+        "Question": "Any prior security or safety incidents?",
+        "options": {
+          "No": 5,
+          "Yes (disclosed)": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Foundational Setup",
+        "Subtopic_Name": "Privacy Risk Compliance Basics",
+        "subcategory_name": "product.ip_status",
+        "maximum_points": 5,
+        "Question": "IP status (patents, trademarks, trade secrets, formulations)",
+        "options": {
+          "Patent granted": 5,
+          "Patent pending": 4,
+          "Patent filed / TM granted": 3,
+          "TM filed / Trade secret documented": 2,
+          "Other": 1,
+          "None / blank": 0
+        },
+        "required_value": true
+      }
+    ]
+  },
+  "founder_team": {
+    "Category_Name": "Founder Team",
+    "maximum_point": 65,
+    "weight": 20,
+    "B1_founder_commitment_role_clarity": [
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Founder Commitment Role Clarity",
+        "subcategory_name": "team.founders_full_time",
+        "maximum_points": 5,
+        "Question": "Are all founders full-time?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Founder Commitment Role Clarity",
+        "subcategory_name": "team.roles_defined",
+        "maximum_points": 5,
+        "Question": "Are founder roles clearly defined?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Founder Commitment Role Clarity",
+        "subcategory_name": "team.operating_cadence_defined",
+        "maximum_points": 5,
+        "Question": "Operating cadence defined (weekly/monthly rhythms)?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      }
+    ],
+    "B2_team_capacity_operational_coverage": [
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Team Capacity Operational Coverage",
+        "subcategory_name": "team.coverage_product",
+        "maximum_points": 5,
+        "Question": "Product development / R&D owned by a named person?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Team Capacity Operational Coverage",
+        "subcategory_name": "team.coverage_gtm",
+        "maximum_points": 5,
+        "Question": "Sales / marketing / distribution owned by a named person?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Team Capacity Operational Coverage",
+        "subcategory_name": "team.total_fte",
+        "maximum_points": 5,
+        "Question": "Full-time employees (FTE count)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Team Capacity Operational Coverage",
+        "subcategory_name": "team.total_contractors",
+        "maximum_points": 5,
+        "Question": "Part-time / contractors",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Team Capacity Operational Coverage",
+        "subcategory_name": "team.hiring_plan_budgeted",
+        "maximum_points": 5,
+        "Question": "Hiring plan tied to runway / budget?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      }
+    ],
+    "B3_domain_experience_leverage": [
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Domain Experience Leverage",
+        "subcategory_name": "team.founders",
+        "maximum_points": 5,
+        "Question": "Founders (name, role, LinkedIn)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Domain Experience Leverage",
+        "subcategory_name": "team.domain_experience_relevant",
+        "maximum_points": 5,
+        "Question": "Founders have relevant domain experience?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Domain Experience Leverage",
+        "subcategory_name": "team.fundraising_experience_relevant",
+        "maximum_points": 5,
+        "Question": "Founders have fundraising or venture experience?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Domain Experience Leverage",
+        "subcategory_name": "team.advisors",
+        "maximum_points": 5,
+        "Question": "Advisors / mentors (name, relevance, involvement)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Founder Team",
+        "Subtopic_Name": "Domain Experience Leverage",
+        "subcategory_name": "team.key_hires",
+        "maximum_points": 5,
+        "Question": "Key hires and plan (next 12 months)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      }
+    ]
+  },
+  "product_market": {
+    "Category_Name": "Product Market",
+    "maximum_point": 45,
+    "weight": 15,
+    "C1_product_clarity_roadmap": [
+      {
+        "Category_Name": "Product Market",
+        "Subtopic_Name": "Product Clarity Roadmap",
+        "subcategory_name": "product.core_features",
+        "maximum_points": 5,
+        "Question": "Top 3–5 product features, capabilities, or product lines",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Product Market",
+        "Subtopic_Name": "Product Clarity Roadmap",
+        "subcategory_name": "overview.solution",
+        "maximum_points": 5,
+        "Question": "Describe your solution and how it works (high level)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Product Market",
+        "Subtopic_Name": "Product Clarity Roadmap",
+        "subcategory_name": "product.roadmap",
+        "maximum_points": 5,
+        "Question": "Next 2–3 major milestones (6–12 months)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Product Market",
+        "Subtopic_Name": "Product Clarity Roadmap",
+        "subcategory_name": "overview.product_status",
+        "maximum_points": 5,
+        "Question": "Current product status",
+        "options": {
+          "Scaling": 5,
+          "Launched": 4,
+          "Beta / Pilot": 3,
+          "MVP / First Run": 2,
+          "Idea / Concept": 1,
+          "Missing": 0
+        },
+        "required_value": true
+      }
+    ],
+    "C2_market_position_competition": [
+      {
+        "Category_Name": "Product Market",
+        "Subtopic_Name": "Market Position Competition",
+        "subcategory_name": "market.competitors",
+        "maximum_points": 5,
+        "Question": "Top competitors + why you win",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Product Market",
+        "Subtopic_Name": "Market Position Competition",
+        "subcategory_name": "market.differentiation",
+        "maximum_points": 5,
+        "Question": "Differentiation / moat (why hard to copy)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Product Market",
+        "Subtopic_Name": "Market Position Competition",
+        "subcategory_name": "market.tam_usd",
+        "maximum_points": 5,
+        "Question": "Total addressable market (TAM) in USD",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Product Market",
+        "Subtopic_Name": "Market Position Competition",
+        "subcategory_name": "market.tam_source",
+        "maximum_points": 5,
+        "Question": "TAM source / methodology",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Product Market",
+        "Subtopic_Name": "Market Position Competition",
+        "subcategory_name": "risk.top_risks",
+        "maximum_points": 5,
+        "Question": "Top 3 risks (technical, market, regulatory, execution)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      }
+    ]
+  },
+  "gtm_strategy": {
+    "Category_Name": "GTM Strategy",
+    "maximum_point": 65,
+    "weight": 15,
+    "D1_icp_buyer_clarity": [
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "ICP Buyer Clarity",
+        "subcategory_name": "overview.problem",
+        "maximum_points": 5,
+        "Question": "What problem are you solving? (who has it, why it matters)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "ICP Buyer Clarity",
+        "subcategory_name": "overview.target_customer",
+        "maximum_points": 5,
+        "Question": "Primary customer and buyer",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "ICP Buyer Clarity",
+        "subcategory_name": "gtm.buyer_persona",
+        "maximum_points": 5,
+        "Question": "Economic buyer / decision-maker",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "ICP Buyer Clarity",
+        "subcategory_name": "gtm.icp_specific_defined",
+        "maximum_points": 5,
+        "Question": "ICP defined with specific, filterable criteria?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "ICP Buyer Clarity",
+        "subcategory_name": "overview.customer_type",
+        "maximum_points": 5,
+        "Question": "Primary customer type",
+        "options": {
+          "B2B": 5,
+          "B2C": 5,
+          "B2B2C": 5,
+          "B2G": 5,
+          "RETAIL": 5,
+          "Other": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      }
+    ],
+    "D2_sales_motion_channels": [
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "Sales Motion Channels",
+        "subcategory_name": "gtm.sales_motion",
+        "maximum_points": 5,
+        "Question": "Primary sales motion",
+        "options": {
+          "Self-serve / DTC e-commerce": 5,
+          "Inside sales": 5,
+          "Enterprise sales": 5,
+          "Channel / Partners / Distributors": 5,
+          "PLG + Sales": 5,
+          "Retail / Wholesale": 5,
+          "Other": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "Sales Motion Channels",
+        "subcategory_name": "gtm.primary_channel",
+        "maximum_points": 5,
+        "Question": "Primary acquisition / sales / distribution channel",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "Sales Motion Channels",
+        "subcategory_name": "gtm.secondary_channels",
+        "maximum_points": 5,
+        "Question": "Secondary channels",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "Sales Motion Channels",
+        "subcategory_name": "gtm.partnerships",
+        "maximum_points": 5,
+        "Question": "Key partnerships (current / planned)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      }
+    ],
+    "D3_pricing_revenue_model_clarity": [
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "Pricing Revenue Model Clarity",
+        "subcategory_name": "biz.revenue_model",
+        "maximum_points": 5,
+        "Question": "Primary revenue model",
+        "options": {
+          "Subscription (SaaS)": 5,
+          "Usage-based": 5,
+          "Transaction fee / Take-rate": 5,
+          "Product sales (wholesale + retail)": 5,
+          "DTC e-commerce": 5,
+          "Licensing": 5,
+          "Hardware sales": 5,
+          "Advertising": 5,
+          "Services / Consulting": 5,
+          "Hybrid": 5,
+          "Not yet monetizing": 2,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "Pricing Revenue Model Clarity",
+        "subcategory_name": "biz.pricing",
+        "maximum_points": 5,
+        "Question": "Pricing details (tiers / unit price / take-rate)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "Pricing Revenue Model Clarity",
+        "subcategory_name": "gtm.pricing_rationale_provided",
+        "maximum_points": 5,
+        "Question": "Pricing rationale documented?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "GTM Strategy",
+        "Subtopic_Name": "Pricing Revenue Model Clarity",
+        "subcategory_name": "biz.pricing_packages_described",
+        "maximum_points": 5,
+        "Question": "Pricing structure / packages / tiers described?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      }
+    ]
+  },
+  "metrics_financial": {
+    "Category_Name": "Metrics Financial",
+    "maximum_point": 90,
+    "weight": 15,
+    "E1_metrics_definitions_evidence": [
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Metrics Definitions Evidence",
+        "subcategory_name": "metrics.metric_definitions_provided",
+        "maximum_points": 5,
+        "Question": "Written definitions for core metrics?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Metrics Definitions Evidence",
+        "subcategory_name": "metrics.metrics_evidence_link",
+        "maximum_points": 5,
+        "Question": "Metrics evidence link (dashboard / export)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Metrics Definitions Evidence",
+        "subcategory_name": "metrics.metric_owner_named",
+        "maximum_points": 5,
+        "Question": "Who owns metrics reporting?",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Metrics Definitions Evidence",
+        "subcategory_name": "metrics.reporting_cadence_defined",
+        "maximum_points": 5,
+        "Question": "Reporting cadence defined?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      }
+    ],
+    "E2_runway_burn_forecast_visibility": [
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Runway Burn Forecast Visibility",
+        "subcategory_name": "fin.cash_on_hand_usd",
+        "maximum_points": 5,
+        "Question": "Cash on hand (USD)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Runway Burn Forecast Visibility",
+        "subcategory_name": "fin.monthly_burn_usd",
+        "maximum_points": 5,
+        "Question": "Monthly burn rate (net) in USD",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Runway Burn Forecast Visibility",
+        "subcategory_name": "fin.runway_months",
+        "maximum_points": 5,
+        "Question": "Runway (months remaining)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Runway Burn Forecast Visibility",
+        "subcategory_name": "fin.forecast_next_12m_usd",
+        "maximum_points": 5,
+        "Question": "Forecast revenue next 12 months (USD)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Runway Burn Forecast Visibility",
+        "subcategory_name": "fin.break_even_plan_clarity",
+        "maximum_points": 5,
+        "Question": "Break-even plan clarity",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      }
+    ],
+    "E3_unit_economics_visibility": [
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Unit Economics Visibility",
+        "subcategory_name": "biz.unit_econ_tracked",
+        "maximum_points": 5,
+        "Question": "Do you track unit economics (CAC / LTV / payback)?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Unit Economics Visibility",
+        "subcategory_name": "biz.gross_margin_pct",
+        "maximum_points": 5,
+        "Question": "Gross margin % (estimate)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Unit Economics Visibility",
+        "subcategory_name": "biz.cac_usd",
+        "maximum_points": 5,
+        "Question": "Customer acquisition cost (CAC) in USD",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Unit Economics Visibility",
+        "subcategory_name": "biz.ltv_usd",
+        "maximum_points": 5,
+        "Question": "Customer lifetime value (LTV) in USD",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Unit Economics Visibility",
+        "subcategory_name": "biz.payback_months",
+        "maximum_points": 5,
+        "Question": "Payback period (months)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      }
+    ],
+    "E4_fundraising_plan_narrative": [
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Fundraising Plan Narrative",
+        "subcategory_name": "funds.use_of_funds",
+        "maximum_points": 5,
+        "Question": "Use of funds (top 3 priorities)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Fundraising Plan Narrative",
+        "subcategory_name": "funds.milestones_defined",
+        "maximum_points": 5,
+        "Question": "Milestones tied to this funding round?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Fundraising Plan Narrative",
+        "subcategory_name": "fin.p_and_l_clarity",
+        "maximum_points": 5,
+        "Question": "P&L clarity (projections + cash-to-goals)?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Metrics Financial",
+        "Subtopic_Name": "Fundraising Plan Narrative",
+        "subcategory_name": "deck.signal.use_of_funds_present",
+        "maximum_points": 5,
+        "Question": "Deck: Ask + use of funds slide included?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      }
+    ]
+  },
+  "traction_validation": {
+    "Category_Name": "Traction Validation",
+    "maximum_point": 55,
+    "weight": 10,
+    "F1_traction_signals_present": [
+      {
+        "Category_Name": "Traction Validation",
+        "Subtopic_Name": "Traction Signals Present",
+        "subcategory_name": "traction.revenue_ttm_usd",
+        "maximum_points": 5,
+        "Question": "Revenue (TTM) in USD",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Traction Validation",
+        "Subtopic_Name": "Traction Signals Present",
+        "subcategory_name": "traction.paying_customers",
+        "maximum_points": 5,
+        "Question": "Number of paying customers / accounts / retail doors",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Traction Validation",
+        "Subtopic_Name": "Traction Signals Present",
+        "subcategory_name": "traction.growth_rate",
+        "maximum_points": 5,
+        "Question": "Growth rate + time window (YoY, MoM, QoQ)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      }
+    ],
+    "F2_retention_repeat_rate": [
+      {
+        "Category_Name": "Traction Validation",
+        "Subtopic_Name": "Retention Repeat Rate",
+        "subcategory_name": "traction.retention_churn",
+        "maximum_points": 5,
+        "Question": "Retention / repeat rate / churn (if known)",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Traction Validation",
+        "Subtopic_Name": "Retention Repeat Rate",
+        "subcategory_name": "traction.retention_measured_cohort",
+        "maximum_points": 5,
+        "Question": "Do you measure retention by cohort?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Traction Validation",
+        "Subtopic_Name": "Retention Repeat Rate",
+        "subcategory_name": "traction.cohort_analysis_evidence_link",
+        "maximum_points": 5,
+        "Question": "Cohort / retention evidence link",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      }
+    ],
+    "F3_customer_proof_artifacts": [
+      {
+        "Category_Name": "Traction Validation",
+        "Subtopic_Name": "Customer Proof Artifacts",
+        "subcategory_name": "traction.key_logos",
+        "maximum_points": 5,
+        "Question": "Notable customers, retailers, or accounts",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      },
+      {
+        "Category_Name": "Traction Validation",
+        "Subtopic_Name": "Customer Proof Artifacts",
+        "subcategory_name": "traction.customer_references_available",
+        "maximum_points": 5,
+        "Question": "Customer references available?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Traction Validation",
+        "Subtopic_Name": "Customer Proof Artifacts",
+        "subcategory_name": "traction.case_study_available",
+        "maximum_points": 5,
+        "Question": "Case study / customer proof document available?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Traction Validation",
+        "Subtopic_Name": "Customer Proof Artifacts",
+        "subcategory_name": "traction.contracts_pocs_available",
+        "maximum_points": 5,
+        "Question": "Contracts / POs / LOIs available (redacted OK)?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Traction Validation",
+        "Subtopic_Name": "Customer Proof Artifacts",
+        "subcategory_name": "traction.customer_proof_link",
+        "maximum_points": 5,
+        "Question": "Customer proof docs link",
+        "options": {
+          "Provided": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      }
+    ]
+  },
+  "storytelling_comms": {
+    "Category_Name": "Storytelling Comms",
+    "maximum_point": 70,
+    "weight": 10,
+    "G1_deck_minimum_requirements": [
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Deck Minimum Requirements",
+        "subcategory_name": "deck.signal.problem_customer_clear",
+        "maximum_points": 5,
+        "Question": "Deck: Problem + customer clearly defined?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Deck Minimum Requirements",
+        "subcategory_name": "deck.signal.solution_narrative_clear",
+        "maximum_points": 5,
+        "Question": "Deck: Solution narrative clearly explained?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Deck Minimum Requirements",
+        "subcategory_name": "deck.signal.team_background_relevant",
+        "maximum_points": 5,
+        "Question": "Deck: Team + relevant backgrounds included?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Deck Minimum Requirements",
+        "subcategory_name": "deck.signal.gtm_pricing_clear",
+        "maximum_points": 5,
+        "Question": "Deck: GTM + pricing / business model included?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Deck Minimum Requirements",
+        "subcategory_name": "deck.signal.financial_plan_clear",
+        "maximum_points": 5,
+        "Question": "Deck: Financial plan clarity (burn / runway / projections)?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      }
+    ],
+    "G2_deck_evidence_competitive_positioning": [
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Deck Evidence Competitive Positioning",
+        "subcategory_name": "deck.signal.traction_metrics_present",
+        "maximum_points": 5,
+        "Question": "Deck: Traction metrics with dates/windows?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Deck Evidence Competitive Positioning",
+        "subcategory_name": "deck.signal.competition_present",
+        "maximum_points": 5,
+        "Question": "Deck: Competition / alternatives slide?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Deck Evidence Competitive Positioning",
+        "subcategory_name": "deck.signal.risks_present",
+        "maximum_points": 5,
+        "Question": "Deck: Risks + mitigations slide?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Deck Evidence Competitive Positioning",
+        "subcategory_name": "deck.signal.slide_citations_present",
+        "maximum_points": 5,
+        "Question": "Deck: Claims have source citations?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Deck Evidence Competitive Positioning",
+        "subcategory_name": "market.regulation",
+        "maximum_points": 5,
+        "Question": "Regulatory constraints disclosed (if any)?",
+        "options": {
+          "Provided or N/A": 5,
+          "Missing": 0
+        },
+        "required_value": true
+      }
+    ],
+    "G3_consistency_auditability": [
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Consistency Auditability",
+        "subcategory_name": "consistency.company_facts_match",
+        "maximum_points": 5,
+        "Question": "Company facts match across all sources?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Consistency Auditability",
+        "subcategory_name": "consistency.core_metrics_match",
+        "maximum_points": 5,
+        "Question": "Core metrics match across all sources?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Consistency Auditability",
+        "subcategory_name": "consistency.conflicts_resolved",
+        "maximum_points": 5,
+        "Question": "Discrepancies between sources explained?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      },
+      {
+        "Category_Name": "Storytelling Comms",
+        "Subtopic_Name": "Consistency Auditability",
+        "subcategory_name": "consistency.audit_evidence_pointers_present",
+        "maximum_points": 5,
+        "Question": "Evidence pointers exist for scored fields?",
+        "options": {
+          "Yes": 5,
+          "No": 2,
+          "Unknown": 0
+        },
+        "required_value": false
+      }
+    ]
+  },
+  "totals": {
+    "universal_fields": 91,
+    "universal_max_points": 455,
+    "total_weight": 100
+  }
+}

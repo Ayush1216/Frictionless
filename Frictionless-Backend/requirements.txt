@@ -1,0 +1,11 @@
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+httpx>=0.26.0
+supabase>=2.3.0
+python-dotenv>=1.0.0
+# Extraction pipeline
+mistralai>=1.2.0
+tenacity>=8.2.0
+requests>=2.31.0
+google-genai>=1.0.0
+anthropic>=0.39.0

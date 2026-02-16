@@ -1,0 +1,12 @@
+---
+description: Use yarn (not npm) for Frictionless-Frontend scripts and dev server
+alwaysApply: true
+---
+
+# Use Yarn for This Project
+
+- **Package manager**: Use `yarn` for installs and scripts in `Frictionless-Frontend`, not `npm`.
+- **Dev server**: Start the Next.js app with `yarn dev`, not `npm run dev`.
+- **Starting the server**: When launching the dev server, use this pattern (PowerShell):
+  - Free port 3000 if needed, then: `cd "d:\Frictionless\Frictionless-Frontend"; yarn dev`
+  - Or: `$conn = Get-NetTCPConnection -LocalPort 3000 -ErrorAction SilentlyContinue | Select-Object -First 1; if ($conn) { Stop-Process -Id $conn.OwningProcess -Force -ErrorAction SilentlyContinue }; Set-Location "d:\Frictionless\Frictionless-Frontend"; yarn dev`

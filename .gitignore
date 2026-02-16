@@ -1,0 +1,62 @@
+# ============================================================
+# Frictionless - Root .gitignore
+# ============================================================
+
+# ----- Dependencies -----
+node_modules/
+.pnp
+.pnp.js
+
+# ----- Build / Output -----
+.next/
+out/
+build/
+dist/
+*.egg-info/
+*.egg/
+__pycache__/
+
+# ----- Environment / Secrets -----
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+*.pem
+
+# ----- Python -----
+venv/
+.venv/
+env/
+*.py[cod]
+*$py.class
+*.so
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.mypy_cache/
+
+# ----- Logs / Debug -----
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+debug_*.txt
+
+# ----- IDE / Editor -----
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ----- OS -----
+.DS_Store
+Thumbs.db
+
+# ----- TypeScript / Misc -----
+*.tsbuildinfo
