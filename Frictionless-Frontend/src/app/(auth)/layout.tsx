@@ -1,12 +1,13 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Brain, Zap, Shield, TrendingUp } from 'lucide-react';
+import Image from 'next/image';
+import { Zap, Shield, TrendingUp, Brain } from 'lucide-react';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const floatingIcons = [
-  { Icon: Brain, x: '15%', y: '20%', delay: 0 },
+  { Icon: Zap, x: '15%', y: '20%', delay: 0 },
   { Icon: Zap, x: '75%', y: '15%', delay: 0.5 },
   { Icon: Shield, x: '25%', y: '70%', delay: 1 },
   { Icon: TrendingUp, x: '80%', y: '65%', delay: 1.5 },
@@ -50,14 +51,17 @@ export default function AuthLayout({
 
         {/* Brand content */}
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-neon-gradient flex items-center justify-center shadow-glow">
-              <Brain className="w-6 h-6 text-white" />
+          {/* Logo — compact, 2x size */}
+          <Link href="/" className="flex items-center group p-0">
+            <div className="relative w-32 h-32 flex-shrink-0 sm:w-40 sm:h-40">
+              <Image
+                src="/logo.png"
+                alt="Frictionless"
+                width={1024}
+                height={1024}
+                className="object-contain w-full h-full"
+              />
             </div>
-            <span className="text-xl font-display font-bold text-white">
-              Frictionless
-            </span>
           </Link>
 
           {/* Center tagline */}

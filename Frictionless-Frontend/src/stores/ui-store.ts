@@ -28,7 +28,7 @@ export const useUIStore = create<UIStore>()(
   persist(
     (set) => ({
   sidebarOpen: true,
-  sidebarCollapsed: false,
+  sidebarCollapsed: true,
   theme: 'dark',
   activeModal: null,
   isMobile: false,
@@ -46,6 +46,6 @@ export const useUIStore = create<UIStore>()(
   toggleNotifications: () => set((state) => ({ notificationsOpen: !state.notificationsOpen })),
   toggleCommandPalette: () => set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
 }),
-    { name: 'ui-store', partialize: (state) => ({ theme: state.theme, sidebarCollapsed: state.sidebarCollapsed }) }
+    { name: 'ui-store', partialize: (state) => ({ theme: state.theme }) }
   )
 );

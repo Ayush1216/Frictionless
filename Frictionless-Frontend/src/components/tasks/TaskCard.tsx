@@ -86,6 +86,13 @@ export function TaskCard({ task, category, onClick, className }: TaskCardProps) 
             Rescore
           </span>
         )}
+
+        {/* Potential points */}
+        {typeof task.potential_points === 'number' && task.potential_points > 0 && task.status !== 'done' && (
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-score-excellent/15 text-score-excellent border border-score-excellent/30">
+            +{task.potential_points} pts
+          </span>
+        )}
       </div>
 
       {/* Footer: due date + category */}

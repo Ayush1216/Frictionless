@@ -11,11 +11,13 @@ import { NotificationCenter } from './NotificationCenter';
 import { BreadcrumbNav } from './BreadcrumbNav';
 import { useUIStore } from '@/stores/ui-store';
 import { useIsMobile } from '@/lib/hooks/useMediaQuery';
+import { cn } from '@/lib/utils';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMobile = useIsMobile();
   const setMobile = useUIStore((s) => s.setMobile);
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const isOnboardingChat = pathname === '/onboarding/chat';
 
   useEffect(() => {
@@ -28,7 +30,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!isMobile && !isOnboardingChat && <Sidebar />}
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className={cn(
+        "flex-1 flex flex-col min-w-0 overflow-hidden",
+        !isMobile && !isOnboardingChat && sidebarCollapsed && "pl-6"
+      )}>
         {/* Mobile TopBar — hidden on onboarding chat */}
         {isMobile && !isOnboardingChat && <TopBar />}
 

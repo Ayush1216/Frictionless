@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { StatusChip } from '@/components/shared/StatusChip';
 import { useTaskStore } from '@/stores/task-store';
+import { useTasksSync } from '@/contexts/TasksSyncContext';
 import type { Task, TaskGroup } from '@/types/database';
 import { format, isPast, parseISO } from 'date-fns';
 import { useSwipeable } from 'react-swipeable';
@@ -37,7 +38,9 @@ interface TaskListProps {
 export function TaskList({ onTaskClick, className }: TaskListProps) {
   const tasks = useTaskStore((s) => s.tasks);
   const taskGroups = useTaskStore((s) => s.taskGroups);
-  const updateTask = useTaskStore((s) => s.updateTask);
+  const sync = useTasksSync();
+  const storeUpdateTask = useTaskStore((s) => s.updateTask);
+  const updateTask = sync?.updateTask ?? storeUpdateTask;
   const deleteTask = useTaskStore((s) => s.deleteTask);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 

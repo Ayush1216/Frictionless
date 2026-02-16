@@ -267,6 +267,7 @@ export interface Task {
   due_date?: string | null;
   assigned_to?: string | null;
   requires_rescore: boolean;
+  potential_points?: number;
   completion_source?: CompletionSource;
   ai_extractions?: AIExtraction[];
   created_at: string;

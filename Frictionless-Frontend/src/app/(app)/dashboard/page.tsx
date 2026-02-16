@@ -89,6 +89,7 @@ export default function DashboardPage() {
     updated_at?: string | null;
   } | null>(null);
   const [readinessChecked, setReadinessChecked] = useState(false);
+  const [scoreHistory, setScoreHistory] = useState<{ score: number; updated_at: string }[]>([]);
   const greeting = getGreeting();
   const firstName = user?.full_name?.split(' ')[0] ?? startup.founders[0].full_name.split(' ')[0];
 
@@ -103,10 +104,14 @@ export default function DashboardPage() {
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token ?? null;
       if (!token || cancelled) return;
-      const res = await fetch('/api/readiness/status', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const json = await res.json().catch(() => ({}));
+      const [statusRes, historyRes] = await Promise.all([
+        fetch('/api/readiness/status', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/readiness/score-history', { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const [json, historyJson] = await Promise.all([
+        statusRes.json().catch(() => ({})),
+        historyRes.json().catch(() => ({ entries: [] })),
+      ]);
       if (cancelled) return;
       if (json.status === 'ready' && json.score_summary) {
         setReadiness({
@@ -114,6 +119,14 @@ export default function DashboardPage() {
           scored_rubric: json.scored_rubric,
           updated_at: json.updated_at ?? null,
         });
+      }
+      if (historyJson.entries?.length) {
+        setScoreHistory(
+          historyJson.entries.map((e: { score: number; updated_at: string }) => ({
+            score: Number(e.score),
+            updated_at: e.updated_at,
+          }))
+        );
       }
       if (!cancelled) setReadinessChecked(true);
     })();
@@ -136,6 +149,13 @@ export default function DashboardPage() {
       : undefined;
 
   const readinessScore = readiness?.score_summary?._overall?.raw_percentage ?? startup.assessment.overall_score;
+  // Delta = current score vs previous (from score history)
+  const readinessDelta =
+    readiness && scoreHistory.length >= 2
+      ? Math.round((readinessScore - scoreHistory[scoreHistory.length - 2].score) * 10) / 10
+      : readiness
+        ? 0
+        : startup.score_delta;
   const readinessCategories =
     readiness?.score_summary && typeof readiness.score_summary === 'object'
       ? Object.entries(readiness.score_summary)
@@ -209,7 +229,7 @@ export default function DashboardPage() {
         {/* Row 1: Score Gauge + Category Breakdown */}
         <ScoreGauge
           score={readinessScore}
-          delta={readiness ? 0 : startup.score_delta}
+          delta={readinessDelta}
           badge={readiness ? 'assessed' : startup.assessment.badge}
           lastAssessed={lastAssessedText}
           className="lg:col-span-4"

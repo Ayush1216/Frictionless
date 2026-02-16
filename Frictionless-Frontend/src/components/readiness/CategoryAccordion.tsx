@@ -35,20 +35,96 @@ interface MissingItem {
   severity: 'high' | 'medium' | 'low';
 }
 
+/** Rubric item from scored_rubric (startup_readiness_results) */
+interface RubricItem {
+  Question?: string;
+  Answer?: string | null;
+  Points?: number;
+  Value?: string | null;
+  Reasoning?: string | null;
+  maximum_points?: number;
+  Subtopic_Name?: string;
+  [k: string]: unknown;
+}
+
+/** Parsed category from scored_rubric */
+interface ParsedRubricCategory {
+  key: string;
+  name: string;
+  score: number;
+  weight: number;
+  maximumPoint: number;
+  items: RubricItem[];
+}
+
+function formatCategoryKey(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function parseScoredRubric(rubric: Record<string, unknown>): ParsedRubricCategory[] {
+  const METADATA_KEYS = ['weight', 'Category_Name', 'maximum_point'];
+  const result: ParsedRubricCategory[] = [];
+
+  const SKIP_KEYS = ['totals', '_overall'];
+  for (const [catKey, catVal] of Object.entries(rubric)) {
+    if (SKIP_KEYS.includes(catKey.toLowerCase())) continue;
+    if (!catVal || typeof catVal !== 'object' || Array.isArray(catVal)) continue;
+
+    const meta = catVal as Record<string, unknown>;
+    const categoryName = (meta.Category_Name as string) || formatCategoryKey(catKey);
+    const weight = (meta.weight as number) ?? 0;
+    const maximumPoint = (meta.maximum_point as number) ?? 100;
+
+    const items: RubricItem[] = [];
+    for (const [subKey, subVal] of Object.entries(meta)) {
+      if (METADATA_KEYS.includes(subKey)) continue;
+      if (!Array.isArray(subVal)) continue;
+      for (const item of subVal) {
+        if (item && typeof item === 'object' && 'options' in item) {
+          items.push(item as RubricItem);
+        }
+      }
+    }
+
+    const totalPoints = items.reduce((sum, i) => sum + ((i.Points as number) ?? 0), 0);
+    const totalMax = items.reduce((sum, i) => sum + ((i.maximum_points as number) ?? 0), 0);
+    const score = totalMax > 0 ? Math.round((totalPoints / totalMax) * 100) : 0;
+
+    result.push({
+      key: catKey,
+      name: categoryName,
+      score,
+      weight,
+      maximumPoint,
+      items,
+    });
+  }
+
+  return result;
+}
+
 interface CategoryAccordionProps {
   categories: Category[];
   missingData: MissingItem[];
+  /** When present, use scored_rubric from startup_readiness_results for detailed table view */
+  scoredRubric?: Record<string, unknown> | null;
 }
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  'Storytelling & Pitch': <Mic className="w-4 h-4" />,
-  'Founder & Team': <Users className="w-4 h-4" />,
-  'Product & Technology': <Cpu className="w-4 h-4" />,
-  'Foundational Setup': <Settings className="w-4 h-4" />,
-  'Metrics & Financials': <BarChart3 className="w-4 h-4" />,
-  'Go-To-Market Strategy': <Megaphone className="w-4 h-4" />,
-  'Traction & Validation': <TrendingUp className="w-4 h-4" />,
-};
+function getCategoryIcon(name: string): React.ReactNode {
+  const icons: Record<string, React.ReactNode> = {
+    'Storytelling & Pitch': <Mic className="w-4 h-4" />,
+    'Founder & Team': <Users className="w-4 h-4" />,
+    'Founder Team': <Users className="w-4 h-4" />,
+    'Product & Technology': <Cpu className="w-4 h-4" />,
+    'Foundational Setup': <Settings className="w-4 h-4" />,
+    'Metrics & Financials': <BarChart3 className="w-4 h-4" />,
+    'Go-To-Market Strategy': <Megaphone className="w-4 h-4" />,
+    'Traction & Validation': <TrendingUp className="w-4 h-4" />,
+  };
+  return icons[name] ?? <BarChart3 className="w-4 h-4" />;
+}
 
 const CATEGORY_TIPS: Record<string, string[]> = {
   'Storytelling & Pitch': [
@@ -102,7 +178,15 @@ function getScoreTextColor(score: number) {
   return 'text-score-poor';
 }
 
-export function CategoryAccordion({ categories, missingData }: CategoryAccordionProps) {
+export function CategoryAccordion({ categories, missingData, scoredRubric }: CategoryAccordionProps) {
+  const parsedRubric = scoredRubric && typeof scoredRubric === 'object'
+    ? parseScoredRubric(scoredRubric as Record<string, unknown>)
+    : null;
+  const useRubric = parsedRubric && parsedRubric.length > 0;
+  const displayCategories = useRubric
+    ? parsedRubric.map((p) => ({ name: p.name, score: p.score, delta: 0, weight: p.weight }))
+    : categories;
+
   // Map missing items to categories
   const getMissingForCategory = (categoryName: string): MissingItem[] => {
     // Simple heuristic mapping
@@ -137,9 +221,10 @@ export function CategoryAccordion({ categories, missingData }: CategoryAccordion
       </div>
 
       <Accordion type="multiple" className="divide-y divide-obsidian-600/30">
-        {categories.map((cat, idx) => {
+        {displayCategories.map((cat, idx) => {
           const missing = getMissingForCategory(cat.name);
           const tips = CATEGORY_TIPS[cat.name] ?? [];
+          const rubricCategory = useRubric ? parsedRubric[idx] : null;
 
           return (
             <AccordionItem key={cat.name} value={cat.name} className="border-none">
@@ -147,7 +232,7 @@ export function CategoryAccordion({ categories, missingData }: CategoryAccordion
                 <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
                   {/* Icon */}
                   <div className="w-8 h-8 rounded-lg bg-obsidian-700/60 flex items-center justify-center text-muted-foreground shrink-0">
-                    {CATEGORY_ICONS[cat.name]}
+                    {getCategoryIcon(cat.name)}
                   </div>
 
                   {/* Name + Bar */}
@@ -177,20 +262,63 @@ export function CategoryAccordion({ categories, missingData }: CategoryAccordion
 
               <AccordionContent className="px-4 lg:px-6">
                 <div className="pl-11 space-y-4 pb-2">
-                  {/* Tips */}
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                      Improvement Tips
-                    </h4>
-                    <ul className="space-y-1.5">
-                      {tips.map((tip) => (
-                        <li key={tip} className="flex items-start gap-2 text-sm text-obsidian-300">
-                          <Lightbulb className="w-3.5 h-3.5 text-score-fair mt-0.5 shrink-0" />
-                          {tip}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  {/* Rubric table from scored_rubric */}
+                  {rubricCategory && rubricCategory.items.length > 0 && (
+                    <div className="overflow-x-auto -mx-2">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr className="border-b border-obsidian-600/50">
+                            <th className="text-left py-2 px-2 font-semibold text-muted-foreground">Question</th>
+                            <th className="text-left py-2 px-2 font-semibold text-muted-foreground w-24">Answer</th>
+                            <th className="text-left py-2 px-2 font-semibold text-muted-foreground w-16">Points</th>
+                            <th className="text-left py-2 px-2 font-semibold text-muted-foreground">Value / Reasoning</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rubricCategory.items.map((item, i) => (
+                            <tr key={i} className="border-b border-obsidian-600/20">
+                              <td className="py-2.5 px-2 text-foreground">{item.Question ?? '—'}</td>
+                              <td className="py-2.5 px-2 text-obsidian-300">{String(item.Answer ?? '—')}</td>
+                              <td className="py-2.5 px-2 tabular-nums">
+                                <span className={cn(
+                                  'font-medium',
+                                  (item.Points ?? 0) >= (item.maximum_points ?? 0) * 0.8 ? 'text-score-excellent' :
+                                  (item.Points ?? 0) >= (item.maximum_points ?? 0) * 0.5 ? 'text-score-good' :
+                                  (item.Points ?? 0) > 0 ? 'text-score-fair' : 'text-score-poor',
+                                )}>
+                                  {(item.Points ?? 0)}/{(item.maximum_points ?? 0)}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-2 text-obsidian-300">
+                                {item.Value && <span className="block text-xs mb-1">{item.Value}</span>}
+                                {item.Reasoning && (
+                                  <span className="block text-xs italic text-muted-foreground">{item.Reasoning}</span>
+                                )}
+                                {!item.Value && !item.Reasoning && '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Fallback: Tips when no rubric data */}
+                  {(!useRubric || !rubricCategory?.items?.length) && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Improvement Tips
+                      </h4>
+                      <ul className="space-y-1.5">
+                        {tips.map((tip) => (
+                          <li key={tip} className="flex items-start gap-2 text-sm text-obsidian-300">
+                            <Lightbulb className="w-3.5 h-3.5 text-score-fair mt-0.5 shrink-0" />
+                            {tip}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   {/* Missing data items for this category */}
                   {missing.length > 0 && (

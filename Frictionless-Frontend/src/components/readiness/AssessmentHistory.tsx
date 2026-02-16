@@ -13,8 +13,19 @@ import {
 import { DeltaArrow } from '@/components/matches/DeltaArrow';
 import type { DummyAssessmentRun } from '@/lib/dummy-data/assessments';
 
+export interface ScoreHistoryEntry {
+  id: string;
+  score: number;
+  updated_at: string;
+  update_source?: string;
+  note?: string;
+}
+
 interface AssessmentHistoryProps {
-  runs: DummyAssessmentRun[];
+  /** Legacy: dummy assessment runs (used as fallback when no real data) */
+  runs?: DummyAssessmentRun[];
+  /** Real score history from readiness_score_history table */
+  scoreHistory?: ScoreHistoryEntry[];
 }
 
 interface TooltipPayloadItem {
@@ -24,6 +35,8 @@ interface TooltipPayloadItem {
     delta: number;
     date: string;
     fullDate: string;
+    update_source?: string;
+    note?: string;
   };
 }
 
@@ -45,32 +58,68 @@ function CustomTooltip({
         <span className="text-lg font-bold text-electric-blue tabular-nums">
           {data.score}
         </span>
-        {data.delta !== 0 && <DeltaArrow delta={data.delta} size="sm" />}
+        {Number.isFinite(data.delta) && data.delta !== 0 && <DeltaArrow delta={data.delta} size="sm" />}
       </div>
+      {data.update_source && (
+        <p className="text-obsidian-400 mt-1 capitalize">{data.update_source.replace(/_/g, ' ')}</p>
+      )}
+      {data.note && <p className="text-muted-foreground mt-0.5 italic">{data.note}</p>}
     </div>
   );
 }
 
-export function AssessmentHistory({ runs }: AssessmentHistoryProps) {
-  const chartData = runs.map((run) => ({
-    run: run.run_number,
-    score: run.overall_score,
-    delta: run.delta_from_previous,
-    date: new Date(run.scored_at).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    }),
-    fullDate: new Date(run.scored_at).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    }),
-  }));
+export function AssessmentHistory({ runs = [], scoreHistory }: AssessmentHistoryProps) {
+  const toScore = (v: unknown): number => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  };
 
+  const chartData = scoreHistory?.length
+    ? scoreHistory.map((entry, i) => {
+        const score = toScore(entry.score);
+        const prevScore = i > 0 ? toScore(scoreHistory[i - 1].score) : score;
+        const delta = score - prevScore;
+        return {
+          run: i + 1,
+          score,
+          delta,
+          date: new Date(entry.updated_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          }),
+          fullDate: new Date(entry.updated_at).toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+          }),
+          update_source: entry.update_source,
+          note: entry.note,
+        };
+      })
+    : runs.map((run) => ({
+        run: run.run_number,
+        score: run.overall_score,
+        delta: run.delta_from_previous,
+        date: new Date(run.scored_at).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+        }),
+        fullDate: new Date(run.scored_at).toLocaleDateString('en-US', {
+          month: 'long',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+      }));
+
+  const dataSource = scoreHistory?.length ? scoreHistory : runs;
   const latestDelta =
-    runs.length > 1
-      ? runs[runs.length - 1].overall_score - runs[runs.length - 2].overall_score
+    dataSource.length > 1
+      ? toScore((dataSource[dataSource.length - 1] as { score?: unknown }).score) -
+        toScore((dataSource[dataSource.length - 2] as { score?: unknown }).score)
       : 0;
+
+  const count = chartData.length;
+  const showLatestDelta = Number.isFinite(latestDelta) && latestDelta !== 0;
 
   return (
     <motion.div
@@ -85,10 +134,12 @@ export function AssessmentHistory({ runs }: AssessmentHistoryProps) {
             Score History
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {runs.length} assessment{runs.length !== 1 ? 's' : ''} completed
+            {count === 0
+              ? 'No scores yet'
+              : `${count} score${count !== 1 ? 's' : ''} recorded`}
           </p>
         </div>
-        {latestDelta !== 0 && (
+        {showLatestDelta && (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-obsidian-700/60 text-xs">
             <span className="text-muted-foreground">Latest</span>
             <DeltaArrow delta={latestDelta} size="sm" />
@@ -96,6 +147,13 @@ export function AssessmentHistory({ runs }: AssessmentHistoryProps) {
         )}
       </div>
 
+      {count === 0 ? (
+        <div className="h-[180px] lg:h-[200px] flex items-center justify-center rounded-lg border border-dashed border-obsidian-600/50 bg-obsidian-900/30">
+          <p className="text-sm text-muted-foreground">
+            Run an assessment to see your score history
+          </p>
+        </div>
+      ) : (
       <div className="h-[180px] lg:h-[200px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -15 }}>
@@ -129,6 +187,7 @@ export function AssessmentHistory({ runs }: AssessmentHistoryProps) {
           </LineChart>
         </ResponsiveContainer>
       </div>
+      )}
     </motion.div>
   );
 }

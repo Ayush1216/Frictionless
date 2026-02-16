@@ -9,6 +9,7 @@ import {
   Filter,
   CheckCircle2,
   Plus,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -16,7 +17,8 @@ import { TaskBoard } from '@/components/tasks/TaskBoard';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
 import { useTaskStore } from '@/stores/task-store';
-import { dummyTaskGroups } from '@/lib/dummy-data/tasks';
+import { fetchStartupTasks } from '@/lib/api/tasks';
+import { TasksSyncProvider } from '@/contexts/TasksSyncContext';
 import type { Task, TaskGroup, TaskStatus, TaskPriority } from '@/types/database';
 
 export default function TasksPage() {
@@ -26,34 +28,41 @@ export default function TasksPage() {
     selectedTask,
     setViewMode,
     selectTask,
+    setTasks,
+    setTaskGroups,
   } = useTaskStore();
 
-  const setTasks = useTaskStore((s) => s.setTasks);
-  const setTaskGroups = useTaskStore((s) => s.setTaskGroups);
+  const taskGroups = useTaskStore((s) => s.taskGroups);
+
+  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
   const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Populate store with dummy data on mount
+  // Fetch tasks from API on mount
   useEffect(() => {
-    if (tasks.length === 0) {
-      const allTasks: Task[] = dummyTaskGroups.flatMap((g) =>
-        g.tasks.map((t) => ({
-          ...t,
-          comments: [],
-          events: [],
-        }))
-      );
-      const groups: TaskGroup[] = dummyTaskGroups.map((g) => ({
-        ...g,
-        tasks: g.tasks.map((t) => ({ ...t, comments: [], events: [] })),
-      }));
-      setTasks(allTasks);
-      setTaskGroups(groups);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const { task_groups, tasks: allTasks } = await fetchStartupTasks();
+        if (!cancelled) {
+          setTasks(allTasks);
+          setTaskGroups(task_groups);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setTasks([]);
+          setTaskGroups([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [setTasks, setTaskGroups]);
 
   // Stats (calculated from all tasks, not filtered)
   const stats = useMemo(() => {
@@ -68,13 +77,23 @@ export default function TasksPage() {
     selectTask(task);
   };
 
-  const categories = dummyTaskGroups.map((g) => ({
+  const categories = taskGroups.map((g) => ({
     id: g.id,
     label: g.category,
   }));
 
+  if (loading) {
+    return (
+      <div className="p-4 sm:p-6 flex flex-col items-center justify-center min-h-[40vh] gap-4">
+        <Loader2 className="w-10 h-10 animate-spin text-electric-blue" />
+        <p className="text-sm text-muted-foreground">Loading tasks…</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-[1400px] mx-auto">
+    <TasksSyncProvider>
+      <div className="p-4 sm:p-6 space-y-6 max-w-[1400px] mx-auto">
       {/* Page header */}
       <PageHeader
         title="Tasks"
@@ -296,6 +315,7 @@ export default function TasksPage() {
         task={selectedTask}
         onClose={() => selectTask(null)}
       />
-    </div>
+      </div>
+    </TasksSyncProvider>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -20,6 +20,8 @@ import { TaskAICompletion } from './TaskAICompletion';
 import { TaskComments } from './TaskComments';
 import { AIExtractionCard } from '@/components/ai/AIExtractionCard';
 import { useTaskStore } from '@/stores/task-store';
+import { useTasksSync } from '@/contexts/TasksSyncContext';
+import { fetchTaskEvents, fetchTaskComments } from '@/lib/api/tasks';
 import type { Task, TaskStatus, AIExtraction } from '@/types/database';
 import { format, parseISO } from 'date-fns';
 
@@ -29,11 +31,19 @@ const statusOptions: { value: TaskStatus; label: string }[] = [
   { value: 'done', label: 'Done' },
 ];
 
-// Demo events timeline
-const demoEvents = [
-  { id: 'e1', type: 'created' as const, description: 'Task created from assessment', created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() },
-  { id: 'e2', type: 'status_changed' as const, description: 'Status changed to In Progress', created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
-];
+const EVENT_DESCRIPTIONS: Record<string, string> = {
+  create: 'Task created',
+  update: 'Task updated',
+  status_change: 'Status changed',
+  complete: 'Task completed',
+  reopen: 'Task reopened',
+  delete: 'Task deleted',
+  restore: 'Task restored',
+  reorder: 'Task reordered',
+  move_group: 'Moved to another group',
+  rescore_requested: 'Rescore requested',
+  rescore_completed: 'Rescore completed',
+};
 
 // Demo extractions for tasks that have them
 const demoExtractions: AIExtraction[] = [
@@ -50,12 +60,32 @@ interface TaskDetailPanelProps {
 
 export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
-  const updateTask = useTaskStore((s) => s.updateTask);
+  const sync = useTasksSync();
+  const storeUpdateTask = useTaskStore((s) => s.updateTask);
+  const updateTask = sync?.updateTask ?? storeUpdateTask;
   const taskGroups = useTaskStore((s) => s.taskGroups);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [activeTab, setActiveTab] = useState<'ai' | 'comments' | 'history'>('ai');
+  const [events, setEvents] = useState<{ id: string; event_type: string; from_state: Record<string, unknown>; to_state: Record<string, unknown>; created_at: string }[]>([]);
+  const [comments, setComments] = useState<{ id: string; author: string; content: string; created_at: string }[]>([]);
 
   const group = taskGroups.find((g) => g.id === task?.task_group_id);
+
+  useEffect(() => {
+    if (!task?.id) return;
+    let cancelled = false;
+    (async () => {
+      const [evRes, cmtRes] = await Promise.all([
+        fetchTaskEvents(task.id),
+        fetchTaskComments(task.id),
+      ]);
+      if (!cancelled) {
+        setEvents(evRes.events ?? []);
+        setComments(cmtRes.comments ?? []);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [task?.id]);
 
   // Close on Escape
   useEffect(() => {
@@ -70,10 +100,16 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
     if (e.target === overlayRef.current) onClose();
   };
 
+  const refreshEvents = useCallback(() => {
+    if (!task?.id) return;
+    fetchTaskEvents(task.id).then((r) => setEvents(r.events ?? []));
+  }, [task?.id]);
+
   const handleStatusChange = (status: TaskStatus) => {
     if (task) {
       updateTask(task.id, { status });
       setShowStatusDropdown(false);
+      setTimeout(refreshEvents, 500);
     }
   };
 
@@ -204,6 +240,14 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                 </div>
               </div>
 
+              {/* Potential points */}
+              {typeof task.potential_points === 'number' && task.potential_points > 0 && task.status !== 'done' && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-score-excellent/10 text-score-excellent text-sm font-semibold border border-score-excellent/20">
+                  <span>+{task.potential_points} pts</span>
+                  <span className="text-xs font-normal text-muted-foreground">if completed</span>
+                </div>
+              )}
+
               {/* Badges */}
               <div className="flex items-center gap-2 flex-wrap">
                 {task.requires_rescore && (
@@ -271,7 +315,11 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
 
                 {activeTab === 'comments' && (
                   <motion.div key="comments" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <TaskComments comments={task.comments} />
+                    <TaskComments
+                      taskId={task.id}
+                      comments={comments}
+                      onCommentAdded={(c) => setComments((prev) => [...prev, c])}
+                    />
                   </motion.div>
                 )}
 
@@ -279,21 +327,32 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                   <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     <h4 className="text-sm font-semibold text-foreground mb-3">Activity Timeline</h4>
                     <div className="space-y-3">
-                      {(task.events?.length ? task.events : demoEvents).map((event) => (
-                        <div key={event.id} className="flex gap-3">
-                          <div className="flex flex-col items-center">
-                            <div className="w-2 h-2 rounded-full bg-electric-blue mt-2" />
-                            <div className="flex-1 w-px bg-obsidian-700/40 mt-1" />
-                          </div>
-                          <div className="pb-4">
-                            <p className="text-sm text-foreground">{event.description}</p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {format(parseISO(event.created_at), 'MMM d, h:mm a')}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                      {events.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No activity yet</p>
+                      ) : (
+                        events.map((event) => {
+                          const desc = EVENT_DESCRIPTIONS[event.event_type] ?? event.event_type;
+                          const statusChange = event.event_type === 'status_change' || event.event_type === 'complete';
+                          const detail = statusChange && event.from_state?.status && event.to_state?.status
+                            ? ` (${event.from_state.status} → ${event.to_state.status})`
+                            : '';
+                          return (
+                            <div key={event.id} className="flex gap-3">
+                              <div className="flex flex-col items-center">
+                                <div className="w-2 h-2 rounded-full bg-electric-blue mt-2" />
+                                <div className="flex-1 w-px bg-obsidian-700/40 mt-1" />
+                              </div>
+                              <div className="pb-4">
+                                <p className="text-sm text-foreground">{desc}{detail}</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {format(parseISO(event.created_at), 'MMM d, h:mm a')}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </motion.div>
                 )}

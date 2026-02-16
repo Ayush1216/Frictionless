@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TaskCard } from './TaskCard';
 import { useTaskStore } from '@/stores/task-store';
+import { useTasksSync } from '@/contexts/TasksSyncContext';
 import type { Task, TaskStatus } from '@/types/database';
 
 interface Column {
@@ -35,7 +36,9 @@ interface TaskBoardProps {
 export function TaskBoard({ onTaskClick, className }: TaskBoardProps) {
   const tasks = useTaskStore((s) => s.tasks);
   const taskGroups = useTaskStore((s) => s.taskGroups);
-  const updateTask = useTaskStore((s) => s.updateTask);
+  const storeUpdateTask = useTaskStore((s) => s.updateTask);
+  const sync = useTasksSync();
+  const updateTask = sync?.updateTask ?? storeUpdateTask;
 
   // Group tasks by status (exclude trash)
   const grouped = useMemo(() => {

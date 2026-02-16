@@ -1,10 +1,11 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Brain,
   LayoutDashboard,
   Gauge,
   Handshake,
@@ -26,8 +27,8 @@ import {
   Bell,
   Sparkles,
   LogOut,
+  X,
 } from 'lucide-react';
-import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useUIStore } from '@/stores/ui-store';
@@ -94,12 +95,28 @@ function getNavForOrgType(orgType: string): NavItem[] {
   }
 }
 
+const UPGRADE_DISMISSED_KEY = 'frictionless-upgrade-pro-dismissed';
+
 export function Sidebar() {
   const pathname = usePathname();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { sidebarCollapsed, collapseSidebar, toggleSearch, toggleNotifications } =
     useUIStore();
+  const [upgradeDismissed, setUpgradeDismissed] = useState(true); // start true to avoid flash, then hydrate from localStorage
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setUpgradeDismissed(localStorage.getItem(UPGRADE_DISMISSED_KEY) === 'true');
+    }
+  }, []);
+
+  const dismissUpgrade = () => {
+    setUpgradeDismissed(true);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(UPGRADE_DISMISSED_KEY, 'true');
+    }
+  };
   const unreadCount = useNotificationStore((s) => s.unreadCount);
 
   const orgType = user?.org_type ?? 'startup';
@@ -121,39 +138,46 @@ export function Sidebar() {
         initial={false}
         animate={{ width: sidebarCollapsed ? 72 : 260 }}
         transition={{ duration: 0.2, ease: 'easeInOut' }}
-        className="relative flex flex-col h-full border-r border-border glass bg-card/80 backdrop-blur-xl z-30"
+        className={cn(
+          "relative flex flex-col h-full border-r border-border glass bg-card/80 backdrop-blur-xl z-30"
+        )}
       >
-        <ScrollArea className="flex-1">
-          <div className="flex flex-col h-full min-h-screen p-3">
-            {/* Logo */}
-            <div className="flex items-center gap-3 px-2 py-3 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-neon-gradient flex items-center justify-center shadow-glow flex-shrink-0">
-                <Brain className="w-5 h-5 text-white" />
-              </div>
-              <AnimatePresence>
-                {!sidebarCollapsed && (
-                  <motion.span
-                    initial={{ opacity: 0, width: 0 }}
-                    animate={{ opacity: 1, width: 'auto' }}
-                    exit={{ opacity: 0, width: 0 }}
-                    className="text-base font-display font-bold text-white whitespace-nowrap overflow-hidden"
-                  >
-                    Frictionless
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </div>
-
+        <div className={cn(
+          "flex flex-col h-full overflow-hidden",
+          sidebarCollapsed ? "p-3 min-h-0" : "px-2 pt-1.5 pb-2"
+        )}>
+          {/* Top: logo (collapsed only) + avatar + quick actions — no scroll */}
+          <div className={cn(
+            "flex flex-col shrink-0",
+            sidebarCollapsed && "pt-4"
+          )}>
+            {/* Logo — minimized/collapsed version only */}
+            {sidebarCollapsed && (
+              <Link href="/dashboard" className="flex items-center justify-center mb-4 p-0">
+                <div className="relative w-9 h-9 flex-shrink-0">
+                  <Image
+                    src="/ai-logo.png"
+                    alt="Frictionless"
+                    width={384}
+                    height={384}
+                    className="object-contain w-full h-full"
+                  />
+                </div>
+              </Link>
+            )}
             {/* User info */}
             <div
               className={cn(
-                'flex items-center gap-3 px-2 py-3 mb-4 rounded-xl bg-obsidian-800/50',
-                sidebarCollapsed && 'justify-center px-0'
+                'flex items-center gap-3 rounded-xl bg-obsidian-800/50 shrink-0',
+                sidebarCollapsed ? 'justify-center px-0 py-1.5 mb-3' : 'px-2 py-1.5 mb-2 mt-4'
               )}
             >
-              <Avatar className="h-9 w-9 flex-shrink-0">
+              <Avatar className={cn('flex-shrink-0', sidebarCollapsed ? 'h-6 w-6' : 'h-9 w-9')}>
                 <AvatarImage src={user?.avatar_url ?? undefined} alt={user?.full_name} />
-                <AvatarFallback className="bg-electric-blue/20 text-electric-blue text-xs font-bold">
+                <AvatarFallback className={cn(
+                  "bg-electric-blue/20 text-electric-blue font-bold",
+                  sidebarCollapsed ? "text-[10px]" : "text-xs"
+                )}>
                   {initials}
                 </AvatarFallback>
               </Avatar>
@@ -177,8 +201,7 @@ export function Sidebar() {
             </div>
 
             {/* Quick actions */}
-            <div className={cn('flex gap-1 mb-4', sidebarCollapsed ? 'flex-col items-center' : 'px-1')}>
-              <ThemeToggle size="sm" className={sidebarCollapsed ? 'w-full' : ''} />
+            <div className={cn('flex gap-1 min-w-0 overflow-hidden shrink-0', sidebarCollapsed ? 'flex-col items-center mb-3' : 'mb-2')}>
               <SidebarIconButton
                 icon={Search}
                 label="Search"
@@ -195,10 +218,20 @@ export function Sidebar() {
               />
             </div>
 
-            <Separator className="mb-4 bg-border" />
+            <Separator className={cn('shrink-0', sidebarCollapsed ? 'my-2' : 'mb-2')} />
+          </div>
 
+          {/* Middle: nav — scrolls when collapsed */}
+          <ScrollArea className={cn(
+            "flex-1 min-h-0",
+            sidebarCollapsed && "flex-1"
+          )}>
+            <div className={cn(
+              "flex flex-col",
+              !sidebarCollapsed && "min-h-0"
+            )}>
             {/* Primary nav */}
-            <div className="space-y-1 mb-4">
+            <div className={cn('space-y-0.5', sidebarCollapsed ? 'mb-1.5' : 'mb-2')}>
               {!sidebarCollapsed && (
                 <p className="text-[10px] uppercase tracking-widest text-obsidian-500 font-semibold px-3 mb-2">
                   {orgType === 'startup'
@@ -218,10 +251,10 @@ export function Sidebar() {
               ))}
             </div>
 
-            <Separator className="mb-4 bg-border" />
+            <Separator className={cn('shrink-0', sidebarCollapsed ? 'my-2' : 'mb-2')} />
 
             {/* Common nav */}
-            <div className="space-y-1 mb-4">
+            <div className={cn('space-y-0.5 shrink-0', sidebarCollapsed ? 'mb-0.5' : 'mb-2')}>
               {!sidebarCollapsed && (
                 <p className="text-[10px] uppercase tracking-widest text-obsidian-500 font-semibold px-3 mb-2">
                   General
@@ -237,21 +270,32 @@ export function Sidebar() {
               ))}
             </div>
 
-            {/* Spacer */}
-            <div className="flex-1" />
+            {/* Spacer — only when expanded */}
+            {!sidebarCollapsed && <div className="flex-1" />}
+            </div>
+          </ScrollArea>
 
+          {/* Bottom: upgrade, logout, collapse — no scroll */}
+          <div className="flex flex-col shrink-0 mt-auto">
             {/* Upgrade CTA */}
             <AnimatePresence>
-              {!sidebarCollapsed && (
+              {!sidebarCollapsed && !upgradeDismissed && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="mb-4 overflow-hidden"
+                  className="mb-2 overflow-hidden"
                 >
-                  <div className="p-4 rounded-xl bg-neon-gradient/10 border border-electric-blue/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Sparkles className="w-4 h-4 text-electric-blue" />
+                  <div className="relative p-4 rounded-xl bg-neon-gradient/10 border border-electric-blue/20">
+                    <button
+                      onClick={dismissUpgrade}
+                      className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-obsidian-800/50 transition-colors"
+                      aria-label="Dismiss"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center gap-2 mb-2 pr-6">
+                      <Sparkles className="w-4 h-4 text-electric-blue shrink-0" />
                       <span className="text-sm font-semibold text-foreground">
                         Upgrade to Pro
                       </span>
@@ -259,9 +303,12 @@ export function Sidebar() {
                     <p className="text-xs text-muted-foreground mb-3">
                       Unlock AI matching, unlimited assessments, and more.
                     </p>
-                    <button className="w-full px-3 py-1.5 rounded-lg bg-electric-blue text-white text-xs font-medium hover:bg-electric-blue/90 transition-colors">
+                    <Link
+                      href="/pricing"
+                      className="block w-full px-3 py-1.5 rounded-lg bg-electric-blue text-white text-xs font-medium hover:bg-electric-blue/90 transition-colors text-center"
+                    >
                       Learn more
-                    </button>
+                    </Link>
                   </div>
                 </motion.div>
               )}
@@ -281,7 +328,10 @@ export function Sidebar() {
             {/* Collapse toggle */}
             <button
               onClick={collapseSidebar}
-              className="mt-3 flex items-center justify-center w-full h-9 rounded-lg text-obsidian-400 hover:text-foreground hover:bg-obsidian-800/50 transition-colors"
+              className={cn(
+                "flex items-center justify-center w-full rounded-lg text-obsidian-400 hover:text-foreground hover:bg-obsidian-800/50 transition-colors shrink-0",
+                sidebarCollapsed ? "mt-1 h-6" : "mt-2 h-8"
+              )}
             >
               {sidebarCollapsed ? (
                 <ChevronRight className="w-4 h-4" />
@@ -290,7 +340,7 @@ export function Sidebar() {
               )}
             </button>
           </div>
-        </ScrollArea>
+        </div>
       </motion.aside>
     </TooltipProvider>
   );
@@ -312,11 +362,11 @@ function NavLink({
   const content = (
     <motion.div
       className={cn(
-        'flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-150 group relative touch-target',
+        'flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-150 group relative',
         isActive
           ? 'bg-electric-blue/15 text-electric-blue'
           : 'text-obsidian-300 hover:text-foreground hover:bg-obsidian-800/50',
-        collapsed && 'justify-center px-2'
+        collapsed ? 'justify-center px-2 py-2 my-1' : 'px-2.5 py-2 my-0.5'
       )}
       whileHover={{ x: collapsed ? 0 : 2 }}
       whileTap={{ scale: 0.98 }}
@@ -324,11 +374,14 @@ function NavLink({
       {isActive && (
         <motion.div
           layoutId="sidebar-active"
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-electric-blue"
+          className={cn(
+            "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full bg-electric-blue",
+            collapsed ? "h-3" : "h-5"
+          )}
           transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
         />
       )}
-      <Icon className="w-5 h-5 flex-shrink-0" />
+      <Icon className={cn('flex-shrink-0', collapsed ? 'w-5 h-5' : 'w-6 h-6')} />
       <AnimatePresence>
         {!collapsed && (
           <motion.span
@@ -411,22 +464,22 @@ function SidebarIconButton({
         <button
           onClick={onClick}
           className={cn(
-            'relative flex items-center gap-2 rounded-lg text-obsidian-400 hover:text-foreground hover:bg-obsidian-800/50 transition-colors touch-target',
-            collapsed ? 'justify-center w-full h-10' : 'flex-1 justify-center h-9'
+            'relative flex items-center gap-2 rounded-lg text-obsidian-400 hover:text-foreground hover:bg-obsidian-800/50 transition-colors touch-target min-w-0 shrink-0',
+            collapsed ? 'justify-center w-full h-9 my-1' : 'flex-1 min-w-0 h-9 overflow-hidden my-0.5'
           )}
         >
-          <Icon className="w-4 h-4" />
+          <Icon className="w-5 h-5 flex-shrink-0" />
           {!collapsed && (
-            <span className="text-xs">{label}</span>
+            <span className="text-xs truncate">{label}</span>
           )}
           {shortcut && !collapsed && (
-            <kbd className="ml-auto text-[10px] text-obsidian-500 font-mono bg-obsidian-800 px-1.5 py-0.5 rounded">
+            <kbd className="shrink-0 text-[10px] text-obsidian-500 font-mono bg-obsidian-800 px-1.5 py-0.5 rounded">
               {'\u2318'}{shortcut}
             </kbd>
           )}
           {badge && badge > 0 && (
-            <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-electric-blue text-white text-[9px] font-bold flex items-center justify-center">
-              {badge}
+            <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-electric-blue text-white text-[9px] font-bold flex items-center justify-center min-w-4">
+              {badge > 9 ? '9+' : badge}
             </span>
           )}
         </button>

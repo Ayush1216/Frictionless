@@ -6,7 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { ScoreHero } from '@/components/readiness/ScoreHero';
 import { CategoryAccordion } from '@/components/readiness/CategoryAccordion';
 import { MissingDataBanner } from '@/components/readiness/MissingDataBanner';
-import { AssessmentHistory } from '@/components/readiness/AssessmentHistory';
+import { AssessmentHistory, type ScoreHistoryEntry } from '@/components/readiness/AssessmentHistory';
 import { ImprovementChart } from '@/components/readiness/ImprovementChart';
 import { dummyStartups } from '@/lib/dummy-data/startups';
 import { dummyAssessmentRuns } from '@/lib/dummy-data/assessments';
@@ -28,6 +28,7 @@ export default function ReadinessPage() {
     scored_rubric?: unknown;
     updated_at?: string | null;
   } | null>(null);
+  const [scoreHistory, setScoreHistory] = useState<ScoreHistoryEntry[]>([]);
   const [readinessChecked, setReadinessChecked] = useState(!isStartup);
 
   useEffect(() => {
@@ -41,17 +42,28 @@ export default function ReadinessPage() {
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token ?? null;
       if (!token || cancelled) return;
-      const res = await fetch('/api/readiness/status', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const json = await res.json().catch(() => ({}));
+      const [statusRes, historyRes] = await Promise.all([
+        fetch('/api/readiness/status', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch('/api/readiness/score-history', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      const [statusJson, historyJson] = await Promise.all([
+        statusRes.json().catch(() => ({})),
+        historyRes.json().catch(() => ({ entries: [] })),
+      ]);
       if (cancelled) return;
-      if (json.status === 'ready' && json.score_summary) {
+      if (statusJson.status === 'ready' && statusJson.score_summary) {
         setReadiness({
-          score_summary: json.score_summary,
-          scored_rubric: json.scored_rubric,
-          updated_at: json.updated_at ?? null,
+          score_summary: statusJson.score_summary,
+          scored_rubric: statusJson.scored_rubric,
+          updated_at: statusJson.updated_at ?? null,
         });
+      }
+      if (historyJson.entries?.length) {
+        setScoreHistory(historyJson.entries);
       }
       if (!cancelled) setReadinessChecked(true);
     })();
@@ -59,6 +71,13 @@ export default function ReadinessPage() {
   }, [user]);
 
   const readinessScore = readiness?.score_summary?._overall?.raw_percentage ?? assessment.overall_score;
+  // Delta = current vs previous (from score history)
+  const readinessDelta =
+    readiness && scoreHistory.length >= 2
+      ? Math.round((readinessScore - scoreHistory[scoreHistory.length - 2].score) * 10) / 10
+      : readiness
+        ? 0
+        : startup.score_delta;
   const readinessCategories =
     readiness?.score_summary && typeof readiness.score_summary === 'object'
       ? Object.entries(readiness.score_summary)
@@ -107,15 +126,15 @@ export default function ReadinessPage() {
         <ScoreHero
           score={readinessScore}
           badge={readiness ? 'assessed' : assessment.badge}
-          delta={readiness ? 0 : startup.score_delta}
+          delta={readinessDelta}
           lastAssessed={lastAssessedIso}
           onRunAssessment={() => {}}
         />
 
-        {/* Right: Missing Data + Assessment History (stacked) */}
+        {/* Right: Missing Data + Assessment History */}
         <div className="space-y-6">
           <MissingDataBanner items={assessment.missing_data} />
-          <AssessmentHistory runs={runs} />
+          <AssessmentHistory runs={runs} scoreHistory={scoreHistory} />
         </div>
       </div>
 
@@ -123,6 +142,7 @@ export default function ReadinessPage() {
       <CategoryAccordion
         categories={readinessCategories}
         missingData={assessment.missing_data}
+        scoredRubric={readiness?.scored_rubric as Record<string, unknown> | undefined}
       />
 
       {/* Improvement Chart */}

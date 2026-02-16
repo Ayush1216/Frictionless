@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart3,
@@ -9,6 +10,9 @@ import {
   Clock,
   Eye,
   CheckCircle2,
+  Loader2,
+  PieChart as PieChartIcon,
+  LayoutGrid,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -25,7 +29,10 @@ import { AnimatedLineChart } from '@/components/charts/AnimatedLineChart';
 import { RadarChart } from '@/components/charts/RadarChart';
 import { DonutChart } from '@/components/charts/DonutChart';
 import { AnimatedGauge } from '@/components/charts/AnimatedGauge';
+import { ExtractionChart } from '@/components/analytics/ExtractionChart';
 import { dummyStartups } from '@/lib/dummy-data/startups';
+import { useAuthStore } from '@/stores/auth-store';
+import { supabase } from '@/lib/supabase/client';
 
 // Use first startup (NeuralPay)
 const startup = dummyStartups[0];
@@ -76,8 +83,8 @@ const matchActivity = [
   { date: 'Week 6', views: 35, intros: 11 },
 ];
 
-// Radar data from assessment categories
-const radarData = startup.assessment.categories.map((c) => ({
+// Fallback radar data from dummy assessment
+const fallbackRadarData = startup.assessment.categories.map((c) => ({
   dimension: c.name.split(' ')[0],
   score: c.score,
 }));
@@ -136,7 +143,97 @@ function ChartCard({
   );
 }
 
+function formatKpiValue(value: number, unit?: string): string {
+  if (unit === 'USD') return `$${value >= 1e6 ? (value / 1e6).toFixed(1) + 'M' : value >= 1e3 ? (value / 1e3).toFixed(0) + 'K' : value.toLocaleString()}`;
+  if (unit === 'Billion USD') return `$${value}B`;
+  if (unit === '%') return `${value}%`;
+  return value.toLocaleString();
+}
+
 export default function AnalyticsPage() {
+  const user = useAuthStore((s) => s.user);
+  const [extractionData, setExtractionData] = useState<{
+    charts?: Array<{
+      chart_type?: string;
+      chart_title?: string;
+      series?: Array<{ name: string; data: Array<{ x: string; y: number }> }>;
+      unit?: string;
+      insight?: string;
+      categories?: string[];
+    }>;
+    kpi_cards?: Array<{
+      label?: string;
+      value?: number;
+      unit?: string;
+      as_of?: string | null;
+    }>;
+    startup_name?: string;
+  } | null>(null);
+  const [extractionLoaded, setExtractionLoaded] = useState(false);
+  const [readinessCategories, setReadinessCategories] = useState<Array<{ name: string; score: number }> | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token ?? null;
+      if (!token || cancelled) return;
+      const res = await fetch('/api/extraction/data', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (cancelled) return;
+      if (json.status === 'ready' && json.extraction_data?.charts) {
+        const charts = json.extraction_data.charts;
+        setExtractionData({
+          charts: charts.charts ?? [],
+          kpi_cards: charts.kpi_cards ?? [],
+          startup_name: charts.startup_name,
+        });
+      }
+      if (!cancelled) setExtractionLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Fetch readiness categories for radar chart
+  useEffect(() => {
+    if (!user || user.org_type !== 'startup') return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token ?? null;
+      if (!token || cancelled) return;
+      const res = await fetch('/api/readiness/status', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (cancelled) return;
+      if (json.status === 'ready' && json.score_summary && typeof json.score_summary === 'object') {
+        const cats = Object.entries(json.score_summary)
+          .filter(([k]) => k !== '_overall' && k !== 'totals')
+          .map(([, v]) => {
+            const c = v as { category_name?: string; percentage?: number };
+            return { name: c.category_name ?? '', score: c.percentage ?? 0 };
+          })
+          .filter((c) => c.name);
+        setReadinessCategories(cats);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
+  const radarData = readinessCategories?.length
+    ? readinessCategories.map((c) => ({
+        dimension: c.name.length > 12 ? c.name.slice(0, 10) + '…' : c.name,
+        score: c.score,
+      }))
+    : fallbackRadarData;
+
+  const extractionCharts = extractionData?.charts ?? [];
+  const kpiCards = extractionData?.kpi_cards ?? [];
+
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -155,15 +252,75 @@ export default function AnalyticsPage() {
         </p>
       </motion.div>
 
-      {/* Charts grid */}
+      {/* Pitch deck extraction charts */}
+      {(extractionCharts.length > 0 || !extractionLoaded) && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-display font-semibold text-foreground flex items-center gap-2">
+            <PieChartIcon className="w-5 h-5 text-electric-blue" />
+            Pitch Deck Insights
+            {extractionData?.startup_name && (
+              <span className="text-sm font-normal text-muted-foreground">— {extractionData.startup_name}</span>
+            )}
+          </h2>
+          {!extractionLoaded ? (
+            <div className="glass-card p-12 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-electric-blue" />
+              <p className="text-sm text-muted-foreground">Loading extraction data…</p>
+            </div>
+          ) : extractionCharts.length > 0 ? (
+            <>
+              {/* KPI cards */}
+              {kpiCards.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                  {kpiCards.map((kpi, i) => (
+                    <motion.div
+                      key={kpi.label ?? i}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className="glass-card p-4"
+                    >
+                      <p className="text-xs text-muted-foreground truncate">{kpi.label}</p>
+                      <p className="text-xl font-mono font-bold text-foreground mt-1">
+                        {formatKpiValue(kpi.value ?? 0, kpi.unit)}
+                      </p>
+                      {kpi.as_of && (
+                        <p className="text-[10px] text-obsidian-500 mt-0.5">as of {kpi.as_of}</p>
+                      )}
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+              {/* Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {extractionCharts.map((chart, i) => (
+                  <ExtractionChart key={chart.chart_id ?? i} chart={chart as Parameters<typeof ExtractionChart>[0]['chart']} index={i} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="glass-card p-8 text-center text-muted-foreground text-sm">
+              No pitch deck charts yet. Upload a pitch deck during onboarding to extract financial charts.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* General metrics — hidden for now, will use next time */}
+      {false && (
+      <>
+      <h2 className="text-lg font-display font-semibold text-foreground flex items-center gap-2">
+        <LayoutGrid className="w-5 h-5 text-electric-blue" />
+        General Metrics
+      </h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Score Trend */}
         <ChartCard title="Readiness Score Trend" icon={TrendingUp} index={0}>
           <AnimatedLineChart data={scoreTrend} color="#3B82F6" height={220} />
         </ChartCard>
 
-        {/* Category Radar */}
-        <ChartCard title="Category Comparison" icon={BarChart3} index={1}>
+        {/* Category Radar — readiness scores by category */}
+        <ChartCard title="Category Radar" icon={BarChart3} index={1}>
           <RadarChart data={radarData} color="#8B5CF6" size={220} />
         </ChartCard>
 
@@ -330,6 +487,8 @@ export default function AnalyticsPage() {
           </div>
         </ChartCard>
       </div>
+      </>
+      )}
     </div>
   );
 }

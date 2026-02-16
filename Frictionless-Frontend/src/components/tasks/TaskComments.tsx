@@ -5,44 +5,40 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, Send, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { addTaskComment } from '@/lib/api/tasks';
 import type { TaskComment } from '@/types/database';
 import { format, parseISO } from 'date-fns';
 
-// Demo comments
-const demoComments: TaskComment[] = [
-  {
-    id: 'c1',
-    author: 'AI Assistant',
-    content: 'This task has been auto-generated based on your assessment. Completing it will improve your Storytelling score.',
-    created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'c2',
-    author: 'Alex Chen',
-    content: 'Working on this now. Should have it done by end of week.',
-    created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
 interface TaskCommentsProps {
-  comments?: TaskComment[];
+  taskId: string;
+  comments: TaskComment[];
+  onCommentAdded?: (comment: TaskComment) => void;
   className?: string;
 }
 
-export function TaskComments({ comments: propComments, className }: TaskCommentsProps) {
-  const [comments, setComments] = useState<TaskComment[]>(propComments ?? demoComments);
+export function TaskComments({ taskId, comments, onCommentAdded, className }: TaskCommentsProps) {
   const [newComment, setNewComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = () => {
-    if (!newComment.trim()) return;
-    const comment: TaskComment = {
-      id: `c-${Date.now()}`,
-      author: 'You',
-      content: newComment.trim(),
-      created_at: new Date().toISOString(),
-    };
-    setComments((prev) => [...prev, comment]);
-    setNewComment('');
+  const handleSubmit = async () => {
+    const content = newComment.trim();
+    if (!content || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await addTaskComment(taskId, content);
+      if (res.ok && res.comment) {
+        const c: TaskComment = {
+          id: res.comment.id,
+          author: 'You',
+          content: res.comment.content ?? content,
+          created_at: res.comment.created_at ?? new Date().toISOString(),
+        };
+        onCommentAdded?.(c);
+      }
+    } finally {
+      setSubmitting(false);
+      setNewComment('');
+    }
   };
 
   const isAI = (author: string) => author.toLowerCase().includes('ai') || author.toLowerCase().includes('assistant');
@@ -103,7 +99,7 @@ export function TaskComments({ comments: propComments, className }: TaskComments
         />
         <button
           onClick={handleSubmit}
-          disabled={!newComment.trim()}
+          disabled={!newComment.trim() || submitting}
           className="px-3 py-2 rounded-lg bg-electric-blue text-white hover:bg-electric-blue/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <Send className="w-4 h-4" />

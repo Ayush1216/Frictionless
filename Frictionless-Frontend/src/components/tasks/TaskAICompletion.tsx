@@ -2,14 +2,15 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, MessageSquare, Loader2, PartyPopper } from 'lucide-react';
+import { Sparkles, MessageSquare, Loader2, PartyPopper, Send, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TaskFileUpload } from './TaskFileUpload';
 import { AIExtractionCard } from '@/components/ai/AIExtractionCard';
 import { useTaskStore } from '@/stores/task-store';
+import { useTasksSync } from '@/contexts/TasksSyncContext';
+import { chatWithTaskAI, fetchTaskChatMessages } from '@/lib/api/tasks';
 import type { AIExtraction } from '@/types/database';
 
-// Demo AI extraction results
 const demoExtractions: AIExtraction[] = [
   { field: 'Company Name', value: 'NeuralPay Inc.', confidence: 0.97 },
   { field: 'Incorporation Date', value: '2023-03-15', confidence: 0.92 },
@@ -18,7 +19,12 @@ const demoExtractions: AIExtraction[] = [
   { field: 'Share Classes', value: 'Common + Series Seed Preferred', confidence: 0.78 },
 ];
 
-type CompletionStep = 'idle' | 'file-selected' | 'analyzing' | 'results' | 'accepted';
+type CompletionStep = 'idle' | 'file-selected' | 'analyzing' | 'results' | 'accepted' | 'chat';
+
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 interface TaskAICompletionProps {
   taskId: string;
@@ -28,11 +34,15 @@ interface TaskAICompletionProps {
 export function TaskAICompletion({ taskId, className }: TaskAICompletionProps) {
   const [step, setStep] = useState<CompletionStep>('idle');
   const [showConfetti, setShowConfetti] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [suggestComplete, setSuggestComplete] = useState(false);
   const completeTaskWithAI = useTaskStore((s) => s.completeTaskWithAI);
+  const completeTaskViaApi = useTasksSync()?.completeTaskViaApi;
 
   const handleFileSelect = useCallback(() => {
     setStep('file-selected');
-    // Auto-start analysis after a brief delay
     setTimeout(() => {
       setStep('analyzing');
       setTimeout(() => setStep('results'), 2500);
@@ -49,6 +59,54 @@ export function TaskAICompletion({ taskId, className }: TaskAICompletionProps) {
   const handleReject = useCallback(() => {
     setStep('idle');
   }, []);
+
+  const handleChatClick = useCallback(async () => {
+    setStep('chat');
+    setSuggestComplete(false);
+    try {
+      const { messages } = await fetchTaskChatMessages(taskId);
+      setChatMessages(
+        (messages ?? []).map((m) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        }))
+      );
+    } catch {
+      setChatMessages([]);
+    }
+  }, [taskId]);
+
+  const handleChatSend = useCallback(async () => {
+    const msg = chatInput.trim();
+    if (!msg || chatLoading) return;
+    setChatInput('');
+    setChatMessages((prev) => [...prev, { role: 'user', content: msg }]);
+    setChatLoading(true);
+    try {
+      const history = chatMessages.map((m) => ({ role: m.role, content: m.content }));
+      const { reply, suggest_complete } = await chatWithTaskAI(taskId, msg, history);
+      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+      setSuggestComplete(suggest_complete);
+    } catch {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: 'Sorry, I could not process that. Please try again.' },
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
+  }, [chatInput, chatLoading, chatMessages, taskId]);
+
+  const handleMarkCompleteFromChat = useCallback(async () => {
+    if (completeTaskViaApi) {
+      const ok = await completeTaskViaApi(taskId);
+      if (ok) {
+        setStep('accepted');
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+      }
+    }
+  }, [taskId, completeTaskViaApi]);
 
   return (
     <div className={cn('space-y-4', className)}>
@@ -88,10 +146,84 @@ export function TaskAICompletion({ taskId, className }: TaskAICompletionProps) {
               <span className="text-xs text-obsidian-500 font-medium">or</span>
               <div className="flex-1 h-px bg-obsidian-700/50" />
             </div>
-            <button className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-obsidian-800/50 border border-obsidian-700/50 text-sm font-medium text-foreground hover:bg-obsidian-700/50 hover:border-electric-blue/20 transition-all">
+            <button
+              onClick={handleChatClick}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-obsidian-800/50 border border-obsidian-700/50 text-sm font-medium text-foreground hover:bg-obsidian-700/50 hover:border-electric-blue/20 transition-all"
+            >
               <MessageSquare className="w-4 h-4 text-electric-blue" />
               Chat with AI
             </button>
+          </motion.div>
+        )}
+
+        {/* Chat with AI - expands to fill container */}
+        {step === 'chat' && (
+          <motion.div
+            key="chat"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex flex-col min-h-[320px] sm:min-h-[400px]"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-foreground">Chat with AI</span>
+              <button
+                onClick={() => setStep('idle')}
+                className="p-1.5 rounded-lg hover:bg-obsidian-700/50 text-muted-foreground hover:text-foreground transition-colors"
+                title="Close chat"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 min-h-[240px] overflow-y-auto rounded-lg bg-obsidian-900/50 border border-obsidian-700/50 p-3 space-y-2">
+              {chatMessages.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Ask how to complete this task. Describe what you&apos;ve done or what you need help with.
+                </p>
+              )}
+              {chatMessages.map((m, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'text-sm rounded-lg px-3 py-2',
+                    m.role === 'user'
+                      ? 'bg-electric-blue/15 ml-4 text-foreground'
+                      : 'bg-obsidian-700/50 mr-4 text-foreground'
+                  )}
+                >
+                  {m.content}
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-3 flex-shrink-0">
+              <input
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChatSend()}
+                placeholder="Type your message..."
+                className="flex-1 px-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50 text-sm text-foreground placeholder:text-obsidian-500 focus:outline-none focus:border-electric-blue/50"
+              />
+              <button
+                onClick={handleChatSend}
+                disabled={chatLoading || !chatInput.trim()}
+                className="p-2 rounded-lg bg-electric-blue text-white hover:bg-electric-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {chatLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+            {suggestComplete && completeTaskViaApi && (
+              <button
+                onClick={handleMarkCompleteFromChat}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-score-excellent/20 text-score-excellent font-medium text-sm hover:bg-score-excellent/30 transition-colors"
+              >
+                <PartyPopper className="w-4 h-4" />
+                Mark task complete
+              </button>
+            )}
           </motion.div>
         )}
 

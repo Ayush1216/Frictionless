@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence, useScroll, useMotionValueEvent } from 'framer-motion';
 import {
@@ -111,14 +112,17 @@ function Navbar() {
         transition={{ duration: 0.5, ease: 'easeOut' }}
       >
         <nav className="max-w-7xl mx-auto flex items-center justify-between px-4 md:px-6 h-16 md:h-[72px]">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-neon-gradient flex items-center justify-center shadow-glow group-hover:shadow-glow-lg transition-shadow">
-              <Zap className="w-4 h-4 text-white" />
+          {/* Logo — compact padding, 2x size */}
+          <Link href="/" className="flex items-center group p-0">
+            <div className="relative w-14 h-14 flex-shrink-0 md:w-16 md:h-16">
+              <Image
+                src="/logo.png"
+                alt="Frictionless"
+                width={512}
+                height={512}
+                className="object-contain w-full h-full"
+              />
             </div>
-            <span className="font-display font-bold text-lg text-foreground hidden sm:inline">
-              Frictionless
-            </span>
           </Link>
 
           {/* Desktop nav */}
@@ -242,13 +246,16 @@ function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12 mb-14">
           {/* Brand */}
           <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-neon-gradient flex items-center justify-center">
-                <Zap className="w-4 h-4 text-white" />
+            <Link href="/" className="flex items-center mb-4 p-0">
+              <div className="relative w-20 h-20 flex-shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="Frictionless"
+                  width={512}
+                  height={512}
+                  className="object-contain w-full h-full"
+                />
               </div>
-              <span className="font-display font-bold text-lg text-foreground">
-                Frictionless
-              </span>
             </Link>
             <p className="text-sm text-muted-foreground font-body leading-relaxed mb-6 max-w-[240px]">
               AI-powered investment readiness platform for startups and investors.
