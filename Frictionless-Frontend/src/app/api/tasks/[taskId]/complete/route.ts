@@ -32,13 +32,17 @@ export async function POST(
     const userId = (await supabase.auth.getUser()).data?.user?.id ?? null;
     const body = await request.json().catch(() => ({}));
     const completedBy = body.completed_by ?? userId;
+    const submittedValue = body.submitted_value ?? undefined;
 
     const res = await getBackend(
       token ?? '',
       `/api/tasks/${taskId}/complete`,
       {
         method: 'POST',
-        body: JSON.stringify({ completed_by: completedBy }),
+        body: JSON.stringify({
+          completed_by: completedBy,
+          ...(submittedValue !== undefined && { submitted_value: submittedValue }),
+        }),
       }
     );
     const data = await res.json();

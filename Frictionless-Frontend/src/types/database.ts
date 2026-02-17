@@ -268,6 +268,8 @@ export interface Task {
   assigned_to?: string | null;
   requires_rescore: boolean;
   potential_points?: number;
+  /** Set by AI when it suggests completion; used to show "Mark task complete" and send on complete. */
+  submitted_value?: string | null;
   completion_source?: CompletionSource;
   ai_extractions?: AIExtraction[];
   created_at: string;
@@ -285,6 +287,10 @@ export interface TaskGroup {
   description: string;
   impact: TaskImpact;
   tasks: Task[];
+  /** Total rubric items in this category (for progress). From backend. */
+  total_in_category?: number;
+  /** Rubric items at max in this category (for progress). From backend. */
+  done_count?: number;
 }
 
 // ---------------------------------------------------------------------------

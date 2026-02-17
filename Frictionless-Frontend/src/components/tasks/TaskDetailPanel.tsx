@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Clock,
   ChevronDown,
+  ChevronLeft,
   FileText,
   MessageSquare,
   Activity,
@@ -25,10 +26,10 @@ import { fetchTaskEvents, fetchTaskComments } from '@/lib/api/tasks';
 import type { Task, TaskStatus, AIExtraction } from '@/types/database';
 import { format, parseISO } from 'date-fns';
 
+// Done is not selectable here – completion must go through AI chat
 const statusOptions: { value: TaskStatus; label: string }[] = [
   { value: 'todo', label: 'To Do' },
   { value: 'in_progress', label: 'In Progress' },
-  { value: 'done', label: 'Done' },
 ];
 
 const EVENT_DESCRIPTIONS: Record<string, string> = {
@@ -66,10 +67,15 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
   const taskGroups = useTaskStore((s) => s.taskGroups);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [activeTab, setActiveTab] = useState<'ai' | 'comments' | 'history'>('ai');
+  const [chatFullPanel, setChatFullPanel] = useState(false);
   const [events, setEvents] = useState<{ id: string; event_type: string; from_state: Record<string, unknown>; to_state: Record<string, unknown>; created_at: string }[]>([]);
   const [comments, setComments] = useState<{ id: string; author: string; content: string; created_at: string }[]>([]);
 
   const group = taskGroups.find((g) => g.id === task?.task_group_id);
+
+  useEffect(() => {
+    setChatFullPanel(false);
+  }, [task?.id]);
 
   useEffect(() => {
     if (!task?.id) return;
@@ -136,13 +142,43 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
             className={cn(
-              'fixed z-50 right-0 top-0 h-full overflow-y-auto',
+              'fixed z-50 right-0 top-0 flex flex-col',
               'bg-obsidian-900 border-l border-obsidian-700/50',
+              // Use dvh so panel stays above browser/OS UI (e.g. taskbar)
+              'h-dvh max-h-dvh',
               // Desktop: 40% width, Mobile: full screen
               'w-full sm:w-[480px] lg:w-[40%]'
             )}
           >
-            <div className="p-6 space-y-6">
+            {chatFullPanel ? (
+              <>
+                <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b border-obsidian-700/50">
+                  <button
+                    onClick={() => setChatFullPanel(false)}
+                    className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-muted-foreground"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Back
+                  </button>
+                  <span className="text-sm font-semibold text-foreground">Chat with AI</span>
+                  <button
+                    onClick={onClose}
+                    className="p-2 rounded-lg hover:bg-obsidian-800 text-obsidian-400 hover:text-foreground"
+                    title="Close panel"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0 overflow-hidden flex flex-col pb-[max(env(safe-area-inset-bottom,0px),2rem)]">
+                  <TaskAICompletion
+                    taskId={task.id}
+                    chatFullPanel
+                    onExitFullPanel={() => setChatFullPanel(false)}
+                  />
+                </div>
+              </>
+            ) : (
+            <div className="p-6 space-y-6 overflow-y-auto flex-1 min-h-0">
               {/* Header */}
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -161,10 +197,12 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                 </button>
               </div>
 
-              {/* Meta grid */}
-              <div className="grid grid-cols-2 gap-3">
-                {/* Status */}
-                <div className="relative">
+              {/* Meta grid: fixed order for all tasks (Status, Impact, Due Date, Category) */}
+              <div
+                className="grid gap-3"
+                style={{ gridTemplateColumns: '1fr 1fr', gridTemplateAreas: '"status impact" "due-date category"' }}
+              >
+                <div className="relative" style={{ gridArea: 'status' }}>
                   <label className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 block">
                     Status
                   </label>
@@ -197,10 +235,9 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                   )}
                 </div>
 
-                {/* Priority */}
-                <div>
+                <div style={{ gridArea: 'impact' }}>
                   <label className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 block">
-                    Priority
+                    Impact
                   </label>
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50">
                     <span className={cn(
@@ -208,15 +245,15 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                       task.priority === 'critical' ? 'text-red-400' :
                       task.priority === 'high' ? 'text-orange-400' :
                       task.priority === 'medium' ? 'text-yellow-400' :
-                      'text-green-400'
+                      task.priority === 'low' ? 'text-green-400' :
+                      'text-muted-foreground'
                     )}>
                       {task.priority}
                     </span>
                   </div>
                 </div>
 
-                {/* Due date */}
-                <div>
+                <div style={{ gridArea: 'due-date' }}>
                   <label className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 block">
                     Due Date
                   </label>
@@ -228,8 +265,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                   </div>
                 </div>
 
-                {/* Category */}
-                <div>
+                <div style={{ gridArea: 'category' }}>
                   <label className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 block">
                     Category
                   </label>
@@ -303,7 +339,10 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                         />
                       </div>
                     ) : task.status !== 'done' ? (
-                      <TaskAICompletion taskId={task.id} />
+                      <TaskAICompletion
+                        taskId={task.id}
+                        onChatFullPanel={() => setChatFullPanel(true)}
+                      />
                     ) : (
                       <div className="text-center py-8">
                         <FileText className="w-8 h-8 text-obsidian-500 mx-auto mb-2" />
@@ -358,6 +397,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                 )}
               </AnimatePresence>
             </div>
+            )}
           </motion.div>
         </>
       )}

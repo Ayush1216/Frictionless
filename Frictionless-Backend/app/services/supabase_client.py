@@ -1,5 +1,4 @@
 """Supabase client for backend operations (uses service role)."""
-import copy
 import logging
 import os
 
@@ -170,69 +169,34 @@ def upsert_readiness_result(
 
 
 def get_readiness_result(supabase: Client, org_id: str) -> dict | None:
-    """Get readiness result (scored_rubric, score_summary, updated_at) or None."""
-    r = supabase.table("startup_readiness_results").select("scored_rubric, score_summary, updated_at").eq("org_id", org_id).execute()
+    """Get readiness result (scored_rubric, score_summary, updated_at, initial_pending_task_count) or None."""
+    try:
+        r = supabase.table("startup_readiness_results").select(
+            "scored_rubric, score_summary, updated_at, initial_pending_task_count"
+        ).eq("org_id", org_id).execute()
+    except Exception:
+        r = supabase.table("startup_readiness_results").select(
+            "scored_rubric, score_summary, updated_at"
+        ).eq("org_id", org_id).execute()
     rows = r.data or []
     if not rows:
         return None
-    return rows[0] if isinstance(rows[0], dict) else None
+    row = rows[0] if isinstance(rows[0], dict) else None
+    if row and "initial_pending_task_count" not in row:
+        row["initial_pending_task_count"] = None
+    return row
 
 
-def apply_targeted_task_points(
-    supabase: Client,
-    org_id: str,
-    rubric_subcategory: str,
-    potential_points: int,
-) -> bool:
-    """
-    Apply potential_points to the specific rubric item matching rubric_subcategory.
-    Only updates that item (capped at max), recomputes summary, saves.
-    Returns True if applied, False if item not found or no readiness result.
-    """
-    from app.services.readiness_scorer import _compute_summary
-
-    result = get_readiness_result(supabase, org_id)
-    if not result or not result.get("scored_rubric"):
-        return False
-    scored_rubric = copy.deepcopy(result["scored_rubric"])
-    target = (rubric_subcategory or "").strip().lower()
-    if not target:
-        return False
-
-    found = False
-    for cat_val in scored_rubric.values():
-        if not isinstance(cat_val, dict):
-            continue
-        for sub_val in cat_val.values():
-            if not isinstance(sub_val, list):
-                continue
-            for item in sub_val:
-                if not isinstance(item, dict):
-                    continue
-                sc = (item.get("subcategory_name") or item.get("Subtopic_Name") or "").strip().lower()
-                if sc == target:
-                    opts = item.get("options") or {}
-                    max_pts = max(opts.values(), default=0) if opts else 0
-                    current = int(item.get("Points", 0))
-                    new_pts = min(max_pts, current + potential_points)
-                    item["Points"] = new_pts
-                    item["Reasoning"] = (item.get("Reasoning") or "") + " [Task completed: +{0} pts]".format(
-                        new_pts - current
-                    )
-                    found = True
-                    break
-            if found:
-                break
-        if found:
-            break
-
-    if not found:
-        log.warning("Targeted task points: rubric item %r not found", rubric_subcategory)
-        return False
-
-    summary = _compute_summary(scored_rubric)
-    upsert_readiness_result(supabase, org_id, scored_rubric, summary, update_source="task_complete")
-    return True
+def set_initial_pending_task_count(supabase: Client, org_id: str, count: int) -> None:
+    """Set initial_pending_task_count once (only if currently null)."""
+    try:
+        now = datetime.now(timezone.utc).isoformat()
+        supabase.table("startup_readiness_results").update({
+            "initial_pending_task_count": count,
+            "updated_at": now,
+        }).eq("org_id", org_id).is_("initial_pending_task_count", "null").execute()
+    except Exception as e:
+        log.warning("Could not set initial_pending_task_count: %s", e)
 
 
 def upsert_extraction_result(
@@ -249,231 +213,6 @@ def upsert_extraction_result(
         row,
         on_conflict="org_id",
     ).execute()
-
-
-# ---------------------------------------------------------------------------
-# Tasks (task_groups + tasks)
-# ---------------------------------------------------------------------------
-
-
-def soft_delete_ai_task_groups(supabase: Client, startup_org_id: str, deleted_by: str | None = None) -> None:
-    """Soft-delete existing AI-sourced task groups for the org (to replace with fresh ones)."""
-    now = datetime.now(timezone.utc).isoformat()
-    patch = {"deleted_at": now, "updated_at": now}
-    if deleted_by:
-        patch["deleted_by"] = deleted_by
-    # Get AI groups first
-    r = supabase.table("task_groups").select("id").eq("startup_org_id", startup_org_id).eq("source", "ai").is_("deleted_at", "null").execute()
-    for row in (r.data or []):
-        gid = row.get("id")
-        if gid:
-            supabase.table("task_groups").update(patch).eq("id", gid).execute()
-
-
-def upsert_task_groups_and_tasks(
-    supabase: Client,
-    startup_org_id: str,
-    task_groups_data: list[dict],
-    created_by: str | None = None,
-    replace_existing_ai: bool = True,
-) -> list[dict]:
-    """
-    Insert task groups and their tasks from AI-generated structure.
-    task_groups_data: [{title, category, impact, how_to_approach, tasks: [{title, description, requires_rescore}]}]
-    If replace_existing_ai, soft-deletes existing AI groups first.
-    Returns list of created task groups with tasks (full rows).
-    """
-    if replace_existing_ai:
-        soft_delete_ai_task_groups(supabase, startup_org_id, created_by)
-    now = datetime.now(timezone.utc).isoformat()
-    result_groups: list[dict] = []
-    for sort_order, group_data in enumerate(task_groups_data):
-        title = group_data.get("title") or "Improvement Tasks"
-        category = group_data.get("category") or ""
-        impact = group_data.get("impact") or "medium"
-        how_to_approach = group_data.get("how_to_approach") or ""
-        tasks_data = group_data.get("tasks") or []
-
-        group_row = {
-            "startup_org_id": startup_org_id,
-            "title": title,
-            "category": category,
-            "impact": impact,
-            "how_to_approach": how_to_approach,
-            "source": "ai",
-            "sort_order": sort_order,
-            "updated_at": now,
-            "created_at": now,
-        }
-        if created_by:
-            group_row["created_by"] = created_by
-
-        r = supabase.table("task_groups").insert(group_row).execute()
-        rows = r.data or []
-        if not rows:
-            log.warning("task_groups insert returned no data for %s", title)
-            continue
-        group_id = rows[0].get("id")
-        if not group_id:
-            continue
-
-        task_rows = []
-        for t_order, t in enumerate(tasks_data):
-            task_row: dict = {
-                "group_id": group_id,
-                "title": t.get("title") or "Improvement task",
-                "description": t.get("description") or "",
-                "status": "todo",
-                "sort_order": t_order,
-                "requires_rescore": bool(t.get("requires_rescore", True)),
-                "updated_at": now,
-                "created_at": now,
-            }
-            if created_by:
-                task_row["created_by"] = created_by
-            # Skip potential_points, rubric_subcategory until migrations are run (docs/supabase_tasks_*.sql)
-            tr = supabase.table("tasks").insert(task_row).execute()
-            if tr.data:
-                task_rows.extend(tr.data)
-        result_groups.append({**rows[0], "tasks": task_rows})
-    return result_groups
-
-
-def get_task_groups_with_tasks(supabase: Client, startup_org_id: str) -> list[dict]:
-    """Fetch task groups and their tasks for a startup (excludes soft-deleted)."""
-    r = (
-        supabase.table("task_groups")
-        .select("id, title, category, impact, how_to_approach, source, sort_order, created_at, updated_at")
-        .eq("startup_org_id", startup_org_id)
-        .is_("deleted_at", "null")
-        .order("sort_order")
-        .execute()
-    )
-    groups = r.data or []
-    if not groups:
-        return []
-    group_ids = [g["id"] for g in groups]
-    tr = (
-        supabase.table("tasks")
-        .select("id, group_id, title, description, status, due_at, sort_order, requires_rescore, completed_at, completed_by, created_at, updated_at")
-        .in_("group_id", group_ids)
-        .is_("deleted_at", "null")
-        .order("sort_order")
-        .execute()
-    )
-    tasks = tr.data or []
-    task_map: dict[str, list] = {gid: [] for gid in group_ids}
-    for t in tasks:
-        gid = t.get("group_id")
-        if gid:
-            task_map.setdefault(gid, []).append(t)
-    for g in groups:
-        g["tasks"] = task_map.get(g["id"], [])
-    return groups
-
-
-def _create_task_event(
-    supabase: Client,
-    task_id: str,
-    event_type: str,
-    from_state: dict,
-    to_state: dict,
-    actor_user_id: str | None = None,
-) -> None:
-    """Create a task_event row. Skips if task_events table does not exist."""
-    try:
-        row = {
-            "task_id": task_id,
-            "event_type": event_type,
-            "from_state": from_state,
-            "to_state": to_state,
-        }
-        if actor_user_id:
-            row["actor_user_id"] = actor_user_id
-        supabase.table("task_events").insert(row).execute()
-    except Exception as e:
-        log.debug("Could not create task_event: %s", e)
-
-
-def update_task(
-    supabase: Client,
-    task_id: str,
-    updates: dict,
-    completed_by: str | None = None,
-    prev_task: dict | None = None,
-) -> dict | None:
-    """Update a task. If status=done, set completed_at and completed_by. Creates task_event."""
-    now = datetime.now(timezone.utc).isoformat()
-    patch = {**updates, "updated_at": now}
-    if updates.get("status") == "done":
-        patch["completed_at"] = now
-        if completed_by:
-            patch["completed_by"] = completed_by
-    r = supabase.table("tasks").update(patch).eq("id", task_id).execute()
-    rows = r.data or []
-    updated = rows[0] if rows else None
-    if updated and "status" in updates and prev_task:
-        event_type = "complete" if updates["status"] == "done" else "status_change"
-        _create_task_event(
-            supabase,
-            task_id,
-            event_type,
-            {"status": prev_task.get("status")},
-            {"status": updates["status"]},
-            completed_by,
-        )
-    return updated
-
-
-def get_task_by_id(supabase: Client, task_id: str) -> dict | None:
-    """Get full task row by id."""
-    r = supabase.table("tasks").select("*").eq("id", task_id).execute()
-    rows = r.data or []
-    return rows[0] if rows else None
-
-
-def get_task_and_startup_org_id(supabase: Client, task_id: str) -> tuple[dict | None, str | None]:
-    """Get task row and its startup_org_id. Returns (task_row, startup_org_id) or (None, None)."""
-    tr = supabase.table("tasks").select(
-        "id, group_id, title, description, requires_rescore"
-    ).eq("id", task_id).execute()
-    rows = tr.data or []
-    if not rows:
-        return None, None
-    task = rows[0]
-    group_id = task.get("group_id")
-    if not group_id:
-        return task, None
-    gr = supabase.table("task_groups").select("startup_org_id").eq("id", group_id).execute()
-    g_rows = gr.data or []
-    org_id = g_rows[0].get("startup_org_id") if g_rows else None
-    return task, org_id
-
-
-def complete_task(
-    supabase: Client,
-    task_id: str,
-    completed_by: str | None = None,
-    prev_status: str | None = None,
-) -> dict | None:
-    """Mark task as done, set completed_at/completed_by. Creates task_event. Returns updated row."""
-    now = datetime.now(timezone.utc).isoformat()
-    patch = {"status": "done", "completed_at": now, "updated_at": now}
-    if completed_by:
-        patch["completed_by"] = completed_by
-    r = supabase.table("tasks").update(patch).eq("id", task_id).execute()
-    rows = r.data or []
-    updated = rows[0] if rows else None
-    if updated:
-        _create_task_event(
-            supabase,
-            task_id,
-            "complete",
-            {"status": prev_status or "todo"},
-            {"status": "done"},
-            completed_by,
-        )
-    return updated
 
 
 def get_current_readiness_score(supabase: Client, org_id: str) -> float | None:
@@ -495,96 +234,11 @@ def get_current_readiness_score(supabase: Client, org_id: str) -> float | None:
         return None
 
 
-def get_task_events(supabase: Client, task_id: str) -> list[dict]:
-    """Fetch task_events for a task. Returns [] if table does not exist."""
-    try:
-        r = (
-            supabase.table("task_events")
-            .select("id, event_type, from_state, to_state, actor_user_id, created_at")
-            .eq("task_id", task_id)
-            .order("created_at", desc=False)
-            .execute()
-        )
-        return r.data or []
-    except Exception:
-        return []
-
-
-def get_task_comments(supabase: Client, task_id: str) -> list[dict]:
-    """Fetch task_comments for a task. Returns [] if table does not exist."""
-    try:
-        r = (
-            supabase.table("task_comments")
-            .select("id, author_user_id, source, content, created_at")
-            .eq("task_id", task_id)
-            .order("created_at", desc=False)
-            .execute()
-        )
-        return r.data or []
-    except Exception:
-        return []
-
-
-def add_task_comment(
-    supabase: Client,
-    task_id: str,
-    author_user_id: str,
-    content: str,
-    source: str = "human",
-) -> dict | None:
-    """Add a task comment. Returns created row or None."""
-    try:
-        r = supabase.table("task_comments").insert({
-            "task_id": task_id,
-            "author_user_id": author_user_id,
-            "source": source,
-            "content": content,
-        }).execute()
-        return (r.data or [{}])[0] if r.data else None
-    except Exception as e:
-        log.warning("Could not add task_comment: %s", e)
-        return None
-
-
-def get_task_ai_chat_messages(supabase: Client, task_id: str) -> list[dict]:
-    """Fetch task_ai_chat_messages for a task. Returns [] if table does not exist."""
-    try:
-        r = (
-            supabase.table("task_ai_chat_messages")
-            .select("id, role, content, author_user_id, created_at")
-            .eq("task_id", task_id)
-            .order("created_at", desc=False)
-            .execute()
-        )
-        return r.data or []
-    except Exception:
-        return []
-
-
-def insert_task_ai_chat_message(
-    supabase: Client,
-    task_id: str,
-    role: str,
-    content: str,
-    author_user_id: str | None = None,
-) -> dict | None:
-    """Insert a task AI chat message. Returns created row or None."""
-    try:
-        row = {"task_id": task_id, "role": role, "content": content}
-        if author_user_id and role == "user":
-            row["author_user_id"] = author_user_id
-        r = supabase.table("task_ai_chat_messages").insert(row).execute()
-        return (r.data or [{}])[0] if r.data else None
-    except Exception as e:
-        log.warning("Could not insert task_ai_chat_message: %s", e)
-        return None
-
-
 def append_readiness_history(
     supabase: Client,
     startup_org_id: str,
     score: float,
-    update_source: str = "task_update",
+    update_source: str = "manual",
     note: str | None = None,
 ) -> None:
     """Append readiness_score_history entry."""
@@ -600,3 +254,234 @@ def append_readiness_history(
         supabase.table("readiness_score_history").insert(row).execute()
     except Exception as e:
         log.warning("Could not append readiness_score_history: %s", e)
+
+
+# ---------------------------------------------------------------------------
+# Startup tasks (rubric-based, org-scoped)
+# ---------------------------------------------------------------------------
+
+
+def replace_org_tasks(
+    supabase: Client,
+    org_id: str,
+    groups_data: list[dict],
+) -> list[dict]:
+    """
+    Merge task_groups and tasks for an org with the given groups_data (pending only).
+    Reuses existing groups/tasks when category_key and subcategory_name match so
+    task IDs (and thus task_ai_chat_messages) are preserved.
+    Completed tasks are never deleted: we only upsert pending ones. The caller
+    filters to pending when building the response so the UI shows the remaining layout.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    r = (
+        supabase.table("task_groups")
+        .select("id, category_key, category_name, title, impact, sort_order, created_at, updated_at")
+        .eq("org_id", org_id)
+        .execute()
+    )
+    existing_groups = r.data or []
+    by_cat_key = {g["category_key"]: g for g in existing_groups}
+    current_cat_keys = {g.get("category_key") for g in groups_data if g.get("category_key")}
+
+    # Fetch all existing tasks for this org in one query (instead of one per group)
+    group_ids = [g["id"] for g in existing_groups]
+    tasks_by_group: dict = {}
+    if group_ids:
+        tr_all = (
+            supabase.table("tasks")
+            .select(
+                "id, group_id, subcategory_name, title, description, status, potential_points, "
+                "sort_order, created_at, updated_at, submitted_value"
+            )
+            .in_("group_id", group_ids)
+            .execute()
+        )
+        for t in tr_all.data or []:
+            gid = t.get("group_id")
+            if gid:
+                tasks_by_group.setdefault(gid, []).append(t)
+
+    result_groups: list[dict] = []
+
+    for sort_order, g in enumerate(groups_data):
+        cat_key = g.get("category_key", "")
+        if not cat_key:
+            continue
+        existing = by_cat_key.get(cat_key)
+        group_row = {
+            "category_key": cat_key,
+            "category_name": g.get("category_name", ""),
+            "title": g.get("title") or g.get("category_name", ""),
+            "impact": g.get("impact", "medium"),
+            "sort_order": sort_order,
+            "updated_at": now,
+        }
+        if existing:
+            group_id = existing["id"]
+            supabase.table("task_groups").update(group_row).eq("id", group_id).execute()
+            group_out = {**existing, **group_row, "id": group_id}
+        else:
+            ins = supabase.table("task_groups").insert({
+                "org_id": org_id,
+                **group_row,
+                "created_at": now,
+            }).execute()
+            if not ins.data:
+                continue
+            group_id = ins.data[0].get("id")
+            if not group_id:
+                continue
+            group_out = {**ins.data[0]}
+            by_cat_key[cat_key] = group_out
+
+        existing_tasks = tasks_by_group.get(group_id, [])
+        by_sub = {t["subcategory_name"]: t for t in existing_tasks}
+        task_rows_out = []
+
+        for t_order, t in enumerate(g.get("tasks") or []):
+            sub = t.get("subcategory_name", "")
+            if not sub:
+                continue
+            task_payload = {
+                "title": t.get("title", ""),
+                "description": t.get("description", ""),
+                "potential_points": int(t.get("potential_points", 0)),
+                "sort_order": t_order,
+                "updated_at": now,
+            }
+            ex = by_sub.get(sub)
+            if ex:
+                supabase.table("tasks").update(task_payload).eq("id", ex["id"]).execute()
+                task_rows_out.append({**ex, **task_payload})
+            else:
+                ins_t = supabase.table("tasks").insert({
+                    "group_id": group_id,
+                    "subcategory_name": sub,
+                    "status": "todo",
+                    "created_at": now,
+                    **task_payload,
+                }).execute()
+                if ins_t.data:
+                    task_rows_out.append(ins_t.data[0])
+
+        result_groups.append({**group_out, "tasks": task_rows_out})
+
+    # Only remove groups that are no longer in the rubric at all (not groups that just have no pending tasks)
+    # Completed tasks stay in DB for history.
+    groups_to_remove = [eg for eg in existing_groups if eg.get("category_key") not in current_cat_keys]
+    if groups_to_remove:
+        remove_ids = [eg["id"] for eg in groups_to_remove]
+        supabase.table("tasks").delete().in_("group_id", remove_ids).execute()
+        supabase.table("task_groups").delete().in_("id", remove_ids).execute()
+
+    return result_groups
+
+
+def get_task_groups_with_tasks(supabase: Client, org_id: str) -> list[dict]:
+    """Fetch task groups and their tasks for an org. Frontend expects group_id -> task_group_id."""
+    r = (
+        supabase.table("task_groups")
+        .select("id, title, category_key, category_name, impact, sort_order, created_at, updated_at")
+        .eq("org_id", org_id)
+        .order("sort_order")
+        .execute()
+    )
+    groups = r.data or []
+    if not groups:
+        return []
+    group_ids = [g["id"] for g in groups]
+    tr = (
+        supabase.table("tasks")
+        .select("id, group_id, title, description, status, potential_points, sort_order, completed_at, completed_by, created_at, updated_at, subcategory_name, submitted_value")
+        .in_("group_id", group_ids)
+        .order("sort_order")
+        .execute()
+    )
+    tasks = tr.data or []
+    task_map: dict = {gid: [] for gid in group_ids}
+    for t in tasks:
+        gid = t.get("group_id")
+        if gid:
+            t["requires_rescore"] = True
+            # Ensure potential_points is int (from rubric: varies per task, e.g. 2, 5, 8)
+            pt = t.get("potential_points")
+            if pt is not None:
+                try:
+                    t["potential_points"] = int(pt)
+                except (TypeError, ValueError):
+                    t["potential_points"] = 0
+            task_map.setdefault(gid, []).append(t)
+    for g in groups:
+        g["tasks"] = task_map.get(g["id"], [])
+        g["category"] = g.get("category_name", g.get("title", ""))
+        g["how_to_approach"] = ""
+    return groups
+
+
+def get_task_by_id(supabase: Client, task_id: str) -> dict | None:
+    """Get full task row by id."""
+    r = supabase.table("tasks").select("*").eq("id", task_id).execute()
+    rows = r.data or []
+    return rows[0] if rows else None
+
+
+def get_task_and_org_id(supabase: Client, task_id: str) -> tuple[dict | None, str | None]:
+    """Get task row and its org_id. Returns (task_row, org_id) or (None, None)."""
+    r = supabase.table("tasks").select("id, group_id, subcategory_name, title, status, submitted_value").eq("id", task_id).execute()
+    rows = r.data or []
+    if not rows:
+        return None, None
+    task = rows[0]
+    group_id = task.get("group_id")
+    if not group_id:
+        return task, None
+    gr = supabase.table("task_groups").select("org_id").eq("id", group_id).execute()
+    g_rows = gr.data or []
+    org_id = g_rows[0].get("org_id") if g_rows else None
+    return task, org_id
+
+
+def mark_task_done(supabase: Client, task_id: str, completed_by: str | None = None) -> dict | None:
+    """Mark task as done. Returns updated row."""
+    now = datetime.now(timezone.utc).isoformat()
+    patch = {"status": "done", "updated_at": now, "completed_at": now}
+    if completed_by:
+        patch["completed_by"] = completed_by
+    r = supabase.table("tasks").update(patch).eq("id", task_id).execute()
+    rows = r.data or []
+    return rows[0] if rows else None
+
+
+def get_task_ai_chat_messages(supabase: Client, task_id: str) -> list[dict]:
+    """Fetch task_ai_chat_messages for a task."""
+    try:
+        r = (
+            supabase.table("task_ai_chat_messages")
+            .select("id, role, content, created_at")
+            .eq("task_id", task_id)
+            .order("created_at", desc=False)
+            .execute()
+        )
+        return r.data or []
+    except Exception:
+        return []
+
+
+def insert_task_ai_chat_message(
+    supabase: Client,
+    task_id: str,
+    role: str,
+    content: str,
+) -> dict | None:
+    """Insert a task AI chat message. Returns created row or None."""
+    try:
+        r = supabase.table("task_ai_chat_messages").insert({
+            "task_id": task_id,
+            "role": role,
+            "content": content,
+        }).execute()
+        return (r.data or [{}])[0] if r.data else None
+    except Exception as e:
+        log.warning("Could not insert task_ai_chat_message: %s", e)
+        return None

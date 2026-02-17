@@ -9,7 +9,7 @@ type UpdateTaskFn = (id: string, updates: Partial<Task>) => void | Promise<void>
 
 const TasksSyncContext = createContext<{
   updateTask: UpdateTaskFn;
-  completeTaskViaApi: (taskId: string) => Promise<boolean>;
+  completeTaskViaApi: (taskId: string, submittedValue?: string) => Promise<boolean>;
 } | null>(null);
 
 export function useTasksSync() {
@@ -23,6 +23,10 @@ export function TasksSyncProvider({
   children: React.ReactNode;
 }) {
   const storeUpdateTask = useTaskStore((s) => s.updateTask);
+  const tasks = useTaskStore((s) => s.tasks);
+  const taskProgress = useTaskStore((s) => s.taskProgress);
+  const setTaskProgress = useTaskStore((s) => s.setTaskProgress);
+  const incrementGroupDoneCount = useTaskStore((s) => s.incrementGroupDoneCount);
 
   const updateTask = useCallback<UpdateTaskFn>(
     async (id: string, updates: Partial<Task>) => {
@@ -45,15 +49,23 @@ export function TasksSyncProvider({
   );
 
   const completeTaskViaApi = useCallback(
-    async (taskId: string): Promise<boolean> => {
+    async (taskId: string, submittedValue?: string): Promise<boolean> => {
       try {
-        const res = await completeTask(taskId);
+        const res = await completeTask(taskId, { submitted_value: submittedValue });
         if (res.ok) {
+          const task = tasks.find((t) => t.id === taskId);
+          if (task?.task_group_id) incrementGroupDoneCount(task.task_group_id);
           storeUpdateTask(taskId, {
             status: 'done',
             completion_source: 'ai_chat',
             requires_rescore: true,
           });
+          if (taskProgress && taskProgress.current_pending > 0) {
+            setTaskProgress({
+              allotted_total: taskProgress.allotted_total,
+              current_pending: taskProgress.current_pending - 1,
+            });
+          }
           return true;
         }
       } catch {
@@ -61,7 +73,7 @@ export function TasksSyncProvider({
       }
       return false;
     },
-    [storeUpdateTask]
+    [storeUpdateTask, tasks, incrementGroupDoneCount, taskProgress, setTaskProgress]
   );
 
   return (

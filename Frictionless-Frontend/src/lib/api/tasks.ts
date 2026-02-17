@@ -8,9 +8,15 @@ const getAuthHeaders = async (): Promise<HeadersInit> => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+export interface TaskProgress {
+  allotted_total: number;
+  current_pending: number;
+}
+
 export async function fetchStartupTasks(): Promise<{
   task_groups: { id: string; category: string; title: string; description: string; impact: string; tasks: Task[] }[];
   tasks: Task[];
+  task_progress?: TaskProgress | null;
 }> {
   const headers = await getAuthHeaders();
   const res = await fetch('/api/startup/tasks', { headers });
@@ -18,6 +24,7 @@ export async function fetchStartupTasks(): Promise<{
   return {
     task_groups: data.task_groups ?? [],
     tasks: data.tasks ?? [],
+    task_progress: data.task_progress ?? null,
   };
 }
 
@@ -34,12 +41,15 @@ export async function updateTask(
   return res.json();
 }
 
-export async function completeTask(taskId: string): Promise<{ ok: boolean; task?: Task }> {
+export async function completeTask(
+  taskId: string,
+  options?: { submitted_value?: string }
+): Promise<{ ok: boolean; task?: Task }> {
   const headers = await getAuthHeaders();
   const res = await fetch(`/api/tasks/${taskId}/complete`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({}),
+    body: JSON.stringify({ submitted_value: options?.submitted_value ?? undefined }),
   });
   return res.json();
 }
@@ -87,7 +97,7 @@ export async function chatWithTaskAI(
   message: string,
   history: { role: string; content: string }[] = [],
   authorUserId?: string
-): Promise<{ reply: string; suggest_complete: boolean }> {
+): Promise<{ reply: string; suggest_complete: boolean; submitted_value?: string }> {
   const headers = await getAuthHeaders();
   const res = await fetch(`/api/tasks/${taskId}/chat`, {
     method: 'POST',
@@ -100,5 +110,9 @@ export async function chatWithTaskAI(
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data?.detail ?? data?.error ?? 'Chat failed');
-  return { reply: data.reply ?? '', suggest_complete: Boolean(data.suggest_complete) };
+  return {
+    reply: data.reply ?? '',
+    suggest_complete: Boolean(data.suggest_complete),
+    submitted_value: data.submitted_value ?? undefined,
+  };
 }

@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Plus,
   Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -24,15 +25,18 @@ import type { Task, TaskGroup, TaskStatus, TaskPriority } from '@/types/database
 export default function TasksPage() {
   const {
     tasks,
+    taskGroups,
+    taskProgress,
+    tasksLoaded,
     viewMode,
     selectedTask,
     setViewMode,
     selectTask,
     setTasks,
     setTaskGroups,
+    setTaskProgress,
+    setTasksLoaded,
   } = useTaskStore();
-
-  const taskGroups = useTaskStore((s) => s.taskGroups);
 
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
@@ -41,40 +45,85 @@ export default function TasksPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Fetch tasks from API on mount
+  // Fetch tasks only once per session (or until invalidated). Updates happen in-store (e.g. on complete).
   useEffect(() => {
+    if (tasksLoaded) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        const { task_groups, tasks: allTasks } = await fetchStartupTasks();
+        const { task_groups, tasks: allTasks, task_progress } = await fetchStartupTasks();
         if (!cancelled) {
           setTasks(allTasks);
           setTaskGroups(task_groups);
+          const progress =
+            task_progress ??
+            (() => {
+              const doneFromGroups = (task_groups as { done_count?: number }[]).reduce(
+                (s, g) => s + (g.done_count ?? 0),
+                0
+              );
+              const pending = allTasks.length;
+              if (pending > 0 || doneFromGroups > 0) {
+                return {
+                  allotted_total: pending + doneFromGroups,
+                  current_pending: pending,
+                };
+              }
+              return null;
+            })();
+          setTaskProgress(progress);
+          setTasksLoaded(true);
         }
       } catch (e) {
         if (!cancelled) {
           setTasks([]);
           setTaskGroups([]);
+          setTaskProgress(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [setTasks, setTaskGroups]);
+  }, [tasksLoaded, setTasks, setTaskGroups, setTaskProgress, setTasksLoaded]);
 
-  // Stats (calculated from all tasks, not filtered)
+  // When the selected task is completed, clear selection so the detail panel closes (task is removed from view)
+  useEffect(() => {
+    if (selectedTask?.status === 'done') {
+      selectTask(null);
+    }
+  }, [selectedTask?.id, selectedTask?.status, selectTask]);
+
+  // Prefer allotted progress from backend (initial pending only); else derive from groups + tasks
   const stats = useMemo(() => {
-    const nonTrash = tasks.filter((t) => t.status !== 'trash');
-    const done = nonTrash.filter((t) => t.status === 'done').length;
-    const total = nonTrash.length;
+    if (
+      taskProgress &&
+      typeof taskProgress.allotted_total === 'number' &&
+      taskProgress.allotted_total > 0 &&
+      typeof taskProgress.current_pending === 'number'
+    ) {
+      const done = taskProgress.allotted_total - taskProgress.current_pending;
+      const total = taskProgress.allotted_total;
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      return { done, total, pct };
+    }
+    const done = taskGroups.reduce((s, g) => s + (g.done_count ?? 0), 0);
+    const pending = tasks.length;
+    const total = pending + done;
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
     return { done, total, pct };
-  }, [tasks]);
+  }, [taskProgress, taskGroups, tasks]);
 
   const handleTaskClick = (task: Task) => {
     selectTask(task);
+  };
+
+  const handleRefresh = () => {
+    setTasksLoaded(false);
   };
 
   const categories = taskGroups.map((g) => ({
@@ -104,6 +153,14 @@ export default function TasksPage() {
         ]}
         actions={
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="p-2 rounded-lg border border-obsidian-700/50 text-obsidian-400 hover:text-foreground hover:bg-obsidian-800/50 transition-colors"
+              title="Refresh tasks"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
             {/* View toggle */}
             <div className="flex items-center rounded-lg bg-obsidian-800/50 border border-obsidian-700/50 p-0.5">
               <button

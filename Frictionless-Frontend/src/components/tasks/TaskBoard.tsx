@@ -40,14 +40,22 @@ export function TaskBoard({ onTaskClick, className }: TaskBoardProps) {
   const sync = useTasksSync();
   const updateTask = sync?.updateTask ?? storeUpdateTask;
 
-  // Group tasks by status (exclude trash)
+  // Priority order for sorting: critical, high, medium, low
+  const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+
+  // Group tasks by status; exclude trash and done. Sort by impact/priority within each column.
   const grouped = useMemo(() => {
     const map: Record<string, Task[]> = { todo: [], in_progress: [], done: [] };
     tasks
-      .filter((t) => t.status !== 'trash')
+      .filter((t) => t.status !== 'trash' && t.status !== 'done')
       .forEach((t) => {
         if (map[t.status]) map[t.status].push(t);
       });
+    (['todo', 'in_progress', 'done'] as const).forEach((status) => {
+      map[status].sort(
+        (a, b) => (PRIORITY_ORDER[a.priority] ?? 3) - (PRIORITY_ORDER[b.priority] ?? 3)
+      );
+    });
     return map;
   }, [tasks]);
 
@@ -91,14 +99,14 @@ export function TaskBoard({ onTaskClick, className }: TaskBoardProps) {
                     category={getCategoryForTask(task)}
                     onClick={() => onTaskClick(task)}
                   />
-                  {/* Quick move button */}
-                  {col.id !== 'done' && (
+                  {/* Quick move only to in_progress (not to done – completion must go through AI chat) */}
+                  {col.id === 'todo' && nextStatus[task.status] === 'in_progress' && (
                     <motion.button
                       initial={{ opacity: 0 }}
                       whileHover={{ scale: 1.05 }}
                       onClick={(e) => handleMoveTask(task, e)}
                       className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-obsidian-700/90 border border-obsidian-600/50 text-xs font-medium text-muted-foreground hover:text-foreground transition-all"
-                      title={`Move to ${nextStatus[task.status]?.replace('_', ' ')}`}
+                      title="Move to In Progress"
                     >
                       &rarr;
                     </motion.button>

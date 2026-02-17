@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, MessageSquare, Loader2, PartyPopper, Send, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,17 +29,32 @@ interface ChatMessage {
 interface TaskAICompletionProps {
   taskId: string;
   className?: string;
+  /** When true, render only chat UI and fill the side panel (used when panel is in full-panel chat mode). */
+  chatFullPanel?: boolean;
+  /** Call when user opens "Chat with AI" so the panel can switch to full-panel chat. */
+  onChatFullPanel?: () => void;
+  /** Call when user exits full-panel chat (e.g. Back). */
+  onExitFullPanel?: () => void;
 }
 
-export function TaskAICompletion({ taskId, className }: TaskAICompletionProps) {
-  const [step, setStep] = useState<CompletionStep>('idle');
+export function TaskAICompletion({
+  taskId,
+  className,
+  chatFullPanel = false,
+  onChatFullPanel,
+  onExitFullPanel,
+}: TaskAICompletionProps) {
+  const [step, setStep] = useState<CompletionStep>(chatFullPanel ? 'chat' : 'idle');
   const [showConfetti, setShowConfetti] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(chatFullPanel);
   const [suggestComplete, setSuggestComplete] = useState(false);
+  const [lastSubmittedValue, setLastSubmittedValue] = useState<string | undefined>();
   const completeTaskWithAI = useTaskStore((s) => s.completeTaskWithAI);
   const completeTaskViaApi = useTasksSync()?.completeTaskViaApi;
+  const task = useTaskStore((s) => s.tasks.find((t) => t.id === taskId));
 
   const handleFileSelect = useCallback(() => {
     setStep('file-selected');
@@ -60,9 +75,8 @@ export function TaskAICompletion({ taskId, className }: TaskAICompletionProps) {
     setStep('idle');
   }, []);
 
-  const handleChatClick = useCallback(async () => {
-    setStep('chat');
-    setSuggestComplete(false);
+  const loadChatMessages = useCallback(async () => {
+    setLoadingHistory(true);
     try {
       const { messages } = await fetchTaskChatMessages(taskId);
       setChatMessages(
@@ -73,8 +87,28 @@ export function TaskAICompletion({ taskId, className }: TaskAICompletionProps) {
       );
     } catch {
       setChatMessages([]);
+    } finally {
+      setLoadingHistory(false);
     }
   }, [taskId]);
+
+  useEffect(() => {
+    if (chatFullPanel) {
+      setStep('chat');
+      loadChatMessages();
+    }
+  }, [chatFullPanel, loadChatMessages]);
+
+  useEffect(() => {
+    if (chatFullPanel && task?.submitted_value && task?.status !== 'done') {
+      setSuggestComplete(true);
+      setLastSubmittedValue(task.submitted_value ?? undefined);
+    }
+  }, [chatFullPanel, task?.submitted_value, task?.status]);
+
+  const handleChatClick = useCallback(() => {
+    onChatFullPanel?.();
+  }, [onChatFullPanel]);
 
   const handleChatSend = useCallback(async () => {
     const msg = chatInput.trim();
@@ -84,9 +118,10 @@ export function TaskAICompletion({ taskId, className }: TaskAICompletionProps) {
     setChatLoading(true);
     try {
       const history = chatMessages.map((m) => ({ role: m.role, content: m.content }));
-      const { reply, suggest_complete } = await chatWithTaskAI(taskId, msg, history);
+      const { reply, suggest_complete, submitted_value } = await chatWithTaskAI(taskId, msg, history);
       setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
       setSuggestComplete(suggest_complete);
+      if (submitted_value) setLastSubmittedValue(submitted_value);
     } catch {
       setChatMessages((prev) => [
         ...prev,
@@ -99,14 +134,78 @@ export function TaskAICompletion({ taskId, className }: TaskAICompletionProps) {
 
   const handleMarkCompleteFromChat = useCallback(async () => {
     if (completeTaskViaApi) {
-      const ok = await completeTaskViaApi(taskId);
+      const ok = await completeTaskViaApi(taskId, lastSubmittedValue);
       if (ok) {
         setStep('accepted');
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
       }
     }
-  }, [taskId, completeTaskViaApi]);
+  }, [taskId, completeTaskViaApi, lastSubmittedValue]);
+
+  if (chatFullPanel) {
+    return (
+      <div className={cn('flex flex-col flex-1 min-h-0', className)}>
+        <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-obsidian-700/50 p-3 space-y-2 flex flex-col">
+          {loadingHistory ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-electric-blue" />
+            </div>
+          ) : (
+            <>
+              {chatMessages.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Ask how to complete this task. Describe what you&apos;ve done or what you need help with.
+                </p>
+              )}
+              {chatMessages.map((m, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'text-sm rounded-lg px-3 py-2 flex-shrink-0',
+                    m.role === 'user'
+                      ? 'bg-electric-blue/15 ml-4 text-foreground'
+                      : 'bg-obsidian-700/50 mr-4 text-foreground'
+                  )}
+                >
+                  {m.content}
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+        <div className="flex gap-2 mt-3 flex-shrink-0 p-1">
+          <input
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChatSend()}
+            placeholder="Type your message..."
+            className="flex-1 px-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50 text-sm text-foreground placeholder:text-obsidian-500 focus:outline-none focus:border-electric-blue/50"
+          />
+          <button
+            onClick={handleChatSend}
+            disabled={chatLoading || !chatInput.trim()}
+            className="p-2 rounded-lg bg-electric-blue text-white hover:bg-electric-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {chatLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Send className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+        {suggestComplete && completeTaskViaApi && task?.status !== 'done' && (
+          <button
+            onClick={handleMarkCompleteFromChat}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-score-excellent/20 text-score-excellent font-medium text-sm hover:bg-score-excellent/30 transition-colors flex-shrink-0 mt-2"
+          >
+            <PartyPopper className="w-4 h-4" />
+            Mark task complete
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={cn('space-y-4', className)}>

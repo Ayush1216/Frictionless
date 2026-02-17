@@ -1,75 +1,91 @@
-"""AI chat for task completion using OpenAI."""
+"""Task completion chat: collect the user's answer for the task, then they mark complete."""
 from __future__ import annotations
 
-import json
 import logging
 import os
-from typing import Any
-
-from openai import OpenAI
+import re
 
 log = logging.getLogger(__name__)
 
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+RECORDED_VALUE_MARKER = "RECORDED_VALUE:"
 
 
 def get_task_chat_response(
     task_title: str,
     task_description: str,
+    subcategory_name: str,
     user_message: str,
-    history: list[dict[str, str]] | None = None,
-) -> dict[str, Any]:
+    history: list[dict] | None = None,
+) -> dict:
     """
-    Get AI response for task completion chat.
-    Returns {reply: str, suggest_complete: bool}.
+    Get OpenAI response. Goal: recognize when the user is providing the required
+    information (e.g. "Austin, Texas", "Yes", a link). Return that as submitted_value
+    and tell them to mark the task complete. Do NOT give generic "how to do it" steps.
+    Returns {"reply": str, "suggest_complete": bool, "submitted_value": str | None}.
     """
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    try:
+        from openai import OpenAI
+    except ImportError:
+        log.warning("openai not installed")
+        return {"reply": "Chat is not configured.", "suggest_complete": False, "submitted_value": None}
+
+    api_key = (os.getenv("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY_BACKEND", "")).strip()
     if not api_key:
-        raise ValueError("OPENAI_API_KEY not set")
+        log.warning("OPENAI_API_KEY not set")
+        return {"reply": "OpenAI API key is not configured.", "suggest_complete": False, "submitted_value": None}
 
-    system = """You are a conversational assistant helping a founder complete THIS SPECIFIC task.
-Your goal: help them actually complete the task, not give generic improvement advice.
+    system = """You are helping a startup founder complete a single readiness task. This task is about **collecting one specific piece of information** from them (e.g. a jurisdiction name, a link, Yes/No, a short answer).
 
-- Be conversational and supportive. Ask follow-up questions when needed.
-- Give step-by-step instructions to COMPLETE the task (e.g. "First, do X. Then Y. Upload here.").
-- If they share progress (uploaded doc, added data, answered a question), acknowledge it and guide next steps.
-- If they say they're done or have finished the task, set suggest_complete: true.
-- If they provide all required information to mark complete, set suggest_complete: true.
-- Do NOT give broad "how to improve your pitch" advice. Focus on THIS task only.
-- Keep replies concise (under 150 words) unless detail is needed.
+Your job:
+1. If the user **has not yet provided** the required information: ask them once, clearly, to provide it (e.g. "What is your incorporation jurisdiction (country or state)?" or "Please paste the link."). Do NOT give long "how to do it" steps or research advice.
+2. If the user **has provided** the required information (e.g. they said "Austin, Texas", "Delaware", "Yes", "https://..."), then:
+   - Confirm briefly: "We've recorded [their answer]. You can mark the task as complete."
+   - On a new line at the very end of your message, write exactly: RECORDED_VALUE:<the value they provided, one short line>
+   - Keep the value short: one phrase (e.g. "Austin, Texas" or "Delaware, USA" or the URL). No extra text after it.
 
-Respond with JSON only: {"reply": "your message", "suggest_complete": false or true}"""
+Rules:
+- Do NOT give generic steps like "visit the Secretary of State website" or "research options". We only need to **store what the user tells us**.
+- For Yes/No tasks, RECORDED_VALUE should be "Yes" or "No".
+- For links, RECORDED_VALUE should be the URL.
+- For jurisdiction/location, RECORDED_VALUE should be their exact phrase (e.g. "Austin, Texas").
+- Be concise. One or two short sentences is enough."""
 
-    context = f"Task: {task_title}\nDescription: {task_description or 'No description'}"
-    messages: list[dict[str, str]] = [
-        {"role": "system", "content": f"{system}\n\n{context}"},
-    ]
-    for h in history or []:
-        role = h.get("role", "user")
-        content = h.get("content", "")
-        if role in ("user", "assistant") and content:
+    context = f"Task: {task_title}\nDescription: {task_description or 'No description'}\nWe need to collect and store one value from the user for this task."
+
+    client = OpenAI(api_key=api_key)
+    messages = [{"role": "system", "content": system}]
+    if context:
+        messages.append({"role": "system", "content": f"Context: {context}"})
+    for h in (history or []):
+        role = (h.get("role") or "user").lower()
+        if role not in ("user", "assistant", "system"):
+            role = "user"
+        content = h.get("content") or ""
+        if content:
             messages.append({"role": role, "content": content})
     messages.append({"role": "user", "content": user_message})
 
-    client = OpenAI(api_key=api_key)
-    resp = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=messages,
-        temperature=0.4,
-    )
-    text = (resp.choices[0].message.content or "").strip()
-    if text.startswith("```"):
-        lines = text.split("\n")
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        text = "\n".join(lines)
+    suggest_complete = False
+    submitted_value = None
+    reply = ""
     try:
-        data = json.loads(text)
-    except json.JSONDecodeError:
-        return {"reply": text, "suggest_complete": False}
-    return {
-        "reply": data.get("reply", text),
-        "suggest_complete": bool(data.get("suggest_complete", False)),
-    }
+        resp = client.chat.completions.create(
+            model=os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini"),
+            messages=messages,
+            max_tokens=400,
+            temperature=0.2,
+        )
+        reply = (resp.choices[0].message.content or "").strip()
+        if RECORDED_VALUE_MARKER in reply:
+            match = re.search(r"RECORDED_VALUE:\s*(.+?)(?:\n|$)", reply, re.DOTALL)
+            if match:
+                submitted_value = match.group(1).strip()
+                suggest_complete = True
+            reply = re.sub(r"\n?RECORDED_VALUE:.*", "", reply, flags=re.DOTALL).strip()
+        if submitted_value:
+            suggest_complete = True
+    except Exception as e:
+        log.exception("OpenAI task chat error: %s", e)
+        reply = "Sorry, I couldn't process that. Please try again."
+
+    return {"reply": reply, "suggest_complete": suggest_complete, "submitted_value": submitted_value}

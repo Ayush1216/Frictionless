@@ -192,21 +192,30 @@ def _verify_and_fix(scored_rubric: dict) -> int:
 
 
 def _compute_summary(scored_rubric: dict) -> dict:
+    """
+    Score summary from scored_rubric. Per-category uses category maximum_point.
+    Overall total_maximum is sum of all item maximum_points so that completing
+    all tasks (every item at max) yields raw_percentage = 100.
+    """
     summary = {}
-    t_earned = t_max = 0
+    t_earned = 0
+    t_max_from_items = 0  # sum of item maximum_points so 100% is reachable when all items at max
     t_weighted = 0.0
     for cat_key, cat_val in scored_rubric.items():
         if not isinstance(cat_val, dict):
             continue
         mx = cat_val.get("maximum_point", 0)
         wt = cat_val.get("weight", 0)
-        earned = sum(
-            item.get("Points", 0)
-            for v in cat_val.values()
-            if isinstance(v, list)
-            for item in v
-            if isinstance(item, dict)
-        )
+        earned = 0
+        cat_item_max = 0
+        for v in cat_val.values():
+            if not isinstance(v, list):
+                continue
+            for item in v:
+                if not isinstance(item, dict):
+                    continue
+                earned += item.get("Points", 0)
+                cat_item_max += item.get("maximum_points", 0)
         pct = (earned / mx * 100) if mx > 0 else 0
         w_score = (earned / mx * wt) if mx > 0 else 0
         summary[cat_key] = {
@@ -218,12 +227,12 @@ def _compute_summary(scored_rubric: dict) -> dict:
             "weighted_score": round(w_score, 2),
         }
         t_earned += earned
-        t_max += mx
+        t_max_from_items += cat_item_max
         t_weighted += w_score
     summary["_overall"] = {
         "total_earned": t_earned,
-        "total_maximum": t_max,
-        "raw_percentage": round(t_earned / t_max * 100, 1) if t_max > 0 else 0,
+        "total_maximum": t_max_from_items,
+        "raw_percentage": round(t_earned / t_max_from_items * 100, 1) if t_max_from_items > 0 else 0,
         "weighted_total": round(t_weighted, 2),
     }
     return summary

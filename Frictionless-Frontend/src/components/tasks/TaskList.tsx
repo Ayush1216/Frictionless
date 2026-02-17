@@ -4,8 +4,6 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronRight,
-  CheckCircle2,
-  Circle,
   Calendar,
   Sparkles,
   RefreshCw,
@@ -30,6 +28,15 @@ const priorityConfig: Record<string, { color: string; icon: React.ElementType }>
   low: { color: 'text-green-400', icon: ArrowDown },
 };
 
+const IMPACT_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+function sortByImpact<T>(items: T[], getImpact: (t: T) => string): T[] {
+  return [...items].sort((a, b) => (IMPACT_ORDER[getImpact(a)] ?? 2) - (IMPACT_ORDER[getImpact(b)] ?? 2));
+}
+function sortByPriority<T>(items: T[], getPriority: (t: T) => string): T[] {
+  return [...items].sort((a, b) => (PRIORITY_ORDER[getPriority(a)] ?? 3) - (PRIORITY_ORDER[getPriority(b)] ?? 3));
+}
+
 interface TaskListProps {
   onTaskClick: (task: Task) => void;
   className?: string;
@@ -44,18 +51,34 @@ export function TaskList({ onTaskClick, className }: TaskListProps) {
   const deleteTask = useTaskStore((s) => s.deleteTask);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  // Group tasks by taskGroup category (use stored taskGroups for ordering)
+  // Group tasks by taskGroup category; only show pending (exclude done). Progress uses backend counts when present.
+  // Sorted by group impact (high first), then tasks within each group by priority (critical/high first).
   const groupedTasks = useMemo(() => {
-    const groupMap = new Map<string, { group: TaskGroup; tasks: Task[] }>();
+    const groupMap = new Map<string, { group: TaskGroup; tasks: Task[]; doneCount: number; totalInGroup: number }>();
     taskGroups.forEach((g) => {
-      const groupTasks = tasks.filter(
+      const allInGroup = tasks.filter(
         (t) => t.task_group_id === g.id && t.status !== 'trash'
       );
+      const groupTasks = allInGroup.filter((t) => t.status !== 'done');
+      const totalInGroup =
+        g.total_in_category != null && g.total_in_category > 0
+          ? g.total_in_category
+          : allInGroup.length;
+      const doneCount =
+        g.done_count != null
+          ? g.done_count
+          : allInGroup.filter((t) => t.status === 'done').length;
       if (groupTasks.length > 0) {
-        groupMap.set(g.id, { group: g, tasks: groupTasks });
+        groupMap.set(g.id, {
+          group: g,
+          tasks: sortByPriority(groupTasks, (t) => t.priority ?? 'medium'),
+          doneCount,
+          totalInGroup,
+        });
       }
     });
-    return Array.from(groupMap.values());
+    const list = Array.from(groupMap.values());
+    return sortByImpact(list, ({ group }) => group.impact ?? 'medium');
   }, [tasks, taskGroups]);
 
   const toggleCollapse = (groupId: string) => {
@@ -64,9 +87,8 @@ export function TaskList({ onTaskClick, className }: TaskListProps) {
 
   return (
     <div className={cn('space-y-4', className)}>
-      {groupedTasks.map(({ group, tasks: groupTasks }) => {
+      {groupedTasks.map(({ group, tasks: groupTasks, doneCount, totalInGroup }) => {
         const isCollapsed = collapsed[group.id] ?? false;
-        const doneCount = groupTasks.filter((t) => t.status === 'done').length;
 
         return (
           <div key={group.id}>
@@ -80,23 +102,15 @@ export function TaskList({ onTaskClick, className }: TaskListProps) {
               </motion.div>
               <span className="text-sm font-semibold text-foreground">{group.category}</span>
               <span className="text-xs text-muted-foreground">
-                {doneCount}/{groupTasks.length}
+                {doneCount}/{totalInGroup}
               </span>
               {/* Mini progress */}
               <div className="flex-1 max-w-[120px] h-1.5 rounded-full bg-obsidian-700/50 overflow-hidden">
                 <div
                   className="h-full rounded-full bg-score-excellent transition-all duration-500"
-                  style={{ width: `${(doneCount / groupTasks.length) * 100}%` }}
+                  style={{ width: `${totalInGroup ? (doneCount / totalInGroup) * 100 : 0}%` }}
                 />
               </div>
-              <span className={cn(
-                'text-[10px] font-semibold px-1.5 py-0.5 rounded',
-                group.impact === 'high' ? 'bg-orange-500/15 text-orange-400' :
-                group.impact === 'medium' ? 'bg-yellow-500/15 text-yellow-400' :
-                'bg-green-500/15 text-green-400'
-              )}>
-                {group.impact} impact
-              </span>
             </button>
 
             {/* Tasks */}
@@ -115,9 +129,6 @@ export function TaskList({ onTaskClick, className }: TaskListProps) {
                         key={task.id}
                         task={task}
                         onTaskClick={onTaskClick}
-                        onComplete={() =>
-                          updateTask(task.id, { status: task.status === 'done' ? 'todo' : 'done' })
-                        }
                         onDelete={() => deleteTask(task.id)}
                       />
                     ))}
@@ -135,12 +146,10 @@ export function TaskList({ onTaskClick, className }: TaskListProps) {
 function TaskRow({
   task,
   onTaskClick,
-  onComplete,
   onDelete,
 }: {
   task: Task;
   onTaskClick: (task: Task) => void;
-  onComplete: () => void;
   onDelete: () => void;
 }) {
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -154,10 +163,6 @@ function TaskRow({
       setSwipeOffset(0);
       onDelete();
     },
-    onSwipedRight: () => {
-      setSwipeOffset(0);
-      onComplete();
-    },
     onSwiping: (e) => setSwipeOffset(e.deltaX),
     onTouchEndOrOnMouseUp: () => setSwipeOffset(0),
     trackMouse: false,
@@ -167,14 +172,8 @@ function TaskRow({
 
   return (
     <div className="relative overflow-hidden rounded-lg">
-      {/* Swipe backgrounds */}
+      {/* Swipe background: delete only (no swipe-to-complete) */}
       <div className="absolute inset-0 flex">
-        <div className={cn(
-          'flex-1 flex items-center pl-4 bg-score-excellent/20 transition-opacity',
-          swipeOffset > 30 ? 'opacity-100' : 'opacity-0'
-        )}>
-          <CheckCircle2 className="w-5 h-5 text-score-excellent" />
-        </div>
         <div className={cn(
           'flex-1 flex items-center justify-end pr-4 bg-destructive/20 transition-opacity',
           swipeOffset < -30 ? 'opacity-100' : 'opacity-0'
@@ -192,21 +191,6 @@ function TaskRow({
           'hover:bg-obsidian-800/40 bg-obsidian-900/50'
         )}
       >
-        {/* Checkbox */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onComplete();
-          }}
-          className="flex-shrink-0"
-        >
-          {task.status === 'done' ? (
-            <CheckCircle2 className="w-5 h-5 text-score-excellent" />
-          ) : (
-            <Circle className="w-5 h-5 text-obsidian-500 hover:text-electric-blue transition-colors" />
-          )}
-        </button>
-
         {/* Title */}
         <span className={cn(
           'flex-1 text-sm text-foreground truncate',

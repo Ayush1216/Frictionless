@@ -14,7 +14,7 @@ import { QUESTIONNAIRE } from '@/lib/onboarding-questionnaire';
 
 const QUESTION_ORDER = ['primary_sector', 'product_status', 'funding_stage', 'round_target', 'entity_type', 'revenue_model'] as const;
 
-type Step = 'website' | 'pitch_deck' | 'questionnaire' | 'calculating' | 'thesis_document' | 'done';
+type Step = 'website' | 'pitch_deck' | 'waiting_extraction' | 'questionnaire' | 'calculating' | 'thesis_document' | 'done';
 
 interface ChatMessage {
   id: string;
@@ -32,7 +32,9 @@ const AFTER_WEBSITE =
   "Thanks! Now please upload your pitch deck (PDF). Use the attachment button below to upload the file.";
 
 const AFTER_PITCH_DECK =
-  "We've saved your pitch deck. Almost done! I'll ask you 6 quick questions so we can calculate your readiness score. Let's start—";
+  "We've saved your pitch deck. Almost done! I'll ask you 6 quick questions so we can calculate your readiness score.";
+const EXTRACTING_MESSAGE =
+  "Extracting data from your pitch deck … This may take 1–2 minutes.";
 
 const INVESTOR_INITIAL =
   "Welcome! To get you set up, we'll need your firm's website and your thesis fit document (PDF). First, please paste your website URL below.";
@@ -105,14 +107,29 @@ export default function OnboardingChatPage() {
       });
       // Resume at correct step for startups (e.g. returned after pitch deck, need questionnaire)
       if (!cancelled && user.org_type === 'startup' && statusJson.step === 'questionnaire') {
-        setStep('questionnaire');
-        const firstQ = QUESTIONNAIRE[QUESTION_ORDER[0]];
-        setMessages([
-          { id: '1', role: 'assistant', content: STARTUP_INITIAL, at: new Date() },
-          { id: '2', role: 'assistant', content: AFTER_PITCH_DECK, at: new Date() },
-          { id: '3', role: 'assistant', content: firstQ.question, at: new Date() },
-        ]);
-        setQuestionnaireIndex(0);
+        const extRes = await fetch('/api/extraction/data', { headers: { Authorization: `Bearer ${token}` } });
+        const extJson = await extRes.json().catch(() => ({}));
+        const extractionReady = extJson.status === 'ready' && extJson.extraction_data?.ocr_storage_path;
+        if (cancelled) return;
+        if (extractionReady) {
+          setStep('questionnaire');
+          const firstQ = QUESTIONNAIRE[QUESTION_ORDER[0]];
+          setMessages([
+            { id: '1', role: 'assistant', content: STARTUP_INITIAL, at: new Date() },
+            { id: '2', role: 'assistant', content: AFTER_PITCH_DECK, at: new Date() },
+            { id: '3', role: 'assistant', content: firstQ.question, at: new Date() },
+          ]);
+          setQuestionnaireIndex(0);
+        } else {
+          // Extraction not ready (user left during extraction): reset to start so they re-enter website + pitch deck
+          await fetch('/api/onboarding/reset-to-start', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (cancelled) return;
+          setStep('website');
+          setMessages([{ id: '1', role: 'assistant', content: STARTUP_INITIAL, at: new Date() }]);
+        }
       }
     })();
     return () => { cancelled = true; };
@@ -120,8 +137,29 @@ export default function OnboardingChatPage() {
 
   const showThesisStep = step === 'thesis_document';
   const showPitchDeckStep = step === 'pitch_deck';
+  const showWaitingExtractionStep = step === 'waiting_extraction';
   const showQuestionnaireStep = step === 'questionnaire';
   const showCalculatingStep = step === 'calculating';
+
+  const pollExtractionUntilReady = async (token: string) => {
+    const poll = async (): Promise<void> => {
+      const res = await fetch('/api/extraction/data', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      const extractionReady = data.status === 'ready' && data.extraction_data?.ocr_storage_path;
+      if (extractionReady) {
+        addMessage('assistant', AFTER_PITCH_DECK);
+        const firstQ = QUESTIONNAIRE[QUESTION_ORDER[0]];
+        addMessage('assistant', firstQ.question);
+        setStep('questionnaire');
+        setQuestionnaireIndex(0);
+        return;
+      }
+      setTimeout(poll, 3500);
+    };
+    setTimeout(poll, 3000);
+  };
 
   const pollReadinessAndRedirect = async (token: string) => {
     const poll = async (): Promise<void> => {
@@ -241,11 +279,9 @@ export default function OnboardingChatPage() {
         setUploading(false);
         return;
       }
-      addMessage('assistant', AFTER_PITCH_DECK);
-      const firstQ = QUESTIONNAIRE[QUESTION_ORDER[0]];
-      addMessage('assistant', firstQ.question);
-      setStep('questionnaire');
-      setQuestionnaireIndex(0);
+      addMessage('assistant', EXTRACTING_MESSAGE);
+      setStep('waiting_extraction');
+      pollExtractionUntilReady(token);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Upload failed');
     }
@@ -361,7 +397,9 @@ export default function OnboardingChatPage() {
 
   const selectOption = (key: (typeof QUESTION_ORDER)[number], value: string, label: string) => {
     if (value === 'other') {
-      setPendingOtherFor(key);
+      if (key === 'primary_sector' || key === 'round_target' || key === 'entity_type') {
+        setPendingOtherFor(key);
+      }
       setOtherInputValue('');
       return;
     }
@@ -476,6 +514,12 @@ export default function OnboardingChatPage() {
           </div>
         ))}
 
+        {showWaitingExtractionStep && (
+          <div className="flex items-center gap-3 py-4">
+            <Loader2 className="h-6 w-6 animate-spin text-electric-blue" />
+            <p className="text-sm text-muted-foreground">Extracting data from your pitch deck (OCR, founder info, charts, key metrics…)… This may take 1–2 minutes.</p>
+          </div>
+        )}
         {showCalculatingStep && (
           <div className="flex items-center gap-3 py-4">
             <Loader2 className="h-6 w-6 animate-spin text-electric-blue" />
@@ -536,7 +580,7 @@ export default function OnboardingChatPage() {
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className={`border-t border-obsidian-700/50 p-4 ${showQuestionnaireStep || showCalculatingStep ? 'hidden' : ''}`}>
+      <form onSubmit={handleSubmit} className={`border-t border-obsidian-700/50 p-4 ${showQuestionnaireStep || showCalculatingStep || showWaitingExtractionStep ? 'hidden' : ''}`}>
         <div className="flex gap-2 items-end">
           {(showPitchDeckStep || showThesisStep) && (
             <>
