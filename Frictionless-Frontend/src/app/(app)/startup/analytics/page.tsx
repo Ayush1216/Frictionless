@@ -176,6 +176,7 @@ export default function AnalyticsPage() {
     if (!user) return;
     let cancelled = false;
     (async () => {
+      if (!supabase) return;
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token ?? null;
       if (!token || cancelled) return;
@@ -202,6 +203,7 @@ export default function AnalyticsPage() {
     if (!user || user.org_type !== 'startup') return;
     let cancelled = false;
     (async () => {
+      if (!supabase) return;
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token ?? null;
       if (!token || cancelled) return;
@@ -294,7 +296,7 @@ export default function AnalyticsPage() {
               {/* Charts */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                 {extractionCharts.map((chart, i) => (
-                  <ExtractionChart key={chart.chart_id ?? i} chart={chart as Parameters<typeof ExtractionChart>[0]['chart']} index={i} />
+                  <ExtractionChart key={(chart as { chart_id?: string }).chart_id ?? i} chart={chart as Parameters<typeof ExtractionChart>[0]['chart']} index={i} />
                 ))}
               </div>
             </>

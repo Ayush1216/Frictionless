@@ -21,6 +21,7 @@ import {
   BookOpen,
   GraduationCap,
   Settings,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -45,6 +46,7 @@ const startupBottomNav: NavItem[] = [
 ];
 
 const startupMoreNav: NavItem[] = [
+  { label: 'Company Profile', href: '/startup/company-profile', icon: Building2 },
   { label: 'Matches', href: '/startup/matches', icon: Handshake },
   { label: 'Data Room', href: '/startup/data-room', icon: FolderOpen },
   { label: 'Analytics', href: '/startup/analytics', icon: BarChart3 },

@@ -3,6 +3,8 @@ import { createSupabaseClientForRequest, getCurrentUserOrgId } from '@/lib/supab
 import type { Task, TaskGroup } from '@/types/database';
 import { toFrontendGroup } from '@/lib/api/startup-tasks-server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get('authorization');
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
       const groups = (data.task_groups ?? []).map((g: Record<string, unknown>) => toFrontendGroup(g));
       result = {
         taskGroups: groups,
-        tasks: groups.flatMap((g) => g.tasks),
+        tasks: groups.flatMap((g: TaskGroup) => g.tasks),
       };
       const progress = data.task_progress;
       const pendingCount = result.tasks.length;

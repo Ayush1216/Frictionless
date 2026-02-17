@@ -38,6 +38,7 @@ export default function AppLayout({
     let cancelled = false;
     (async () => {
       try {
+        if (!supabase) return;
         const { data } = await supabase.auth.getSession();
         const token = data?.session?.access_token ?? null;
         if (!token || cancelled) return;

@@ -18,6 +18,12 @@ from pydantic import BaseModel
 from app.services.apollo import enrich_organization
 from app.services.extraction import startup_kv_extractor
 from app.services.extraction.mistral_ocr import run as run_mistral_ocr
+from app.services.extraction.founder_linkedin import (
+    run as run_founder_linkedin,
+    run_person_profile as run_linkedin_person_profile,
+    _sanitize_linkedin as sanitize_linkedin,
+    _is_person_linkedin as is_person_linkedin,
+)
 from app.services.extraction.pipeline import run_pipeline as run_extraction_pipeline
 from app.services.readiness_scorer import run_readiness_scoring, _inject_questionnaire
 from app.services.readiness_tasks import (
@@ -78,6 +84,28 @@ class RunReadinessRequest(BaseModel):
 class ProcessDataroomDocRequest(BaseModel):
     org_id: str
     storage_path: str
+
+
+class UpdateExtractionPatch(BaseModel):
+    org_id: str
+    extraction_data_patch: dict
+
+
+class LinkedInRescrapeRequest(BaseModel):
+    org_id: str
+    linkedin_url: str
+
+
+class AddTeamFromLinkedInRequest(BaseModel):
+    org_id: str
+    linkedin_url: str
+    role_type: str = "Other"  # Founder | Leadership | Other
+    company_name_override: str | None = None
+
+
+class ProfileImageRequest(BaseModel):
+    org_id: str
+    linkedin_url: str
 
 
 @asynccontextmanager
@@ -463,6 +491,222 @@ async def startup_activity_endpoint(org_id: str, limit: int = 30):
         raise HTTPException(status_code=500, detail="Supabase not configured")
     activities = get_recent_activity(supabase, org_id, limit=min(limit, 50))
     return {"activities": activities}
+
+
+@app.get("/api/apollo-data")
+async def apollo_data_endpoint(org_id: str):
+    """Return raw_data from apollo_organization_enrichment for the org."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    raw_data = get_apollo_data(supabase, org_id)
+    if raw_data is not None:
+        return {"status": "ready", "raw_data": raw_data}
+    return {"status": "pending"}
+
+
+def _deep_merge(base: dict, patch: dict) -> dict:
+    """Deep merge patch into base. Patch values override base. Lists replaced, not merged."""
+    result = dict(base)
+    for k, v in patch.items():
+        if k in result and isinstance(result[k], dict) and isinstance(v, dict):
+            result[k] = _deep_merge(result[k], v)
+        else:
+            result[k] = v
+    return result
+
+
+@app.patch("/api/extraction-data")
+async def update_extraction_endpoint(body: UpdateExtractionPatch):
+    """Merge extraction_data_patch into existing extraction_data. Preserves ocr_storage_path and other fields."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    existing = get_extraction_data(supabase, body.org_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="No extraction data found for this organization")
+    merged = _deep_merge(existing, body.extraction_data_patch)
+    upsert_extraction_result(supabase, body.org_id, merged)
+    log.info("Extraction data updated for org %s", body.org_id)
+    return {"ok": True}
+
+
+@app.post("/api/linkedin-rescrape")
+async def linkedin_rescrape_endpoint(body: LinkedInRescrapeRequest):
+    """Re-scrape founder/leadership data from a company LinkedIn URL and merge into extraction_data."""
+    import re
+    from urllib.parse import urlparse
+
+    url = (body.linkedin_url or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="linkedin_url is required")
+    if not re.match(r"^https?://", url, re.I):
+        url = "https://" + url
+    if "linkedin.com/company/" not in url.lower():
+        raise HTTPException(
+            status_code=400,
+            detail="Please provide a company LinkedIn URL (e.g. https://linkedin.com/company/...). Person URLs are not supported for this flow yet.",
+        )
+
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    existing = get_extraction_data(supabase, body.org_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="No extraction data found. Complete onboarding first.")
+
+    init = (existing.get("startup_kv") or {}).get("initial_details") or {}
+    company_name = (existing.get("meta") or {}).get("company_name") or init.get("name", "")
+    company_name = (company_name or "").strip() or "Company"
+
+    now_iso = __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat()
+    with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
+        out_path = f.name
+    try:
+        result = run_founder_linkedin(
+            company_linkedin=url,
+            company_name=company_name,
+            output_path=out_path,
+        )
+    except Exception as exc:
+        log.exception("LinkedIn re-scrape failed for org %s: %s", body.org_id, exc)
+        merged = dict(existing)
+        meta = dict(merged.get("meta") or {})
+        meta["last_scraped_at"] = now_iso
+        meta["linkedin_scrape_status"] = "failed"
+        meta["linkedin_scrape_error"] = str(exc)
+        merged["meta"] = meta
+        upsert_extraction_result(supabase, body.org_id, merged)
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=200,
+            content={"ok": False, "status": "failed", "error": str(exc), "extraction_data": merged},
+        )
+    finally:
+        try:
+            os.unlink(out_path)
+        except Exception:
+            pass
+
+    existing_fl = existing.get("founder_linkedin") or {}
+    merged_fl = _deep_merge(existing_fl, result)
+    merged = dict(existing)
+    merged["founder_linkedin"] = merged_fl
+    meta = dict(merged.get("meta") or {})
+    meta["last_scraped_at"] = now_iso
+    meta["linkedin_scrape_status"] = "success"
+    meta["company_linkedin"] = url
+    merged["meta"] = meta
+    upsert_extraction_result(supabase, body.org_id, merged)
+    log.info("LinkedIn re-scrape saved for org %s", body.org_id)
+    return {"ok": True, "status": "success", "extraction_data": merged}
+
+
+@app.post("/api/profile-image")
+async def profile_image_endpoint(body: ProfileImageRequest):
+    """Fetch profile image URL for a LinkedIn person profile via Gemini+Search (used when direct fetch gets HTTP 999)."""
+    url = (body.linkedin_url or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="linkedin_url is required")
+    url = sanitize_linkedin(url)
+    if not url or not is_person_linkedin(url):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid URL: use a LinkedIn person profile (linkedin.com/in/...).",
+        )
+    try:
+        person = run_linkedin_person_profile(url)
+        profile_image_url = (person.get("profile_image_url") or "").strip()
+        return {"profile_image_url": profile_image_url or None}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        log.exception("Profile image fetch failed for org %s: %s", body.org_id, e)
+        raise HTTPException(
+            status_code=502,
+            detail="Could not fetch profile image. Try again later.",
+        )
+
+
+@app.post("/api/team/add-from-linkedin")
+async def add_team_from_linkedin_endpoint(body: AddTeamFromLinkedInRequest):
+    """Add a team member from a LinkedIn person profile URL. Validates URL, scrapes profile, merges into extraction_data."""
+    from datetime import datetime, timezone
+
+    url = (body.linkedin_url or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="linkedin_url is required")
+    url = sanitize_linkedin(url)
+    if not url or not is_person_linkedin(url):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid URL: use a LinkedIn person profile (linkedin.com/in/...). Company pages are not supported here.",
+        )
+    role_type = (body.role_type or "Other").strip()
+    if role_type not in ("Founder", "Leadership", "Other"):
+        role_type = "Other"
+
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    existing = get_extraction_data(supabase, body.org_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="No extraction data found. Complete onboarding first.")
+
+    fl = existing.get("founder_linkedin") or {}
+    data = fl.get("data") or {}
+    founders = list(data.get("founders") or [])
+    leadership_team = list(data.get("leadership_team") or [])
+    url_lower = url.lower()
+
+    def find_existing():
+        for p in founders + leadership_team:
+            if isinstance(p, dict) and (p.get("linkedin_url") or "").strip().lower() == url_lower:
+                return p
+        return None
+
+    existing_person = find_existing()
+    if existing_person:
+        log.info("Team member already exists for org %s: %s", body.org_id, url_lower)
+        return {
+            "ok": True,
+            "status": "already_exists",
+            "person": existing_person,
+            "message": "This person is already in the team list.",
+        }
+
+    try:
+        person = run_linkedin_person_profile(body.linkedin_url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        log.exception("Person profile scrape failed for org %s: %s", body.org_id, e)
+        raise HTTPException(
+            status_code=502,
+            detail="Could not fetch profile. The page may be private or unavailable. Try again later.",
+        )
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    person["role_type"] = role_type
+    person["source"] = "linkedin"
+    person["scraped_at"] = now_iso
+    person["scrape_status"] = "success"
+    person["updated_by_source"] = "linkedin"
+
+    if role_type == "Founder":
+        founders.append(person)
+    elif role_type == "Leadership":
+        leadership_team.append(person)
+    else:
+        leadership_team.append(person)
+
+    new_data = {**data, "founders": founders, "leadership_team": leadership_team}
+    merged_fl = {**fl, "data": new_data}
+    merged = dict(existing)
+    merged["founder_linkedin"] = merged_fl
+    upsert_extraction_result(supabase, body.org_id, merged)
+    log.info("Team member added for org %s: %s (%s)", body.org_id, person.get("full_name"), role_type)
+    return {"ok": True, "status": "added", "person": person, "extraction_data": merged}
 
 
 @app.get("/api/readiness-status")

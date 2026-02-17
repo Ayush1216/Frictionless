@@ -1,4 +1,4 @@
-import type { Task, TaskComment } from '@/types/database';
+import type { Task, TaskComment, TaskGroup } from '@/types/database';
 import { supabase } from '@/lib/supabase/client';
 
 export const getAuthHeaders = async (): Promise<HeadersInit> => {
@@ -14,7 +14,7 @@ export interface TaskProgress {
 }
 
 export async function fetchStartupTasks(): Promise<{
-  task_groups: { id: string; category: string; title: string; description: string; impact: string; tasks: Task[] }[];
+  task_groups: TaskGroup[];
   tasks: Task[];
   task_progress?: TaskProgress | null;
 }> {
