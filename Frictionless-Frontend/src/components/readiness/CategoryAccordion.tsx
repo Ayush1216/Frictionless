@@ -335,7 +335,7 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
                               'text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase',
                               m.severity === 'high' && 'bg-score-poor/20 text-score-poor',
                               m.severity === 'medium' && 'bg-score-fair/20 text-score-fair',
-                              m.severity === 'low' && 'bg-obsidian-600 text-obsidian-300',
+                              m.severity === 'low' && 'bg-score-excellent/20 text-score-excellent',
                             )}>
                               {m.severity}
                             </span>

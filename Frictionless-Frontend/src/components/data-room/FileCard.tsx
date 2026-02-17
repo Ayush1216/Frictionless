@@ -52,9 +52,10 @@ function getCategoryLabel(category: DummyDocumentCategory): string {
     cap_table: 'Cap Table',
     legal: 'Legal',
     data_room: 'Data Room',
+    data_room_doc: 'Proof / Upload',
     other: 'Other',
   };
-  return labels[category];
+  return labels[category] ?? category;
 }
 
 function getValidationStyle(status: DummyValidationStatus) {

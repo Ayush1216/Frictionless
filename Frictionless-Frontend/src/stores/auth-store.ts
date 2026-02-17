@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { User } from '@/types/database';
 import { signOutSupabase } from '@/lib/supabase/auth';
+import { useReadinessStore } from '@/stores/readiness-store';
+import { useTaskStore } from '@/stores/task-store';
 
 interface AuthStore {
   user: User | null;
@@ -25,8 +27,20 @@ export const useAuthStore = create<AuthStore>((set) => ({
     } catch {
       // Supabase not configured (e.g. demo mode); still clear local state
     }
+    useReadinessStore.getState().clearBootstrap();
+    useTaskStore.getState().setTasks([]);
+    useTaskStore.getState().setTaskGroups([]);
+    useTaskStore.getState().setTasksLoaded(false);
+    useTaskStore.getState().selectTask(null);
     set({ user: null, isAuthenticated: false });
   },
-  clearAuth: () => set({ user: null, isAuthenticated: false }),
+  clearAuth: () => {
+    useReadinessStore.getState().clearBootstrap();
+    useTaskStore.getState().setTasks([]);
+    useTaskStore.getState().setTaskGroups([]);
+    useTaskStore.getState().setTasksLoaded(false);
+    useTaskStore.getState().selectTask(null);
+    set({ user: null, isAuthenticated: false });
+  },
   setLoading: (isLoading) => set({ isLoading }),
 }));

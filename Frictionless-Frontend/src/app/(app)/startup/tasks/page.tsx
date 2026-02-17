@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutGrid,
@@ -18,11 +19,14 @@ import { TaskBoard } from '@/components/tasks/TaskBoard';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
 import { useTaskStore } from '@/stores/task-store';
-import { fetchStartupTasks } from '@/lib/api/tasks';
 import { TasksSyncProvider } from '@/contexts/TasksSyncContext';
+import { fetchBootstrap } from '@/lib/api/bootstrap';
+import { supabase } from '@/lib/supabase/client';
 import type { Task, TaskGroup, TaskStatus, TaskPriority } from '@/types/database';
 
 export default function TasksPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const {
     tasks,
     taskGroups,
@@ -32,64 +36,32 @@ export default function TasksPage() {
     selectedTask,
     setViewMode,
     selectTask,
-    setTasks,
-    setTaskGroups,
-    setTaskProgress,
-    setTasksLoaded,
   } = useTaskStore();
 
-  const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
   const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Fetch tasks only once per session (or until invalidated). Updates happen in-store (e.g. on complete).
+  // Tasks come from layout bootstrap. If store not populated yet (e.g. direct nav or refresh), fetch once.
   useEffect(() => {
-    if (tasksLoaded) {
-      setLoading(false);
-      return;
-    }
+    if (tasksLoaded) return;
     let cancelled = false;
     (async () => {
-      setLoading(true);
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token ?? null;
+      if (!token || cancelled) return;
       try {
-        const { task_groups, tasks: allTasks, task_progress } = await fetchStartupTasks();
-        if (!cancelled) {
-          setTasks(allTasks);
-          setTaskGroups(task_groups);
-          const progress =
-            task_progress ??
-            (() => {
-              const doneFromGroups = (task_groups as { done_count?: number }[]).reduce(
-                (s, g) => s + (g.done_count ?? 0),
-                0
-              );
-              const pending = allTasks.length;
-              if (pending > 0 || doneFromGroups > 0) {
-                return {
-                  allotted_total: pending + doneFromGroups,
-                  current_pending: pending,
-                };
-              }
-              return null;
-            })();
-          setTaskProgress(progress);
-          setTasksLoaded(true);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setTasks([]);
-          setTaskGroups([]);
-          setTaskProgress(null);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+        await fetchBootstrap(token);
+      } catch {
+        useTaskStore.getState().setTasksLoaded(true);
       }
     })();
     return () => { cancelled = true; };
-  }, [tasksLoaded, setTasks, setTaskGroups, setTaskProgress, setTasksLoaded]);
+  }, [tasksLoaded]);
+
+  const loading = !tasksLoaded;
 
   // When the selected task is completed, clear selection so the detail panel closes (task is removed from view)
   useEffect(() => {
@@ -97,6 +69,18 @@ export default function TasksPage() {
       selectTask(null);
     }
   }, [selectedTask?.id, selectedTask?.status, selectTask]);
+
+  // Open task from dashboard link: /startup/tasks?task=<id>
+  useEffect(() => {
+    if (!tasksLoaded || !tasks.length) return;
+    const taskId = searchParams.get('task');
+    if (!taskId) return;
+    const task = tasks.find((t) => t.id === taskId);
+    if (task) {
+      selectTask(task);
+      router.replace('/startup/tasks', { scroll: false });
+    }
+  }, [tasksLoaded, tasks, searchParams, selectTask, router]);
 
   // Prefer allotted progress from backend (initial pending only); else derive from groups + tasks
   const stats = useMemo(() => {
@@ -106,9 +90,9 @@ export default function TasksPage() {
       taskProgress.allotted_total > 0 &&
       typeof taskProgress.current_pending === 'number'
     ) {
-      const done = taskProgress.allotted_total - taskProgress.current_pending;
       const total = taskProgress.allotted_total;
-      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      const done = Math.max(0, total - taskProgress.current_pending);
+      const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
       return { done, total, pct };
     }
     const done = taskGroups.reduce((s, g) => s + (g.done_count ?? 0), 0);
@@ -122,8 +106,19 @@ export default function TasksPage() {
     selectTask(task);
   };
 
-  const handleRefresh = () => {
-    setTasksLoaded(false);
+  const handleRefresh = async () => {
+    useTaskStore.getState().setTasksLoaded(false);
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token ?? null;
+    if (token) {
+      try {
+        await fetchBootstrap(token);
+      } catch {
+        useTaskStore.getState().setTasksLoaded(true);
+      }
+    } else {
+      useTaskStore.getState().setTasksLoaded(true);
+    }
   };
 
   const categories = taskGroups.map((g) => ({

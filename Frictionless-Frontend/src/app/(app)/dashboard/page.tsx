@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Gauge,
@@ -15,11 +15,10 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuthStore } from '@/stores/auth-store';
-import { dummyStartups } from '@/lib/dummy-data/startups';
-import { dummyMatches } from '@/lib/dummy-data/matches';
-import { dummyTaskGroups } from '@/lib/dummy-data/tasks';
-import { dummyActivities } from '@/lib/dummy-data/activity';
-import { dummyInvestors } from '@/lib/dummy-data/investors';
+import { useReadinessStore } from '@/stores/readiness-store';
+import { useTaskStore } from '@/stores/task-store';
+import { supabase } from '@/lib/supabase/client';
+import type { ActivityEvent } from '@/components/dashboard/ActivityTimeline';
 import { ScoreGauge } from '@/components/dashboard/ScoreGauge';
 import { CategoryBreakdown } from '@/components/dashboard/CategoryBreakdown';
 import { GapsCard } from '@/components/dashboard/GapsCard';
@@ -27,17 +26,7 @@ import { MatchPreviewList } from '@/components/dashboard/MatchPreviewList';
 import { TaskQuickList } from '@/components/dashboard/TaskQuickList';
 import { ActivityTimeline } from '@/components/dashboard/ActivityTimeline';
 import { QuickActions } from '@/components/dashboard/QuickActions';
-import { supabase } from '@/lib/supabase/client';
-
-// Use NeuralPay as the current user's startup
-const startup = dummyStartups[0];
-const startupMatches = dummyMatches.filter(
-  (m) => m.startup_org_id === startup.org_id,
-);
-const allTasks = dummyTaskGroups.flatMap((g) => g.tasks);
-const incompleteTasks = allTasks.filter(
-  (t) => t.status === 'todo' || t.status === 'in_progress',
-);
+import { getTopGapsFromRubric } from '@/lib/readiness-rubric';
 
 function getGreeting(): { text: string; icon: React.ReactNode } {
   const hour = new Date().getHours();
@@ -82,63 +71,70 @@ function QuickStat({ icon, label, value, color, delay }: QuickStatProps) {
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const isStartup = user?.org_type === 'startup';
-  // Always start loading for startups so we never flash dummy data (on first visit or when navigating from elsewhere)
-  const [readiness, setReadiness] = useState<{
-    score_summary?: { _overall?: { raw_percentage?: number; weighted_total?: number }; [k: string]: unknown };
-    scored_rubric?: unknown;
-    updated_at?: string | null;
-  } | null>(null);
-  const [readinessChecked, setReadinessChecked] = useState(false);
-  const [scoreHistory, setScoreHistory] = useState<{ score: number; updated_at: string }[]>([]);
+  const { readiness, scoreHistory, documentCount, bootstrapLoaded } = useReadinessStore();
+  const { tasks, taskGroups } = useTaskStore();
+  const [activities, setActivities] = useState<ActivityEvent[]>([]);
   const greeting = getGreeting();
-  const firstName = user?.full_name?.split(' ')[0] ?? startup.founders[0].full_name.split(' ')[0];
+  const firstName = user?.full_name?.split(' ')[0] ?? 'there';
 
   useEffect(() => {
-    if (!user) return; // wait for user to load
-    if (user.org_type !== 'startup') {
-      setReadinessChecked(true);
-      return;
-    }
+    if (!isStartup || !bootstrapLoaded) return;
     let cancelled = false;
     (async () => {
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token ?? null;
       if (!token || cancelled) return;
-      const [statusRes, historyRes] = await Promise.all([
-        fetch('/api/readiness/status', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/readiness/score-history', { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-      const [json, historyJson] = await Promise.all([
-        statusRes.json().catch(() => ({})),
-        historyRes.json().catch(() => ({ entries: [] })),
-      ]);
-      if (cancelled) return;
-      if (json.status === 'ready' && json.score_summary) {
-        setReadiness({
-          score_summary: json.score_summary,
-          scored_rubric: json.scored_rubric,
-          updated_at: json.updated_at ?? null,
+      try {
+        const res = await fetch('/api/startup/activity?limit=30', {
+          headers: { Authorization: `Bearer ${token}` },
         });
+        const json = await res.json().catch(() => ({ activities: [] }));
+        if (!cancelled) setActivities(json.activities ?? []);
+      } catch {
+        if (!cancelled) setActivities([]);
       }
-      if (historyJson.entries?.length) {
-        setScoreHistory(
-          historyJson.entries.map((e: { score: number; updated_at: string }) => ({
-            score: Number(e.score),
-            updated_at: e.updated_at,
-          }))
-        );
-      }
-      if (!cancelled) setReadinessChecked(true);
     })();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [isStartup, bootstrapLoaded]);
 
-  // Avoid flash of dummy dashboard: show loading until user is known and (for startups) readiness fetch completes
-  if (!user || (isStartup && !readinessChecked)) {
+  const incompleteTasks = useMemo(
+    () => tasks.filter((t) => t.status === 'todo' || t.status === 'in_progress'),
+    [tasks]
+  );
+
+  const biggestGaps = useMemo(() => {
+    const categories =
+      readiness?.score_summary && typeof readiness.score_summary === 'object'
+        ? Object.entries(readiness.score_summary)
+            .filter(([k]) => k !== '_overall' && k !== 'totals')
+            .map(([, v]) => {
+              const cat = v as { category_name?: string; percentage?: number };
+              return { name: cat.category_name ?? '', score: cat.percentage ?? 0 };
+            })
+            .filter((c) => c.name)
+        : [];
+    const gaps = getTopGapsFromRubric(
+      categories,
+      readiness?.scored_rubric as Record<string, unknown> | undefined,
+      3
+    );
+    return gaps.map((g) => {
+      const taskId = tasks.find(
+        (t) =>
+          t.title.trim().toLowerCase() === g.item.trim().toLowerCase() ||
+          g.item.toLowerCase().includes(t.title.trim().toLowerCase()) ||
+          t.title.toLowerCase().includes(g.item.trim().toLowerCase())
+      )?.id;
+      return { ...g, taskId };
+    });
+  }, [readiness?.score_summary, readiness?.scored_rubric, tasks]);
+
+  // Data comes from layout prefetch (bootstrap). Show loading until bootstrap has run for startups.
+  if (!user || (isStartup && !bootstrapLoaded)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-electric-blue" />
-        <p className="text-sm text-muted-foreground">Loading your readiness score…</p>
+        <p className="text-sm text-muted-foreground">Loading dashboard…</p>
       </div>
     );
   }
@@ -187,7 +183,7 @@ export default function DashboardPage() {
             {greeting.text}, {firstName}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Here&apos;s what&apos;s happening with {startup.org.name} today.
+            Here&apos;s what&apos;s happening with {user?.org_name ?? 'your organization'} today.
           </p>
         </div>
       </motion.div>
@@ -204,7 +200,7 @@ export default function DashboardPage() {
         <QuickStat
           icon={<Users className="w-5 h-5 text-electric-purple" />}
           label="Matches"
-          value={startupMatches.length}
+          value={0}
           color="bg-electric-purple/10"
           delay={0.15}
         />
@@ -218,7 +214,7 @@ export default function DashboardPage() {
         <QuickStat
           icon={<FileText className="w-5 h-5 text-electric-cyan" />}
           label="Documents"
-          value={12}
+          value={documentCount}
           color="bg-electric-cyan/10"
           delay={0.25}
         />
@@ -241,17 +237,17 @@ export default function DashboardPage() {
 
         {/* Row 2: Gaps + Matches + Tasks */}
         <GapsCard
-          missingData={startup.assessment.missing_data}
+          missingData={biggestGaps}
           className="lg:col-span-4"
         />
         <MatchPreviewList
-          matches={startupMatches}
-          investors={dummyInvestors}
+          matches={[]}
+          investors={[]}
           maxItems={4}
           className="lg:col-span-4"
         />
         <TaskQuickList
-          taskGroups={dummyTaskGroups}
+          taskGroups={taskGroups}
           maxItems={5}
           className="lg:col-span-4"
         />
@@ -261,7 +257,7 @@ export default function DashboardPage() {
 
         {/* Row 4: Activity Timeline */}
         <ActivityTimeline
-          activities={dummyActivities}
+          activities={activities}
           maxItems={10}
           className="lg:col-span-12"
         />

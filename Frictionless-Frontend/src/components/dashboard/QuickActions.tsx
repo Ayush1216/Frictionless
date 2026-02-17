@@ -9,6 +9,7 @@ interface QuickActionsProps {
   className?: string;
 }
 
+// First 3 are actionable (link to respective tabs); View Matches unchanged.
 const actions = [
   {
     label: 'Upload Document',
@@ -66,8 +67,8 @@ export function QuickActions({ className }: QuickActionsProps) {
             <Link
               href={action.href}
               className={cn(
-                'flex flex-col items-center p-4 rounded-xl border border-obsidian-600/30',
-                'bg-gradient-to-br',
+                'flex flex-col items-center justify-center p-4 rounded-xl border border-obsidian-600/30',
+                'bg-gradient-to-br cursor-pointer',
                 action.gradient,
                 'hover:border-obsidian-500/50 hover:shadow-lg transition-all group',
               )}

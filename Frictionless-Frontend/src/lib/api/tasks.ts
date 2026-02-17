@@ -1,7 +1,7 @@
 import type { Task, TaskComment } from '@/types/database';
 import { supabase } from '@/lib/supabase/client';
 
-const getAuthHeaders = async (): Promise<HeadersInit> => {
+export const getAuthHeaders = async (): Promise<HeadersInit> => {
   if (!supabase) return {};
   const { data } = await supabase.auth.getSession();
   const token = data?.session?.access_token ?? null;
@@ -90,6 +90,21 @@ export async function fetchTaskChatMessages(
   const res = await fetch(`/api/tasks/${taskId}/chat`, { headers });
   const data = await res.json().catch(() => ({ messages: [] }));
   return { messages: data.messages ?? [] };
+}
+
+export async function saveTaskChatMessages(
+  taskId: string,
+  messages: { role: string; content: string }[]
+): Promise<{ ok: boolean }> {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`/api/tasks/${taskId}/chat-messages`, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error ?? data?.detail ?? 'Failed to save messages');
+  return { ok: true };
 }
 
 export async function chatWithTaskAI(

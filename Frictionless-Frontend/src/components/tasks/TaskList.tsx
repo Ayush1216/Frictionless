@@ -21,9 +21,10 @@ import type { Task, TaskGroup } from '@/types/database';
 import { format, isPast, parseISO } from 'date-fns';
 import { useSwipeable } from 'react-swipeable';
 
+// Standardized: red = high/critical, yellow/orange = medium, green = low
 const priorityConfig: Record<string, { color: string; icon: React.ElementType }> = {
   critical: { color: 'text-red-400', icon: Flame },
-  high: { color: 'text-orange-400', icon: ArrowUp },
+  high: { color: 'text-red-400', icon: ArrowUp },
   medium: { color: 'text-yellow-400', icon: ArrowRightIcon },
   low: { color: 'text-green-400', icon: ArrowDown },
 };

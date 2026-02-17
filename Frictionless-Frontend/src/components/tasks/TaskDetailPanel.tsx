@@ -242,8 +242,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50">
                     <span className={cn(
                       'text-sm font-medium capitalize',
-                      task.priority === 'critical' ? 'text-red-400' :
-                      task.priority === 'high' ? 'text-orange-400' :
+                      (task.priority === 'critical' || task.priority === 'high') ? 'text-red-400' :
                       task.priority === 'medium' ? 'text-yellow-400' :
                       task.priority === 'low' ? 'text-green-400' :
                       'text-muted-foreground'

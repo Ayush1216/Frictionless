@@ -16,9 +16,10 @@ import { StatusChip } from '@/components/shared/StatusChip';
 import type { Task } from '@/types/database';
 import { format, isPast, parseISO } from 'date-fns';
 
+// Standardized: red = high/critical, yellow/orange = medium, green = low
 const priorityConfig: Record<string, { label: string; color: string; icon: React.ElementType }> = {
   critical: { label: 'Critical', color: 'bg-red-500/15 text-red-400 border-red-500/30', icon: Flame },
-  high: { label: 'High', color: 'bg-orange-500/15 text-orange-400 border-orange-500/30', icon: ArrowUp },
+  high: { label: 'High', color: 'bg-red-500/15 text-red-400 border-red-500/30', icon: ArrowUp },
   medium: { label: 'Medium', color: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30', icon: ArrowRight },
   low: { label: 'Low', color: 'bg-green-500/15 text-green-400 border-green-500/30', icon: ArrowDown },
 };

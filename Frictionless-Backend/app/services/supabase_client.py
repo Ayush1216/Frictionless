@@ -453,6 +453,36 @@ def mark_task_done(supabase: Client, task_id: str, completed_by: str | None = No
     return rows[0] if rows else None
 
 
+def mark_tasks_done_by_subcategories(
+    supabase: Client, org_id: str, subcategory_names: list[str]
+) -> None:
+    """Mark all tasks for this org with subcategory_name in the list as done (sync with rubric)."""
+    if not subcategory_names:
+        return
+    r = (
+        supabase.table("task_groups")
+        .select("id")
+        .eq("org_id", org_id)
+        .execute()
+    )
+    group_ids = [g["id"] for g in (r.data or []) if g.get("id")]
+    if not group_ids:
+        return
+    now = datetime.now(timezone.utc).isoformat()
+    for sc in subcategory_names:
+        try:
+            (
+                supabase.table("tasks")
+                .update({"status": "done", "updated_at": now, "completed_at": now})
+                .in_("group_id", group_ids)
+                .eq("subcategory_name", sc)
+                .neq("status", "done")
+                .execute()
+            )
+        except Exception as e:
+            log.warning("mark_tasks_done_by_subcategories %s: %s", sc, e)
+
+
 def get_task_ai_chat_messages(supabase: Client, task_id: str) -> list[dict]:
     """Fetch task_ai_chat_messages for a task."""
     try:
@@ -485,3 +515,71 @@ def insert_task_ai_chat_message(
     except Exception as e:
         log.warning("Could not insert task_ai_chat_message: %s", e)
         return None
+
+
+def get_recent_activity(supabase: Client, org_id: str, limit: int = 30) -> list[dict]:
+    """
+    Return a unified recent-activity stream from readiness_score_history and completed tasks.
+    Each item: { "id", "type", "title", "description", "timestamp" }.
+    """
+    out: list[dict] = []
+    try:
+        # Score history: id, score, updated_at, update_source
+        r = (
+            supabase.table("readiness_score_history")
+            .select("id, score, updated_at, update_source")
+            .eq("startup_org_id", org_id)
+            .order("updated_at", desc=True)
+            .limit(15)
+            .execute()
+        )
+        for row in r.data or []:
+            score = row.get("score")
+            ts = row.get("updated_at") or ""
+            src = (row.get("update_source") or "manual").replace("_", " ")
+            out.append({
+                "id": f"score-{row.get('id', ts)}",
+                "type": "assessment_run" if src != "manual" else "score_change",
+                "title": "Readiness score updated",
+                "description": f"Score updated to {score}" if score is not None else "Readiness assessment run",
+                "timestamp": ts,
+            })
+    except Exception as e:
+        log.warning("get_recent_activity score_history: %s", e)
+
+    try:
+        gr = (
+            supabase.table("task_groups")
+            .select("id")
+            .eq("org_id", org_id)
+            .execute()
+        )
+        group_ids = [g["id"] for g in (gr.data or []) if g.get("id")]
+        if group_ids:
+            tr = (
+                supabase.table("tasks")
+                .select("id, title, completed_at")
+                .in_("group_id", group_ids)
+                .eq("status", "done")
+                .order("completed_at", desc=True)
+                .limit(20)
+                .execute()
+            )
+            for row in tr.data or []:
+                if not row.get("completed_at"):
+                    continue
+                ts = row.get("completed_at") or row.get("updated_at", "")
+                title = (row.get("title") or "Task").strip()
+                out.append({
+                    "id": f"task-{row.get('id', ts)}",
+                    "type": "task_completed",
+                    "title": "Task completed",
+                    "description": f'"{title}" marked as done',
+                    "timestamp": ts,
+                })
+    except Exception as e:
+        log.warning("get_recent_activity completed_tasks: %s", e)
+
+    # Sort by timestamp desc and cap
+    out.sort(key=lambda x: x.get("timestamp") or "", reverse=True)
+    return out[:limit]

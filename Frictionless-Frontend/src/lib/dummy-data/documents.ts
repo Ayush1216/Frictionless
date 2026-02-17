@@ -1,4 +1,4 @@
-export type DummyDocumentCategory = 'pitch_deck' | 'financial_model' | 'cap_table' | 'legal' | 'data_room' | 'other';
+export type DummyDocumentCategory = 'pitch_deck' | 'financial_model' | 'cap_table' | 'legal' | 'data_room' | 'data_room_doc' | 'other';
 
 export type DummyValidationStatus = 'pending' | 'valid' | 'invalid' | 'expired';
 

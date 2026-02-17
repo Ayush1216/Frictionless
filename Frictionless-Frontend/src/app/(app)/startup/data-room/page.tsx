@@ -1,25 +1,23 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, Search, HardDrive, FolderOpen } from 'lucide-react';
+import { Upload, Search, HardDrive, FolderOpen, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FileGrid } from '@/components/data-room/FileGrid';
 import { FilePreview } from '@/components/data-room/FilePreview';
 import { UploadModal } from '@/components/data-room/UploadModal';
 import { ShareModal } from '@/components/data-room/ShareModal';
-import { dummyDocuments, type DummyDocument, type DummyDocumentCategory } from '@/lib/dummy-data/documents';
+import { getAuthHeaders } from '@/lib/api/tasks';
+import type { DummyDocument, DummyDocumentCategory } from '@/lib/dummy-data/documents';
 
 type FilterTab = 'all' | DummyDocumentCategory;
 
 const FILTER_TABS: { value: FilterTab; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'pitch_deck', label: 'Pitch Decks' },
-  { value: 'financial_model', label: 'Financials' },
-  { value: 'legal', label: 'Legal' },
-  { value: 'cap_table', label: 'Cap Tables' },
-  { value: 'data_room', label: 'Data Room' },
+  { value: 'pitch_deck', label: 'Pitch Deck' },
+  { value: 'data_room_doc', label: 'Proof / Uploads' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -31,14 +29,52 @@ function formatStorageUsed(docs: DummyDocument[]): string {
 }
 
 export default function DataRoomPage() {
+  const [documents, setDocuments] = useState<DummyDocument[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [search, setSearch] = useState('');
   const [uploadOpen, setUploadOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<DummyDocument | null>(null);
   const [shareDoc, setShareDoc] = useState<DummyDocument | null>(null);
 
+  const loadDocuments = useCallback(async () => {
+    setLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch('/api/startup/data-room', { headers });
+      const data = await res.json().catch(() => ({ documents: [] }));
+      setDocuments(data.documents ?? []);
+    } catch {
+      setDocuments([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDocuments();
+  }, [loadDocuments]);
+
+  const handleUploadComplete = useCallback(
+    async (files: File[]) => {
+      const headers = await getAuthHeaders();
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        await fetch('/api/startup/data-room/upload', {
+          method: 'POST',
+          headers,
+          body: formData,
+        });
+      }
+      await loadDocuments();
+      setUploadOpen(false);
+    },
+    [loadDocuments]
+  );
+
   const filtered = useMemo(() => {
-    let docs = dummyDocuments;
+    let docs = documents;
     if (activeTab !== 'all') {
       docs = docs.filter((d) => d.category === activeTab);
     }
@@ -47,17 +83,27 @@ export default function DataRoomPage() {
       docs = docs.filter(
         (d) =>
           d.name.toLowerCase().includes(q) ||
-          d.uploaded_by.toLowerCase().includes(q)
+          (d.uploaded_by && d.uploaded_by.toLowerCase().includes(q))
       );
     }
     return docs;
-  }, [activeTab, search]);
+  }, [documents, activeTab, search]);
 
-  const totalSize = formatStorageUsed(dummyDocuments);
+  const totalSize = formatStorageUsed(documents);
   const storagePercent = Math.min(
-    (dummyDocuments.reduce((s, d) => s + d.file_size, 0) / (1024 * 1024 * 100)) * 100,
+    (documents.reduce((s, d) => s + d.file_size, 0) / (1024 * 1024 * 100)) * 100,
     100
   );
+
+  // Avoid flash of empty state: show loading until first fetch completes
+  if (loading) {
+    return (
+      <div className="p-4 lg:p-8 flex flex-col items-center justify-center min-h-[50vh] gap-4">
+        <Loader2 className="h-10 w-10 animate-spin text-electric-blue" />
+        <p className="text-sm text-muted-foreground">Loading data room…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -74,7 +120,7 @@ export default function DataRoomPage() {
             Data Room
           </h1>
           <p className="text-muted-foreground text-sm">
-            {dummyDocuments.length} documents &middot; {totalSize} used
+            {documents.length} documents &middot; {totalSize} used
           </p>
         </div>
         <Button
@@ -153,7 +199,11 @@ export default function DataRoomPage() {
       />
 
       {/* Modals */}
-      <UploadModal open={uploadOpen} onOpenChange={setUploadOpen} />
+      <UploadModal
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        onUploadComplete={handleUploadComplete}
+      />
       <FilePreview
         document={previewDoc}
         open={!!previewDoc}

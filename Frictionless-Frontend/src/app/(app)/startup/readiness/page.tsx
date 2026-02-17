@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 import { ScoreHero } from '@/components/readiness/ScoreHero';
@@ -8,10 +8,63 @@ import { CategoryAccordion } from '@/components/readiness/CategoryAccordion';
 import { MissingDataBanner } from '@/components/readiness/MissingDataBanner';
 import { AssessmentHistory, type ScoreHistoryEntry } from '@/components/readiness/AssessmentHistory';
 import { ImprovementChart } from '@/components/readiness/ImprovementChart';
+import { getMissingItemsFromRubric } from '@/lib/readiness-rubric';
 import { dummyStartups } from '@/lib/dummy-data/startups';
 import { dummyAssessmentRuns } from '@/lib/dummy-data/assessments';
 import { useAuthStore } from '@/stores/auth-store';
 import { supabase } from '@/lib/supabase/client';
+
+/** From rubric: lowest-scoring category → task in that category with highest impact (potential points). */
+function getRecommendedTask(
+  categories: { name: string; score: number }[],
+  scoredRubric: Record<string, unknown> | null | undefined,
+  currentScore: number
+): { taskTitle: string; impactPoints: number; projectedScore: number } | null {
+  if (!scoredRubric || categories.length === 0) return null;
+  const sorted = [...categories].sort((a, b) => a.score - b.score);
+  const lowestCategoryName = sorted[0].name;
+  const formatKey = (k: string) =>
+    k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const METADATA_KEYS = ['weight', 'Category_Name', 'maximum_point'];
+
+  let rubricTotalMax = 0;
+  let bestTask: { title: string; impact: number } | null = null;
+
+  for (const [catKey, catVal] of Object.entries(scoredRubric)) {
+    if (['totals', '_overall'].includes(catKey.toLowerCase())) continue;
+    if (!catVal || typeof catVal !== 'object' || Array.isArray(catVal)) continue;
+    const meta = catVal as Record<string, unknown>;
+    const categoryName = (meta.Category_Name as string) || formatKey(catKey);
+    for (const [subKey, subVal] of Object.entries(meta)) {
+      if (METADATA_KEYS.includes(subKey) || !Array.isArray(subVal)) continue;
+      for (const item of subVal) {
+        if (!item || typeof item !== 'object' || !('options' in item)) continue;
+        const maxPts = Number((item as { maximum_points?: number }).maximum_points ?? 0);
+        const pts = Number((item as { Points?: number }).Points ?? 0);
+        rubricTotalMax += maxPts;
+        if (categoryName !== lowestCategoryName) continue;
+        const impact = maxPts - pts;
+        if (impact <= 0) continue;
+        const title =
+          (item as { Question?: string }).Question ||
+          (item as { subcategory_name?: string }).subcategory_name ||
+          '';
+        if (!bestTask || impact > bestTask.impact) bestTask = { title, impact };
+      }
+    }
+  }
+  if (!bestTask || bestTask.impact <= 0) return null;
+  if (rubricTotalMax <= 0) rubricTotalMax = 1;
+  const projectedScore = Math.min(
+    100,
+    Math.round((currentScore + (bestTask.impact / rubricTotalMax) * 100) * 10) / 10
+  );
+  return {
+    taskTitle: bestTask.title,
+    impactPoints: bestTask.impact,
+    projectedScore,
+  };
+}
 
 export default function ReadinessPage() {
   const user = useAuthStore((s) => s.user);
@@ -95,6 +148,25 @@ export default function ReadinessPage() {
       : assessment.categories;
   const lastAssessedIso = readiness?.updated_at ?? latestRun?.scored_at ?? new Date().toISOString();
 
+  const recommendedTask = useMemo(
+    () =>
+      getRecommendedTask(
+        readinessCategories,
+        readiness?.scored_rubric as Record<string, unknown> | undefined,
+        readinessScore
+      ),
+    [readinessCategories, readiness?.scored_rubric, readinessScore]
+  );
+
+  const missingItems = useMemo(
+    () =>
+      getMissingItemsFromRubric(
+        readinessCategories,
+        readiness?.scored_rubric as Record<string, unknown> | undefined
+      ),
+    [readinessCategories, readiness?.scored_rubric]
+  );
+
   if (!user || (isStartup && !readinessChecked)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -133,7 +205,7 @@ export default function ReadinessPage() {
 
         {/* Right: Missing Data + Assessment History */}
         <div className="space-y-6">
-          <MissingDataBanner items={assessment.missing_data} />
+          <MissingDataBanner items={missingItems} />
           <AssessmentHistory runs={runs} scoreHistory={scoreHistory} />
         </div>
       </div>
@@ -141,14 +213,15 @@ export default function ReadinessPage() {
       {/* Full-width: Category Breakdown */}
       <CategoryAccordion
         categories={readinessCategories}
-        missingData={assessment.missing_data}
+        missingData={missingItems}
         scoredRubric={readiness?.scored_rubric as Record<string, unknown> | undefined}
       />
 
-      {/* Improvement Chart */}
+      {/* Improvement Chart: lowest-scoring category → highest-impact task */}
       <ImprovementChart
         currentScore={readinessScore}
-        missingData={assessment.missing_data}
+        recommendedTask={recommendedTask}
+        missingData={recommendedTask ? undefined : missingItems}
       />
     </div>
   );

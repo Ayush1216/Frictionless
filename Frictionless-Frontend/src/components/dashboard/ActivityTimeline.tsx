@@ -18,10 +18,18 @@ import {
   Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { DummyActivityEvent } from '@/lib/dummy-data/activity';
+
+/** Activity event from real-time logs (score history, completed tasks, etc.) */
+export interface ActivityEvent {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  timestamp: string;
+}
 
 interface ActivityTimelineProps {
-  activities: DummyActivityEvent[];
+  activities: ActivityEvent[];
   maxItems?: number;
   className?: string;
 }
@@ -42,18 +50,9 @@ const activityIcons: Record<string, { icon: React.ReactNode; color: string }> = 
   program_enrollment: { icon: <GraduationCap className="w-3.5 h-3.5" />, color: 'text-electric-blue bg-electric-blue/10' },
 };
 
-function timeAgo(timestamp: string): string {
-  const now = Date.now();
-  const then = new Date(timestamp).getTime();
-  const diffMs = now - then;
-  const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+function formatActivityDate(timestamp: string): string {
+  const d = new Date(timestamp);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 export function ActivityTimeline({
@@ -106,7 +105,7 @@ export function ActivityTimeline({
                       {event.title}
                     </span>
                     <span className="text-[10px] font-mono text-obsidian-400 shrink-0">
-                      {timeAgo(event.timestamp)}
+                      {formatActivityDate(event.timestamp)}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">

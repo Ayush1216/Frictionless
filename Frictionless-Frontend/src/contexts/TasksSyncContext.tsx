@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext } from 'react';
 import { useTaskStore } from '@/stores/task-store';
-import { apiUpdateTask, completeTask } from '@/lib/api/tasks';
+import { updateTask as apiUpdateTask, completeTask } from '@/lib/api/tasks';
 import type { Task } from '@/types/database';
 
 type UpdateTaskFn = (id: string, updates: Partial<Task>) => void | Promise<void>;
@@ -26,6 +26,7 @@ export function TasksSyncProvider({
   const tasks = useTaskStore((s) => s.tasks);
   const taskProgress = useTaskStore((s) => s.taskProgress);
   const setTaskProgress = useTaskStore((s) => s.setTaskProgress);
+  const setTasksLoaded = useTaskStore((s) => s.setTasksLoaded);
   const incrementGroupDoneCount = useTaskStore((s) => s.incrementGroupDoneCount);
 
   const updateTask = useCallback<UpdateTaskFn>(

@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -19,83 +18,81 @@ import {
   SheetDescription,
   SheetFooter,
 } from '@/components/ui/sheet';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { FileDropzone } from '@/components/shared/FileDropzone';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 
 interface UploadModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** When provided, "Upload Files" will call this with the selected files (e.g. to upload to data room and trigger processing). */
+  onUploadComplete?: (files: File[]) => Promise<void>;
 }
 
-const CATEGORIES = [
-  { value: 'pitch_deck', label: 'Pitch Deck' },
-  { value: 'financial_model', label: 'Financial Model' },
-  { value: 'cap_table', label: 'Cap Table' },
-  { value: 'legal', label: 'Legal' },
-  { value: 'other', label: 'Other' },
-];
-
-function UploadContent() {
-  const [category, setCategory] = useState('');
-  const [aiAnalyze, setAiAnalyze] = useState(true);
-
+function UploadContent({
+  onUpload,
+  onUploadClick,
+  uploadDisabled,
+}: {
+  onUpload: (files: File[]) => void;
+  onUploadClick: () => void;
+  uploadDisabled: boolean;
+}) {
   return (
     <div className="space-y-5">
-      {/* Category selector */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-foreground">Document Type</label>
-        <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger className="bg-obsidian-800 border-obsidian-600">
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-          <SelectContent className="bg-obsidian-800 border-obsidian-600">
-            {CATEGORIES.map((c) => (
-              <SelectItem key={c.value} value={c.value}>
-                {c.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Dropzone */}
       <FileDropzone
         accept=".pdf,.xlsx,.xls,.csv,.docx,.doc,.png,.jpg,.jpeg,.zip"
         multiple
         maxSize={50 * 1024 * 1024}
+        onUpload={onUpload}
       />
-
-      {/* AI analysis option */}
-      <label className="flex items-center gap-3 p-3 rounded-lg bg-obsidian-800/60 border border-obsidian-600/50 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={aiAnalyze}
-          onChange={(e) => setAiAnalyze(e.target.checked)}
-          className="rounded border-obsidian-600 bg-obsidian-700 text-electric-blue focus:ring-electric-blue w-4 h-4"
-        />
-        <div className="flex items-center gap-2 flex-1">
-          <Sparkles className="w-4 h-4 text-electric-purple shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-foreground">AI Analysis</p>
-            <p className="text-xs text-muted-foreground">
-              Automatically analyze documents for key insights
-            </p>
-          </div>
-        </div>
-      </label>
+      <p className="text-xs text-muted-foreground">
+        Uploaded files are added to your Data Room. PDFs and spreadsheets are analyzed to update your readiness score.
+      </p>
+      <div className="flex justify-end gap-2">
+        <Button
+          className="bg-electric-blue hover:bg-electric-blue/90"
+          onClick={onUploadClick}
+          disabled={uploadDisabled}
+        >
+          Upload Files
+        </Button>
+      </div>
     </div>
   );
 }
 
-export function UploadModal({ open, onOpenChange }: UploadModalProps) {
+export function UploadModal({ open, onOpenChange, onUploadComplete }: UploadModalProps) {
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
+
+  const handleUpload = useCallback((files: File[]) => {
+    setSelectedFiles(files);
+  }, []);
+
+  const handleUploadClick = useCallback(async () => {
+    if (!selectedFiles.length) return;
+    if (onUploadComplete) {
+      setUploading(true);
+      try {
+        await onUploadComplete(selectedFiles);
+        setSelectedFiles([]);
+      } finally {
+        setUploading(false);
+      }
+    }
+    onOpenChange(false);
+  }, [selectedFiles, onUploadComplete, onOpenChange]);
+
+  const uploadDisabled = selectedFiles.length === 0 || uploading;
+
+  const content = (
+    <UploadContent
+      onUpload={handleUpload}
+      onUploadClick={handleUploadClick}
+      uploadDisabled={uploadDisabled}
+    />
+  );
 
   if (isDesktop) {
     return (
@@ -104,16 +101,13 @@ export function UploadModal({ open, onOpenChange }: UploadModalProps) {
           <DialogHeader>
             <DialogTitle className="font-display">Upload Documents</DialogTitle>
             <DialogDescription>
-              Add files to your data room. Supported formats: PDF, XLSX, CSV, DOCX, Images, ZIP.
+              Add files to your data room. Supported: PDF, XLSX, CSV, DOCX, Images, ZIP.
             </DialogDescription>
           </DialogHeader>
-          <UploadContent />
+          {content}
           <DialogFooter>
             <Button variant="secondary" onClick={() => onOpenChange(false)}>
               Cancel
-            </Button>
-            <Button className="bg-electric-blue hover:bg-electric-blue/90">
-              Upload Files
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -131,14 +125,11 @@ export function UploadModal({ open, onOpenChange }: UploadModalProps) {
           </SheetDescription>
         </SheetHeader>
         <div className="py-4">
-          <UploadContent />
+          {content}
         </div>
-        <SheetFooter className="flex-row gap-2">
+        <SheetFooter>
           <Button variant="secondary" className="flex-1" onClick={() => onOpenChange(false)}>
             Cancel
-          </Button>
-          <Button className="flex-1 bg-electric-blue hover:bg-electric-blue/90">
-            Upload Files
           </Button>
         </SheetFooter>
       </SheetContent>

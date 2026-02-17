@@ -2,11 +2,14 @@
 
 import { motion } from 'framer-motion';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 interface MissingItem {
   item: string;
   severity: 'high' | 'medium' | 'low';
+  /** Optional task id to open when clicking this gap */
+  taskId?: string;
 }
 
 interface GapsCardProps {
@@ -14,6 +17,7 @@ interface GapsCardProps {
   className?: string;
 }
 
+// Aligned with Active Tasks: red = high, yellow/orange = medium, green = low
 const severityConfig = {
   high: {
     badge: 'bg-score-poor/15 text-score-poor border-score-poor/20',
@@ -24,7 +28,7 @@ const severityConfig = {
     label: 'Medium',
   },
   low: {
-    badge: 'bg-obsidian-500/15 text-obsidian-300 border-obsidian-500/20',
+    badge: 'bg-score-excellent/15 text-score-excellent border-score-excellent/20',
     label: 'Low',
   },
 };
@@ -52,51 +56,58 @@ export function GapsCard({ missingData, className }: GapsCardProps) {
     );
   }
 
+  const items = missingData.slice(0, 3);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2 }}
-      className={cn('glass-card p-6', className)}
+      className={cn('glass-card p-6 flex flex-col', className)}
     >
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-body font-medium text-muted-foreground">
-            Biggest Gaps
-          </h3>
-          <span className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-mono font-bold rounded-full bg-score-poor/20 text-score-poor">
-            {missingData.length}
-          </span>
-        </div>
+      <div className="flex items-center justify-between mb-4 shrink-0">
+        <h3 className="text-sm font-body font-medium text-muted-foreground">
+          Biggest Gaps
+        </h3>
         <AlertTriangle className="w-4 h-4 text-score-fair" />
       </div>
-      <div className="space-y-2.5">
-        {missingData.map((item, i) => {
+      <div className="flex flex-1 flex-col gap-3 min-h-[200px]">
+        {items.map((item, i) => {
           const config = severityConfig[item.severity];
+          const href = item.taskId
+            ? `/startup/tasks?task=${encodeURIComponent(item.taskId)}`
+            : '/startup/tasks';
           return (
-            <motion.div
-              key={item.item}
-              initial={{ opacity: 0, x: -12 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, delay: 0.3 + i * 0.08 }}
-              className="flex items-center justify-between p-3 rounded-lg bg-obsidian-700/30 border border-obsidian-600/30 hover:border-obsidian-500/50 transition-colors group"
+            <Link
+              key={`${item.item}-${i}`}
+              href={href}
+              className="flex-1 min-h-0 flex flex-col"
             >
-              <div className="flex items-center gap-3">
+              <motion.div
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: 0.3 + i * 0.08 }}
+                className="flex items-center gap-3 p-3 rounded-lg bg-obsidian-700/30 border border-obsidian-600/30 hover:border-obsidian-500/50 transition-colors group cursor-pointer h-full"
+              >
                 <span
                   className={cn(
-                    'text-[10px] font-medium px-2 py-0.5 rounded-full border',
+                    'text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0',
                     config.badge,
                   )}
                 >
                   {config.label}
                 </span>
-                <span className="text-sm text-foreground">{item.item}</span>
-              </div>
-              <button className="flex items-center gap-1 text-xs font-medium text-electric-blue opacity-0 group-hover:opacity-100 transition-opacity">
-                Fix now
-                <ChevronRight className="w-3 h-3" />
-              </button>
-            </motion.div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-foreground truncate block">{item.item}</span>
+                </div>
+                <div className="flex flex-col items-end shrink-0">
+                  <span className="flex items-center gap-1 text-xs font-medium text-electric-blue">
+                    Fix now
+                    <ChevronRight className="w-3 h-3" />
+                  </span>
+                </div>
+              </motion.div>
+            </Link>
           );
         })}
       </div>

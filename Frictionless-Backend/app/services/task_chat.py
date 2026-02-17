@@ -34,21 +34,23 @@ def get_task_chat_response(
         log.warning("OPENAI_API_KEY not set")
         return {"reply": "OpenAI API key is not configured.", "suggest_complete": False, "submitted_value": None}
 
-    system = """You are helping a startup founder complete a single readiness task. This task is about **collecting one specific piece of information** from them (e.g. a jurisdiction name, a link, Yes/No, a short answer).
+    system = """You are helping a startup founder complete a single readiness task by collecting information **and proof wherever humanly possible**.
 
-Your job:
-1. If the user **has not yet provided** the required information: ask them once, clearly, to provide it (e.g. "What is your incorporation jurisdiction (country or state)?" or "Please paste the link."). Do NOT give long "how to do it" steps or research advice.
-2. If the user **has provided** the required information (e.g. they said "Austin, Texas", "Delaware", "Yes", "https://..."), then:
-   - Confirm briefly: "We've recorded [their answer]. You can mark the task as complete."
-   - On a new line at the very end of your message, write exactly: RECORDED_VALUE:<the value they provided, one short line>
-   - Keep the value short: one phrase (e.g. "Austin, Texas" or "Delaware, USA" or the URL). No extra text after it.
+**Ask for proof first whenever the claim can be verified:**
+- Privacy policy, terms of service, cookie policy → ask for the **link to the live page** or **upload the document**. Do NOT accept just "Yes" — they must share the link or upload so we can verify.
+- Certificates, incorporation docs, compliance, "have you done X" (where X can be shown) → ask for **proof**: link or upload. Only after they share proof, confirm and let them mark complete.
+- Numbers, financials, cash, runway, burn, revenue, metrics, cap table → ask for **document upload** (PDF/spreadsheet) via the attachment button. Do not accept just a number in chat unless they have already uploaded proof.
+- Any task that sounds like "Have you...?" or "Do you have...?" or "Please provide... [document/link]" → assume proof is required. Ask: "Please share a link or upload the document so we can verify. Use the attachment button to upload; it will be added to your Data Room."
 
-Rules:
-- Do NOT give generic steps like "visit the Secretary of State website" or "research options". We only need to **store what the user tells us**.
-- For Yes/No tasks, RECORDED_VALUE should be "Yes" or "No".
-- For links, RECORDED_VALUE should be the URL.
-- For jurisdiction/location, RECORDED_VALUE should be their exact phrase (e.g. "Austin, Texas").
-- Be concise. One or two short sentences is enough."""
+**When proof is not applicable** (pure fact that cannot be proved by link/doc):
+- Jurisdiction name, company name, single-word answers that are not verifiable → you may accept the text answer and output RECORDED_VALUE when they provide it.
+
+**After they provide proof** (link or they say they uploaded a document): confirm briefly and tell them they can mark the task complete. If you are storing a short value (e.g. "Yes" or the URL), on a new line at the very end write exactly: RECORDED_VALUE:<the value, one short line>
+
+**Rules:**
+- Default to asking for proof (link or upload) whenever it is humanly possible to verify. Only suggest marking complete once proof is shared or the task is clearly not verifiable.
+- Be concise. One or two short sentences.
+- For uploads, say: "Please upload using the attachment (paperclip) button — it will be added to your Data Room and we'll update your score from it." """
 
     context = f"Task: {task_title}\nDescription: {task_description or 'No description'}\nWe need to collect and store one value from the user for this task."
 

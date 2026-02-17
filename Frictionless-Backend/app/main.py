@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import tempfile
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -15,12 +16,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.services.apollo import enrich_organization
+from app.services.extraction import startup_kv_extractor
+from app.services.extraction.mistral_ocr import run as run_mistral_ocr
 from app.services.extraction.pipeline import run_pipeline as run_extraction_pipeline
-from app.services.readiness_scorer import run_readiness_scoring
+from app.services.readiness_scorer import run_readiness_scoring, _inject_questionnaire
 from app.services.readiness_tasks import (
     apply_task_completion_to_rubric,
     compute_pending_tasks_from_rubric,
     compute_summary as readiness_compute_summary,
+    get_done_subcategory_names,
+    preserve_completions_from_rubric,
+    update_rubric_from_extraction,
 )
 from app.services.supabase_client import (
     create_signed_pdf_url,
@@ -36,8 +42,10 @@ from app.services.supabase_client import (
     get_task_by_id,
     get_task_groups_with_tasks,
     get_task_and_org_id,
+    get_recent_activity,
     insert_task_ai_chat_message,
     mark_task_done,
+    mark_tasks_done_by_subcategories,
     replace_org_tasks,
     upload_ocr_text,
     upsert_apollo_enrichment,
@@ -65,6 +73,11 @@ class RunExtractionRequest(BaseModel):
 
 class RunReadinessRequest(BaseModel):
     org_id: str
+
+
+class ProcessDataroomDocRequest(BaseModel):
+    org_id: str
+    storage_path: str
 
 
 @asynccontextmanager
@@ -193,6 +206,74 @@ async def run_extraction_endpoint(body: RunExtractionRequest, background_tasks: 
     return {"ok": True, "message": "Extraction started"}
 
 
+def _merge_kv_into_extraction(extraction_data: dict, new_kv: dict) -> None:
+    """Merge new KV extraction (non-empty values) into existing extraction_data in place."""
+    for section in ("initial_details", "financial_data", "founder_and_other_data"):
+        existing = extraction_data.get(section)
+        if not isinstance(existing, dict):
+            existing = {}
+        new_section = new_kv.get(section) or {}
+        for k, v in new_section.items():
+            if v is not None and str(v).strip():
+                existing[k] = v
+        extraction_data[section] = existing
+
+
+def _run_dataroom_doc_task(org_id: str, storage_path: str) -> None:
+    """OCR a data room document (PDF), run KV extraction, merge into extraction_data, then run readiness."""
+    if not (storage_path or "").lower().endswith(".pdf"):
+        log.info("Skipping KV/readiness for non-PDF data room doc: %s", storage_path)
+        return
+    supabase = get_supabase()
+    if not supabase:
+        log.error("Supabase not configured")
+        return
+    extraction = get_extraction_data(supabase, org_id)
+    if not extraction:
+        log.warning("No extraction data for org %s; run pitch deck extraction first", org_id)
+        return
+    pdf_url = create_signed_pdf_url(supabase, storage_path)
+    if not pdf_url:
+        log.error("Could not create signed URL for %s", storage_path)
+        return
+    with tempfile.TemporaryDirectory(prefix="frictionless_dataroom_") as tmp:
+        ocr_dir = Path(tmp) / "ocr"
+        ocr_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            txt_path = run_mistral_ocr(pdf_url=pdf_url, out_dir=ocr_dir, model="mistral-ocr-latest")
+        except Exception as exc:
+            log.exception("OCR failed for dataroom doc %s: %s", storage_path, exc)
+            return
+        kv_out = Path(tmp) / "dataroom_kv.json"
+        try:
+            new_kv = startup_kv_extractor.run_pipeline(
+                input_path=str(txt_path), output_path=str(kv_out)
+            )
+        except Exception as exc:
+            log.exception("KV extraction failed for dataroom doc: %s", exc)
+            return
+        _merge_kv_into_extraction(extraction, new_kv)
+        upsert_extraction_result(supabase, org_id, extraction)
+        log.info("Merged dataroom doc KV for org %s", org_id)
+    # Update readiness from extraction only (no Claude): same idea as task completion, math vs rubric
+    result = get_readiness_result(supabase, org_id)
+    if not result or not result.get("scored_rubric"):
+        log.warning("No existing readiness result for org %s; run full scoring once first", org_id)
+        return
+    updated_rubric = update_rubric_from_extraction(result["scored_rubric"], extraction)
+    # Re-read latest readiness and preserve any task completions that happened after our first read
+    result2 = get_readiness_result(supabase, org_id)
+    if result2 and result2.get("scored_rubric"):
+        preserve_completions_from_rubric(updated_rubric, result2["scored_rubric"])
+    questionnaire = get_questionnaire(supabase, org_id)
+    if questionnaire:
+        _inject_questionnaire(updated_rubric, questionnaire)
+    summary = readiness_compute_summary(updated_rubric)
+    upsert_readiness_result(supabase, org_id, updated_rubric, summary, update_source="dataroom_doc")
+    _invalidate_dashboard_cache(org_id)
+    log.info("Readiness updated from extraction for org %s (no Claude)", org_id)
+
+
 def _run_readiness_task(org_id: str, update_source: str = "scheduled") -> None:
     """Run readiness scoring and save to Supabase. Background thread."""
     supabase = get_supabase()
@@ -224,6 +305,7 @@ def _run_readiness_task(org_id: str, update_source: str = "scheduled") -> None:
         upsert_readiness_result(
             supabase, org_id, result["scored_rubric"], result["score_summary"], update_source
         )
+        _invalidate_dashboard_cache(org_id)
         log.info("Readiness scored and saved for org %s", org_id)
     except Exception as exc:
         log.exception("Readiness scoring failed for org %s: %s", org_id, exc)
@@ -246,6 +328,26 @@ async def run_readiness_endpoint(body: RunReadinessRequest, background_tasks: Ba
     return {"ok": True, "message": "Readiness scoring started"}
 
 
+@app.post("/api/process-dataroom-doc")
+async def process_dataroom_doc_endpoint(body: ProcessDataroomDocRequest, background_tasks: BackgroundTasks):
+    """Process a document added to the data room: OCR, KV merge into extraction, then run readiness."""
+    path_value = (getattr(body, "storage_path", None) or "").strip()
+    if not path_value:
+        raise HTTPException(status_code=400, detail="storage_path is required")
+    log.info("POST /api/process-dataroom-doc org_id=%s path=%s", body.org_id, path_value)
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    extraction = get_extraction_data(supabase, body.org_id)
+    if not extraction or not extraction.get("ocr_storage_path"):
+        raise HTTPException(
+            status_code=400,
+            detail="Extraction not ready. Complete pitch deck upload and extraction first.",
+        )
+    background_tasks.add_task(_run_dataroom_doc_task, body.org_id, path_value)
+    return {"ok": True, "message": "Data room document processing started"}
+
+
 @app.get("/api/extraction-data")
 async def extraction_data_endpoint(org_id: str):
     """Return extraction_data from startup_extraction_results."""
@@ -256,6 +358,111 @@ async def extraction_data_endpoint(org_id: str):
     if extraction:
         return {"status": "ready", "extraction_data": extraction}
     return {"status": "pending"}
+
+
+# In-memory cache for startup-dashboard (readiness + tasks in one). TTL seconds; invalidated on task complete / readiness update.
+_DASHBOARD_CACHE_TTL = 45
+_dashboard_cache: dict[str, tuple[float, dict]] = {}
+
+
+def _invalidate_dashboard_cache(org_id: str) -> None:
+    _dashboard_cache.pop(org_id, None)
+
+
+def _build_startup_dashboard(supabase, org_id: str) -> dict:
+    """Build combined readiness + tasks from one get_readiness_result call."""
+    result = get_readiness_result(supabase, org_id)
+    readiness = (
+        {
+            "status": "ready",
+            "scored_rubric": result["scored_rubric"],
+            "score_summary": result["score_summary"],
+            "updated_at": result.get("updated_at"),
+        }
+        if result
+        else {"status": "pending"}
+    )
+    if not result or not result.get("scored_rubric"):
+        return {
+            "readiness": readiness,
+            "task_groups": [],
+            "tasks": [],
+            "task_progress": None,
+        }
+    scored_rubric = result["scored_rubric"]
+    groups_data = compute_pending_tasks_from_rubric(scored_rubric)
+    if not groups_data:
+        return {
+            "readiness": readiness,
+            "task_groups": [],
+            "tasks": [],
+            "task_progress": None,
+        }
+    current_pending = sum(len(g.get("tasks") or []) for g in groups_data)
+    allotted_total = result.get("initial_pending_task_count")
+    if allotted_total is None:
+        set_initial_pending_task_count(supabase, org_id, current_pending)
+        allotted_total = current_pending
+    allotted_total = max(allotted_total or 0, current_pending)
+    potential_by_subcategory: dict[str, int] = {}
+    for g in groups_data:
+        for t in (g.get("tasks") or []):
+            sc = t.get("subcategory_name") or ""
+            if sc:
+                potential_by_subcategory[sc] = int(t.get("potential_points", 0))
+    replace_org_tasks(supabase, org_id, groups_data)
+    done_subcategories = get_done_subcategory_names(scored_rubric)
+    mark_tasks_done_by_subcategories(supabase, org_id, done_subcategories)
+    groups = get_task_groups_with_tasks(supabase, org_id)
+    by_cat_key = {g.get("category_key"): g for g in groups_data}
+    for g in groups:
+        gd = by_cat_key.get(g.get("category_key"))
+        if gd:
+            g["total_in_category"] = gd.get("total_in_category", 0)
+            g["done_count"] = gd.get("done_count", 0)
+        all_tasks = g.get("tasks") or []
+        g["tasks"] = [t for t in all_tasks if (t.get("status") or "todo") != "done"]
+        for t in g["tasks"]:
+            sc = t.get("subcategory_name") or ""
+            if sc and sc in potential_by_subcategory:
+                t["potential_points"] = potential_by_subcategory[sc]
+    tasks_flat = [t for g in groups for t in g.get("tasks", [])]
+    return {
+        "readiness": readiness,
+        "task_groups": groups,
+        "tasks": tasks_flat,
+        "task_progress": {"allotted_total": allotted_total, "current_pending": current_pending},
+    }
+
+
+@app.get("/api/startup-dashboard")
+async def startup_dashboard_endpoint(org_id: str):
+    """
+    Single endpoint: readiness + task_groups + tasks + task_progress.
+    Uses one get_readiness_result and caches response for _DASHBOARD_CACHE_TTL seconds.
+    """
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    now = time.monotonic()
+    entry = _dashboard_cache.get(org_id)
+    if entry:
+        expires_at, payload = entry
+        if now < expires_at:
+            return payload
+    payload = _build_startup_dashboard(supabase, org_id)
+    _dashboard_cache[org_id] = (now + _DASHBOARD_CACHE_TTL, payload)
+    return payload
+
+
+@app.get("/api/startup-activity")
+async def startup_activity_endpoint(org_id: str, limit: int = 30):
+    """Return recent activity stream (score history + completed tasks) for dashboard."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    activities = get_recent_activity(supabase, org_id, limit=min(limit, 50))
+    return {"activities": activities}
 
 
 @app.get("/api/readiness-status")
@@ -302,6 +509,8 @@ async def startup_tasks_endpoint(org_id: str):
     if allotted_total is None:
         set_initial_pending_task_count(supabase, org_id, current_pending)
         allotted_total = current_pending
+    # Never report total < current_pending so completed count stays non-negative
+    allotted_total = max(allotted_total or 0, current_pending)
     # Map subcategory_name -> potential_points from rubric (so every task gets correct pts, not stale DB)
     potential_by_subcategory: dict[str, int] = {}
     for g in groups_data:
@@ -310,6 +519,9 @@ async def startup_tasks_endpoint(org_id: str):
             if sc:
                 potential_by_subcategory[sc] = int(t.get("potential_points", 0))
     replace_org_tasks(supabase, org_id, groups_data)
+    # Mark as done any tasks whose rubric item is complete (e.g. from extraction) so they don't show as pending
+    done_subcategories = get_done_subcategory_names(scored_rubric)
+    mark_tasks_done_by_subcategories(supabase, org_id, done_subcategories)
     groups = get_task_groups_with_tasks(supabase, org_id)
     by_cat_key = {g.get("category_key"): g for g in groups_data}
     for g in groups:
@@ -372,6 +584,7 @@ async def complete_task_endpoint(task_id: str, body: TaskCompleteBody | None = N
     )
     summary = readiness_compute_summary(new_rubric)
     upsert_readiness_result(supabase, org_id, new_rubric, summary, update_source="task_complete")
+    _invalidate_dashboard_cache(org_id)
     row = mark_task_done(supabase, task_id, completed_by=body.completed_by if body else None)
     return {"ok": True, "task": row}
 
@@ -382,6 +595,11 @@ class TaskChatBody(BaseModel):
     author_user_id: str | None = None
 
 
+class TaskChatMessagesBody(BaseModel):
+    """Body for appending messages to task chat history (e.g. after upload)."""
+    messages: list[dict[str, str]]  # [{ "role": "user"|"assistant", "content": "..." }]
+
+
 @app.get("/api/tasks/{task_id}/chat-messages")
 async def task_chat_messages_endpoint(task_id: str):
     """Get saved AI chat messages for a task."""
@@ -390,6 +608,25 @@ async def task_chat_messages_endpoint(task_id: str):
         raise HTTPException(status_code=500, detail="Supabase not configured")
     messages = get_task_ai_chat_messages(supabase, task_id)
     return {"messages": messages}
+
+
+@app.post("/api/tasks/{task_id}/chat-messages")
+async def task_chat_messages_post_endpoint(task_id: str, body: TaskChatMessagesBody):
+    """Append messages to task chat history (e.g. after proof upload so history persists)."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    task, _ = get_task_and_org_id(supabase, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    for m in body.messages or []:
+        role = (m.get("role") or "user").strip().lower()
+        if role not in ("user", "assistant"):
+            role = "user"
+        content = (m.get("content") or "").strip()
+        if content:
+            insert_task_ai_chat_message(supabase, task_id, role, content)
+    return {"ok": True}
 
 
 @app.post("/api/tasks/{task_id}/chat")

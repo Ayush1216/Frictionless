@@ -22,6 +22,36 @@ def _points_increase_to_impact(increase: int) -> str:
     return "low"
 
 
+def get_done_subcategory_names(scored_rubric: dict) -> list[str]:
+    """Return subcategory_name for each rubric item that is complete (Points >= maximum_points)."""
+    rubric = _load_rubric()
+    subtopics = _extract_subtopics(rubric)
+    current_points: dict[str, int] = {}
+    for cat_val in scored_rubric.values():
+        if not isinstance(cat_val, dict):
+            continue
+        for sub_val in cat_val.values():
+            if not isinstance(sub_val, list):
+                continue
+            for item in sub_val:
+                if isinstance(item, dict) and "subcategory_name" in item:
+                    sc = item.get("subcategory_name", "")
+                    if sc:
+                        current_points[sc] = int(item.get("Points", 0))
+    done: list[str] = []
+    for entry in subtopics:
+        item = entry.get("item") or {}
+        sc = (item.get("subcategory_name") or "").strip()
+        if not sc:
+            continue
+        max_pts = int(item.get("maximum_points", 0))
+        if max_pts <= 0:
+            continue
+        if current_points.get(sc, 0) >= max_pts:
+            done.append(sc)
+    return done
+
+
 def compute_pending_tasks_from_rubric(scored_rubric: dict) -> list[dict]:
     """
     Compare scored_rubric to the full rubric. For each item where Points < maximum_points,
@@ -150,9 +180,110 @@ def apply_task_completion_to_rubric(
                 item["Points"] = best[1]
                 if item.get("required_value") and submitted_value is not None and str(submitted_value).strip():
                     item["Value"] = str(submitted_value).strip()
-                item["Reasoning"] = (item.get("Reasoning") or "") + " [Task completed by user]"
+                existing = (item.get("Reasoning") or "")
+                if "[Task completed by user]" not in existing:
+                    item["Reasoning"] = existing + " [Task completed by user]"
                 return result
     log.warning("apply_task_completion: subcategory %r not found in rubric", subcategory_name)
+    return result
+
+
+def _get_extraction_value(extraction_data: dict, subcategory_name: str) -> str:
+    """Get value from extraction_data for a rubric subcategory (e.g. fin.cash_on_hand_usd -> financial_data['cash_on_hand_usd'])."""
+    if not extraction_data or not subcategory_name or "." not in subcategory_name:
+        return ""
+    key = subcategory_name.split(".", 1)[1]  # e.g. cash_on_hand_usd
+    for section in ("financial_data", "initial_details", "founder_and_other_data"):
+        section_data = extraction_data.get(section)
+        if isinstance(section_data, dict):
+            val = section_data.get(key)
+            if val is not None and str(val).strip():
+                return str(val).strip()
+    return ""
+
+
+def preserve_completions_from_rubric(updated_rubric: dict, fresh_rubric: dict) -> None:
+    """
+    In-place: for each item in updated_rubric, if the same subcategory in fresh_rubric
+    is completed (Points >= maximum_points), copy Answer, Points, Value, Reasoning from
+    fresh so we don't overwrite task completions that happened after we read the first copy.
+    """
+    # Index fresh by subcategory_name -> (points, max_pts, answer, value, reasoning)
+    fresh_by_sc: dict[str, dict] = {}
+    for cat_val in (fresh_rubric or {}).values():
+        if not isinstance(cat_val, dict):
+            continue
+        for sub_val in cat_val.values():
+            if not isinstance(sub_val, list):
+                continue
+            for item in sub_val:
+                if not isinstance(item, dict):
+                    continue
+                sc = (item.get("subcategory_name") or "").strip()
+                if not sc:
+                    continue
+                max_pts = int(item.get("maximum_points", 0))
+                pts = int(item.get("Points", 0))
+                if max_pts > 0 and pts >= max_pts:
+                    fresh_by_sc[sc] = {
+                        "Answer": item.get("Answer"),
+                        "Points": pts,
+                        "Value": item.get("Value"),
+                        "Reasoning": (item.get("Reasoning") or ""),
+                    }
+
+    for cat_val in updated_rubric.values():
+        if not isinstance(cat_val, dict):
+            continue
+        for sub_val in cat_val.values():
+            if not isinstance(sub_val, list):
+                continue
+            for item in sub_val:
+                if not isinstance(item, dict):
+                    continue
+                sc = (item.get("subcategory_name") or "").strip()
+                if not sc or sc not in fresh_by_sc:
+                    continue
+                fresh = fresh_by_sc[sc]
+                item["Answer"] = fresh.get("Answer")
+                item["Points"] = fresh["Points"]
+                if "Value" in fresh:
+                    item["Value"] = fresh["Value"]
+                item["Reasoning"] = fresh.get("Reasoning") or ""
+
+
+def update_rubric_from_extraction(scored_rubric: dict, extraction_data: dict) -> dict:
+    """
+    Update scored_rubric from extraction_data without Claude: for each item, if the
+    corresponding extraction value is non-empty, set to max points (same as task completion).
+    Items with no extraction value are left unchanged so we don't overwrite existing scores.
+    Returns a new dict (does not mutate input).
+    """
+    result = copy.deepcopy(scored_rubric)
+    for cat_val in result.values():
+        if not isinstance(cat_val, dict):
+            continue
+        for sub_val in cat_val.values():
+            if not isinstance(sub_val, list):
+                continue
+            for item in sub_val:
+                if not isinstance(item, dict):
+                    continue
+                opts = item.get("options", {})
+                if not opts:
+                    continue
+                sc = (item.get("subcategory_name") or "").strip()
+                value = _get_extraction_value(extraction_data, sc)
+                if not value:
+                    continue  # leave item unchanged
+                best = max(opts.items(), key=lambda x: x[1])
+                item["Answer"] = best[0]
+                item["Points"] = best[1]
+                if item.get("required_value"):
+                    item["Value"] = value
+                existing = (item.get("Reasoning") or "")
+                if "[From extraction]" not in existing:
+                    item["Reasoning"] = existing + " [From extraction]"
     return result
 
 

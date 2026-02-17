@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, MessageSquare, Loader2, PartyPopper, Send, X } from 'lucide-react';
+import { Sparkles, MessageSquare, Loader2, PartyPopper, Send, X, Paperclip } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TaskFileUpload } from './TaskFileUpload';
 import { AIExtractionCard } from '@/components/ai/AIExtractionCard';
 import { useTaskStore } from '@/stores/task-store';
 import { useTasksSync } from '@/contexts/TasksSyncContext';
-import { chatWithTaskAI, fetchTaskChatMessages } from '@/lib/api/tasks';
+import { chatWithTaskAI, fetchTaskChatMessages, getAuthHeaders, saveTaskChatMessages } from '@/lib/api/tasks';
 import type { AIExtraction } from '@/types/database';
 
 const demoExtractions: AIExtraction[] = [
@@ -99,12 +99,23 @@ export function TaskAICompletion({
     }
   }, [chatFullPanel, loadChatMessages]);
 
+  // Show "Mark as complete" when reopening: task has submitted_value, or last assistant message says they can mark complete (e.g. after upload)
   useEffect(() => {
-    if (chatFullPanel && task?.submitted_value && task?.status !== 'done') {
+    if (!chatFullPanel || task?.status === 'done') return;
+    if (task?.submitted_value) {
       setSuggestComplete(true);
       setLastSubmittedValue(task.submitted_value ?? undefined);
+      return;
     }
-  }, [chatFullPanel, task?.submitted_value, task?.status]);
+    const canMarkComplete = chatMessages.some(
+      (m) =>
+        m.role === 'assistant' &&
+        (m.content.includes('mark the task complete when ready') ||
+          m.content.includes('mark as complete') ||
+          m.content.includes('You can mark the task complete'))
+    );
+    if (canMarkComplete) setSuggestComplete(true);
+  }, [chatFullPanel, task?.submitted_value, task?.status, chatMessages]);
 
   const handleChatClick = useCallback(() => {
     onChatFullPanel?.();
@@ -143,6 +154,60 @@ export function TaskAICompletion({
     }
   }, [taskId, completeTaskViaApi, lastSubmittedValue]);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const handleAttachFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || chatLoading) return;
+    e.target.value = '';
+    const userContent = `Uploaded: ${file.name}`;
+    setChatMessages((prev) => [...prev, { role: 'user', content: userContent }]);
+    setChatLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/startup/data-room/upload', {
+        method: 'POST',
+        headers,
+        body: formData,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        const alreadyExists = data.already_exists === true;
+        const assistantContent = alreadyExists
+          ? 'This document is already in your Data Room. You can mark the task complete when ready.'
+          : "I've added this document to your Data Room. We're updating your readiness score from it. You can mark the task complete when ready.";
+        setChatMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: assistantContent },
+        ]);
+        setSuggestComplete(true);
+        // Persist to chat history so it's there if user doesn't click Mark as complete
+        try {
+          await saveTaskChatMessages(taskId, [
+            { role: 'user', content: userContent },
+            { role: 'assistant', content: assistantContent },
+          ]);
+        } catch {
+          // non-blocking
+        }
+      } else {
+        const errContent = data?.error ?? 'Upload failed. Please try again.';
+        setChatMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: errContent },
+        ]);
+      }
+    } catch {
+      setChatMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: 'Upload failed. Please try again.' },
+      ]);
+    } finally {
+      setChatLoading(false);
+    }
+  }, [chatLoading, taskId]);
+
   if (chatFullPanel) {
     return (
       <div className={cn('flex flex-col flex-1 min-h-0', className)}>
@@ -176,10 +241,26 @@ export function TaskAICompletion({
         </div>
         <div className="flex gap-2 mt-3 flex-shrink-0 p-1">
           <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.xlsx,.xls,.csv,.docx,.doc,.png,.jpg,.jpeg"
+            className="hidden"
+            onChange={handleAttachFile}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={chatLoading}
+            className="p-2 rounded-lg border border-obsidian-700/50 text-obsidian-400 hover:text-foreground hover:bg-obsidian-800/50 disabled:opacity-50"
+            title="Upload proof document (adds to Data Room and updates score)"
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
+          <input
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChatSend()}
-            placeholder="Type your message..."
+            placeholder="Type your message or attach a document..."
             className="flex-1 px-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50 text-sm text-foreground placeholder:text-obsidian-500 focus:outline-none focus:border-electric-blue/50"
           />
           <button

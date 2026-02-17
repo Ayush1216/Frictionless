@@ -1,6 +1,6 @@
 'use client';
 
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DeltaArrowProps {
@@ -24,12 +24,7 @@ export function DeltaArrow({ delta, showValue = true, size = 'md', className }: 
   };
 
   if (delta === 0) {
-    return (
-      <span className={cn('inline-flex items-center gap-1 text-obsidian-400', className)}>
-        <Minus className={iconSizes[size]} />
-        {showValue && <span className={textSizes[size]}>0</span>}
-      </span>
-    );
+    return null;
   }
 
   const isPositive = delta > 0;

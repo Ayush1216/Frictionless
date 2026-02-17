@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth-store';
 import { AppShell } from '@/components/app/AppShell';
 import { supabase } from '@/lib/supabase/client';
+import { fetchBootstrap } from '@/lib/api/bootstrap';
 
 export default function AppLayout({
   children,
@@ -56,6 +57,26 @@ export default function AppLayout({
     })();
     return () => { cancelled = true; };
   }, [isAuthenticated, isLoading, user, pathname, router]);
+
+  // Prefetch bootstrap (readiness + tasks) once for startups so dashboard/tasks load instantly
+  useEffect(() => {
+    if (!isAuthenticated || !user || user.org_type !== 'startup') return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token ?? null;
+      if (!token || cancelled) return;
+      try {
+        await fetchBootstrap(token);
+      } catch {
+        if (!cancelled) {
+          useReadinessStore.getState().setBootstrap(null, []);
+          useTaskStore.getState().setTasksLoaded(true);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthenticated, user]);
 
   // Show nothing while checking auth or redirecting
   if (!isAuthenticated) {

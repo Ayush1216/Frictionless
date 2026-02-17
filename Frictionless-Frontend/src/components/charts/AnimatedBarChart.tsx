@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CategoryScore {
@@ -89,10 +89,5 @@ function DeltaIndicator({ delta }: { delta: number }) {
       </span>
     );
   }
-  return (
-    <span className="flex items-center gap-0.5 text-xs font-mono text-obsidian-400">
-      <Minus className="w-3 h-3" />
-      0
-    </span>
-  );
+  return null;
 }
