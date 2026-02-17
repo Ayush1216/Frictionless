@@ -39,6 +39,7 @@ export default function ReadinessPage() {
     }
     let cancelled = false;
     (async () => {
+      if (!supabase) return;
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token ?? null;
       if (!token || cancelled) return;

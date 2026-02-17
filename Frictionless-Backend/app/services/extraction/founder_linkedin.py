@@ -155,6 +155,7 @@ _PERSON_SCHEMA = """{
   "linkedin_url": "",
   "location": "",
   "summary": "",
+  "profile_image_url": "",
   "education": [
     {"university": "", "degree": "", "field_of_study": "", "start_year": "", "end_year": ""}
   ],
@@ -342,3 +343,56 @@ def run(
         json.dump(final, f, indent=2, ensure_ascii=False)
     log.info("Founder data → %s (founders=%d, leadership=%d)", output_path, len(founders), len(leadership))
     return final
+
+
+def run_person_profile(linkedin_url: str) -> Dict[str, Any]:
+    """Fetch and extract a single person's profile from a LinkedIn /in/ URL. Returns one person dict."""
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise ValueError("Missing GEMINI_API_KEY")
+    url = _sanitize_linkedin(linkedin_url)
+    if not url or not _is_person_linkedin(url):
+        raise ValueError(f"Invalid person LinkedIn URL: must be linkedin.com/in/... (got {linkedin_url!r})")
+    client = genai.Client(api_key=api_key)
+    prompt = f"""You are a people-research engine. Use Google Search grounding to find this person's public profile.
+LinkedIn profile URL: {url}
+
+TASK: Extract this person's profile so it can be stored alongside founders and leadership. Return ONLY valid JSON (no markdown, no backticks) with exactly this schema:
+{_PERSON_SCHEMA}
+
+RULES:
+1. Search for the person by name and/or LinkedIn URL. Use the same field names and structure as above so the data displays correctly in the app.
+2. full_name, first_name, last_name, title, location, summary: fill from profile or search results.
+3. profile_image_url: Search for this person's LinkedIn profile/headshot image. Use a direct image URL (e.g. media.licdn.com) if found; otherwise set to "".
+4. education: array of objects with university, degree, field_of_study, start_year, end_year.
+5. work_experience: array of objects with company, position, start_year, end_year, is_current.
+6. linkedin_url: use the normalized person URL (https://www.linkedin.com/in/...). Do not use a company page URL."""
+    tools = [types.Tool(google_search=types.GoogleSearch())]
+    resp = _gemini_call(client, prompt, tools, 4096)
+    raw = ""
+    if hasattr(resp, "text") and resp.text:
+        raw = resp.text
+    elif hasattr(resp, "candidates") and resp.candidates:
+        parts = resp.candidates[0].content.parts if resp.candidates[0].content else []
+        for part in parts:
+            if hasattr(part, "text") and part.text:
+                raw += part.text
+    data = _extract_json(raw)
+    if not data:
+        raise ValueError("Empty or invalid profile response from search")
+    person = _norm({
+        "full_name": data.get("full_name", "") or "",
+        "first_name": data.get("first_name", "") or "",
+        "last_name": data.get("last_name", "") or "",
+        "title": data.get("title", "") or "",
+        "linkedin_url": url,
+        "location": data.get("location", "") or "",
+        "summary": data.get("summary", "") or "",
+        "profile_image_url": data.get("profile_image_url", "") or "",
+        "education": _clean_edu(data.get("education", [])),
+        "work_experience": _clean_work(data.get("work_experience", [])),
+    })
+    if not person["full_name"]:
+        person["full_name"] = (person["first_name"] + " " + person["last_name"]).strip() or "Unknown"
+    log.info("Person profile fetched: %s", person.get("full_name"))
+    return person

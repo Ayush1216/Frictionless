@@ -21,6 +21,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     const SESSION_MAX_AGE_MS = 2 * 60 * 60 * 1000; // 2 hours
 
     const init = async () => {
+      if (!supabase) return;
       const { data: { session } } = await supabase.auth.getSession();
       if (!mounted) return;
       if (!session?.user) {
@@ -48,6 +49,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     init();
 
     const checkSessionAge = async () => {
+      if (!supabase) return;
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user || !mounted) return;
       const SESSION_MAX_AGE_MS = 2 * 60 * 60 * 1000;

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClientForRequest, getCurrentUserOrgId } from '@/lib/supabase/server';
 import type { Task, TaskGroup } from '@/types/database';
 
+export const dynamic = 'force-dynamic';
+
 function parsePotentialPoints(v: unknown): number | undefined {
   if (typeof v === 'number' && Number.isFinite(v) && v >= 0) return v;
   if (typeof v === 'string') {
@@ -101,7 +103,7 @@ export async function GET(request: NextRequest) {
       const groups = (data.task_groups ?? []).map((g: Record<string, unknown>) => toFrontendGroup(g));
       result = {
         taskGroups: groups,
-        tasks: groups.flatMap((g) => g.tasks),
+        tasks: groups.flatMap((g: TaskGroup) => g.tasks),
       };
       const progress = data.task_progress;
       const pendingCount = result.tasks.length;

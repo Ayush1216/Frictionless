@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext } from 'react';
 import { useTaskStore } from '@/stores/task-store';
-import { apiUpdateTask, completeTask } from '@/lib/api/tasks';
+import { updateTask as apiUpdateTask, completeTask } from '@/lib/api/tasks';
 import type { Task } from '@/types/database';
 
 type UpdateTaskFn = (id: string, updates: Partial<Task>) => void | Promise<void>;

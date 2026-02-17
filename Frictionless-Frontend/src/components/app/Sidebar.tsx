@@ -28,6 +28,7 @@ import {
   Sparkles,
   LogOut,
   X,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -53,6 +54,7 @@ interface NavItem {
 
 const startupNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Company Profile', href: '/startup/company-profile', icon: Building2 },
   { label: 'Readiness Score', href: '/startup/readiness', icon: Gauge },
   { label: 'Matches', href: '/startup/matches', icon: Handshake },
   { label: 'AI Chat', href: '/startup/chat', icon: Bot },

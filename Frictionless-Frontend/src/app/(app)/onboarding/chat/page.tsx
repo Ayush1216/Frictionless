@@ -33,8 +33,6 @@ const AFTER_WEBSITE =
 
 const AFTER_PITCH_DECK =
   "We've saved your pitch deck. Almost done! I'll ask you 6 quick questions so we can calculate your readiness score.";
-const EXTRACTING_MESSAGE =
-  "Extracting data from your pitch deck … This may take 1–2 minutes.";
 
 const INVESTOR_INITIAL =
   "Welcome! To get you set up, we'll need your firm's website and your thesis fit document (PDF). First, please paste your website URL below.";
@@ -279,7 +277,6 @@ export default function OnboardingChatPage() {
         setUploading(false);
         return;
       }
-      addMessage('assistant', EXTRACTING_MESSAGE);
       setStep('waiting_extraction');
       pollExtractionUntilReady(token);
     } catch (e) {
@@ -515,67 +512,72 @@ export default function OnboardingChatPage() {
         ))}
 
         {showWaitingExtractionStep && (
-          <div className="flex items-center gap-3 py-4">
-            <Loader2 className="h-6 w-6 animate-spin text-electric-blue" />
-            <p className="text-sm text-muted-foreground">Extracting data from your pitch deck (OCR, founder info, charts, key metrics…)… This may take 1–2 minutes.</p>
+          <div className="flex justify-end">
+            <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 bg-obsidian-800/50 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-xs">Processing…</span>
+            </div>
           </div>
         )}
         {showCalculatingStep && (
-          <div className="flex items-center gap-3 py-4">
-            <Loader2 className="h-6 w-6 animate-spin text-electric-blue" />
-            <p className="text-sm text-muted-foreground">Calculating your readiness score… This may take a minute.</p>
+          <div className="flex justify-end">
+            <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 bg-obsidian-800/50 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-xs">Calculating readiness score…</span>
+            </div>
           </div>
         )}
         {showQuestionnaireStep && !submittingQuestionnaire && (
-          <div className="flex gap-3 max-w-[85%]">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-electric-blue/20 text-electric-blue">
-              <Bot className="w-4 h-4" />
-            </div>
-            <div className="flex-1 space-y-3">
-              {pendingOtherFor ? (
-                <div className="rounded-xl bg-obsidian-800 px-4 py-3 space-y-2">
-                  <p className="text-sm text-foreground">
-                    {pendingOtherFor === 'primary_sector' && 'Please specify your primary sector…'}
-                    {pendingOtherFor === 'round_target' && 'Please specify your target amount (e.g. $750K)…'}
-                    {pendingOtherFor === 'entity_type' && 'Please specify your entity type…'}
-                  </p>
-                  <div className="flex gap-2">
+          <div className="space-y-3">
+            {pendingOtherFor ? (
+              <div className="flex flex-row-reverse gap-3">
+                <div className="max-w-[85%] space-y-2">
+                  <p className="text-xs text-muted-foreground text-right mb-1">Your response</p>
+                  <div className="flex gap-2 justify-end">
                     <Input
                       placeholder="Type your answer…"
                       value={otherInputValue}
                       onChange={(e) => setOtherInputValue(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && submitOtherInput()}
-                      className="bg-obsidian-900 border-obsidian-600 flex-1"
+                      className="bg-electric-blue/10 border-electric-blue/30 flex-1 max-w-[200px]"
                       autoFocus
                     />
                     <Button
                       size="sm"
                       onClick={submitOtherInput}
                       disabled={!otherInputValue.trim()}
-                      className="bg-electric-blue hover:bg-electric-blue/90"
+                      className="bg-electric-blue hover:bg-electric-blue/90 shrink-0"
                     >
                       Send
                     </Button>
                   </div>
                 </div>
-              ) : (
-                <div className="rounded-xl bg-obsidian-800 px-4 py-3">
-                  <p className="text-xs text-muted-foreground mb-3">Choose an option:</p>
-                  <div className="flex flex-wrap gap-2">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-obsidian-600 text-foreground">
+                  <User className="w-4 h-4" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-row-reverse gap-3">
+                <div className="max-w-[85%]">
+                  <p className="text-xs text-muted-foreground text-right mb-2">Choose one:</p>
+                  <div className="flex flex-wrap gap-2 justify-end">
                     {QUESTIONNAIRE[QUESTION_ORDER[questionnaireIndex]].options.map((o) => (
                       <button
                         key={o.value}
                         type="button"
                         onClick={() => selectOption(QUESTION_ORDER[questionnaireIndex], o.value, o.label)}
-                        className="px-3 py-1.5 rounded-lg text-sm font-medium bg-obsidian-700 hover:bg-electric-blue/20 hover:border-electric-blue/40 border border-transparent text-foreground transition-colors"
+                        className="px-3 py-2 rounded-xl text-sm font-medium bg-electric-blue/20 hover:bg-electric-blue/30 border border-electric-blue/40 text-foreground transition-colors"
                       >
                         {o.label}
                       </button>
                     ))}
                   </div>
                 </div>
-              )}
-            </div>
+                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-obsidian-600 text-foreground">
+                  <User className="w-4 h-4" />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
