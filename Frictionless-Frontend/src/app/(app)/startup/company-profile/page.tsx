@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -91,10 +91,10 @@ function CoreIdentityAccordion({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center justify-between w-full gap-2 p-5 pb-3 border-b border-obsidian-700/30 text-left hover:bg-obsidian-800/30 transition-colors"
+        className="flex items-center justify-between w-full gap-2 p-5 pb-3 border-b border-border text-left hover:bg-muted/30 transition-colors"
       >
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <FileText className="w-5 h-5 text-electric-blue" />
+          <FileText className="w-5 h-5 text-primary" />
           More company details
         </h3>
         {open ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
@@ -107,38 +107,38 @@ function CoreIdentityAccordion({
               const displayVal = (value || '').trim() || '—';
               return (
                 <div key={label} className="space-y-1.5 min-w-0">
-                  <label className="text-xs font-medium text-obsidian-400 uppercase tracking-wider">{label}</label>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
                   {path ? (
                     isEditing ? (
                       <div className="flex flex-col gap-2">
                         <Textarea
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
-                          className="min-h-[100px] w-full resize-y bg-obsidian-900 border-electric-blue/50 text-sm"
+                          className="min-h-[100px] w-full resize-y bg-muted border-primary/50 text-sm"
                           placeholder="Enter text…"
                           autoFocus
                         />
                         <div className="flex gap-2">
-                          <Button size="sm" className="bg-electric-blue hover:bg-electric-blue/90" onClick={() => saveExtractionField(path, editValue)} disabled={saving}><Save className="w-4 h-4" /></Button>
+                          <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => saveExtractionField(path, editValue)} disabled={saving}><Save className="w-4 h-4" /></Button>
                           <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}><X className="w-4 h-4" /></Button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-start justify-between gap-3 group rounded-xl px-4 py-3 bg-obsidian-800/30 border border-transparent hover:border-obsidian-700 cursor-pointer text-left" onClick={() => { setEditingField(path); setEditValue(displayVal); }}>
+                      <div className="flex items-start justify-between gap-3 group rounded-xl px-4 py-3 bg-muted/30 border border-transparent hover:border-border cursor-pointer text-left" onClick={() => { setEditingField(path); setEditValue(displayVal); }}>
                         {href ? (
-                          <a href={href.startsWith('http') ? href : `https://${href}`} target="_blank" rel="noopener noreferrer" className="text-sm text-electric-blue hover:underline break-all flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                          <a href={href.startsWith('http') ? href : `https://${href}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
                             {displayVal}
                           </a>
                         ) : (
                           <span className="text-sm text-foreground break-words flex-1 min-w-0">{displayVal}</span>
                         )}
-                        <Edit3 className="w-3.5 h-3.5 text-obsidian-500 opacity-0 group-hover:opacity-100 shrink-0 mt-0.5" />
+                        <Edit3 className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0 mt-0.5" />
                       </div>
                     )
                   ) : (
-                    <div className="rounded-xl px-4 py-3 bg-obsidian-800/30 border border-obsidian-700/30">
+                    <div className="rounded-xl px-4 py-3 bg-muted/30 border border-border">
                       {href ? (
-                        <a href={href.startsWith('http') ? href : `https://${href}`} target="_blank" rel="noopener noreferrer" className="text-sm text-electric-blue hover:underline break-all">
+                        <a href={href.startsWith('http') ? href : `https://${href}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all">
                           {displayVal}
                         </a>
                       ) : (
@@ -199,6 +199,7 @@ export default function CompanyProfilePage() {
   const [canonical, setCanonical] = useState<CanonicalCompanyProfile | null>(null);
   const [readinessScore, setReadinessScore] = useState<number | null>(null);
   const [slowLoadHint, setSlowLoadHint] = useState(false);
+  const autoFillDoneRef = useRef(false);
 
   function simpleHash(s: string): string {
     let h = 0;
@@ -677,6 +678,16 @@ export default function CompanyProfilePage() {
   const hasApolloOrExtractionForFill = Boolean(apolloShortDesc || (extraction && Object.keys(initDetails).length > 0));
   const businessFieldsEmpty = [initDetails.problem, initDetails.solution, initDetails.unique_value_proposition ?? initDetails.uvp, initDetails.why_now, initDetails.traction ?? initDetails.milestones].every((v) => !String(v ?? '').trim());
 
+  // Auto-fill business fields with AI when profile loads and those fields are empty (no need to wait for user to click)
+  useEffect(() => {
+    if (loading || fillProfileLoading) return;
+    if (!extraction && !apollo) return;
+    if (!hasApolloOrExtractionForFill || !businessFieldsEmpty) return;
+    if (autoFillDoneRef.current) return;
+    autoFillDoneRef.current = true;
+    fillProfileWithAI();
+  }, [loading, fillProfileLoading, extraction, apollo, hasApolloOrExtractionForFill, businessFieldsEmpty]);
+
   if (!user || user.org_type !== 'startup') {
     return (
       <div className="p-8 flex items-center justify-center min-h-[50vh]">
@@ -688,7 +699,7 @@ export default function CompanyProfilePage() {
   if (loading) {
     return (
       <div className="p-8 flex flex-col items-center justify-center min-h-[50vh] gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-electric-blue" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">Loading company profile…</p>
         {slowLoadHint && (
           <p className="text-xs text-muted-foreground/80">Taking longer than usual. You may see partial data when it loads.</p>
@@ -712,6 +723,22 @@ export default function CompanyProfilePage() {
   const lastScrapedAt = extraction?.meta?.last_scraped_at;
   const scrapeStatus = extraction?.meta?.linkedin_scrape_status;
 
+  // Profile completeness score
+  const completenessFields = [
+    { label: 'Company name', filled: !!companyName },
+    { label: 'Logo', filled: !!logoUrl },
+    { label: 'Industry/sector', filled: !!(canonical?.primary_sector || canonical?.industry || questionnaire?.primary_sector) },
+    { label: 'Problem statement', filled: !!(canonical?.problem || initDetails.problem) },
+    { label: 'Solution', filled: !!(canonical?.solution || initDetails.solution) },
+    { label: 'Value proposition', filled: !!(canonical?.unique_value_proposition || initDetails.unique_value_proposition || initDetails.uvp) },
+    { label: 'Team members', filled: teamMembers.length > 0 },
+    { label: 'Funding stage', filled: !!questionnaire?.funding_stage },
+    { label: 'Traction/momentum', filled: !!(canonical?.traction || initDetails.traction || initDetails.milestones) },
+    { label: 'Location', filled: !!locationDisplay },
+  ];
+  const completenessFilledCount = completenessFields.filter((f) => f.filled).length;
+  const completenessPercent = Math.round((completenessFilledCount / completenessFields.length) * 100);
+
   const totalFundingDisplay = canonical?.total_funding ?? (apollo?.total_funding_printed != null ? String(apollo.total_funding_printed) : (apollo?.total_funding != null ? String(apollo.total_funding) : '')) ?? '';
   const organizationRevenueDisplay = canonical?.organization_revenue ?? (apollo?.organization_revenue_printed != null ? String(apollo.organization_revenue_printed) : (apollo?.organization_revenue != null ? String(apollo.organization_revenue) : '')) ?? '';
   const hasMeaningfulRevenue = organizationRevenueDisplay.trim() !== '' && organizationRevenueDisplay.trim() !== '0' && organizationRevenueDisplay.trim() !== '0.00';
@@ -734,13 +761,30 @@ export default function CompanyProfilePage() {
           <p className="text-base text-muted-foreground max-w-xl">
             Your startup&apos;s unified view across all data sources.
           </p>
+          {/* Profile Completeness */}
+          <div className="flex items-center gap-3 pt-1">
+            <div className="flex items-center gap-2">
+              <div className="w-32 h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ${completenessPercent >= 80 ? 'bg-score-excellent' : completenessPercent >= 50 ? 'bg-score-good' : 'bg-score-fair'}`}
+                  style={{ width: `${completenessPercent}%` }}
+                />
+              </div>
+              <span className={`text-sm font-mono font-bold ${completenessPercent >= 80 ? 'text-score-excellent' : completenessPercent >= 50 ? 'text-score-good' : 'text-score-fair'}`}>
+                {completenessPercent}%
+              </span>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {completenessFilledCount}/{completenessFields.length} fields complete
+            </span>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2 sm:shrink-0">
-          <Button variant="outline" size="sm" onClick={regenerateReadiness} disabled={regenerating || saving} className="border-obsidian-600 text-muted-foreground hover:bg-obsidian-800">
+          <Button variant="outline" size="sm" onClick={regenerateReadiness} disabled={regenerating || saving} className="border-border text-muted-foreground hover:bg-muted">
             {regenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             <span className="ml-2">Regenerate readiness</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={triggerRegenerateWithSave} disabled={regenerating || saving} className="border-electric-blue/40 text-electric-blue hover:bg-electric-blue/10">
+          <Button variant="outline" size="sm" onClick={triggerRegenerateWithSave} disabled={regenerating || saving} className="border-primary/40 text-primary hover:bg-primary/10">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             <span className="ml-2">Save & recalculate</span>
           </Button>
@@ -752,39 +796,39 @@ export default function CompanyProfilePage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="rounded-2xl border border-obsidian-700/50 bg-gradient-to-br from-obsidian-900/90 via-obsidian-900/60 to-obsidian-950/80 p-6 sm:p-8 mb-8 shadow-xl"
+        className="rounded-2xl border border-border/50 bg-gradient-to-br from-muted/90 via-muted/60 to-background/80 p-6 sm:p-8 mb-8 shadow-xl"
       >
         <div className="flex flex-col sm:flex-row sm:items-center gap-6 mb-6">
           {logoUrl ? (
-            <img src={logoUrl} alt="" className="w-24 h-24 rounded-2xl border-2 border-electric-blue/30 object-cover shrink-0 shadow-lg" />
+            <img src={logoUrl} alt="" className="w-24 h-24 rounded-2xl border-2 border-primary/30 object-cover shrink-0 shadow-lg" />
           ) : (
-            <div className="w-24 h-24 rounded-2xl bg-obsidian-800 border-2 border-electric-blue/20 flex items-center justify-center shrink-0">
-              <Building2 className="w-12 h-12 text-electric-blue/80" />
+            <div className="w-24 h-24 rounded-2xl bg-muted border-2 border-primary/20 flex items-center justify-center shrink-0">
+              <Building2 className="w-12 h-12 text-primary/80" />
             </div>
           )}
           <div className="min-w-0 flex-1 space-y-3">
             <h2 className="text-2xl sm:text-3xl font-display font-bold text-foreground truncate">{companyName}</h2>
             <div className="flex flex-wrap items-center gap-2">
               {questionnaire?.funding_stage && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-electric-blue/15 text-electric-blue border border-electric-blue/30">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/15 text-primary border border-primary/30">
                   <TrendingUp className="w-3.5 h-3.5" />
                   {(QUESTIONNAIRE.funding_stage.options.find((o) => o.value === questionnaire.funding_stage)?.label) ?? questionnaire.funding_stage}
                 </span>
               )}
               {locationDisplay && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-obsidian-700/80 text-muted-foreground border border-obsidian-600/50">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/80 text-muted-foreground border border-border/50">
                   <MapPin className="w-3.5 h-3.5" />
                   {locationDisplay}
                 </span>
               )}
               {primarySectorDisplay && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-obsidian-700/80 text-muted-foreground border border-obsidian-600/50">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/80 text-muted-foreground border border-border/50">
                   <Briefcase className="w-3.5 h-3.5" />
                   {primarySectorDisplay}
                 </span>
               )}
               {foundedYearDisplay && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-obsidian-700/80 text-muted-foreground border border-obsidian-600/50">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/80 text-muted-foreground border border-border/50">
                   Founded {foundedYearDisplay}
                 </span>
               )}
@@ -792,10 +836,10 @@ export default function CompanyProfilePage() {
           </div>
         </div>
         {/* KPI strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-obsidian-700/50">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-border/50">
           {employeesDisplay && employeesDisplay !== '—' && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-obsidian-800/50 border border-obsidian-700/30">
-              <Users className="w-5 h-5 text-electric-blue/80" />
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
+              <Users className="w-5 h-5 text-primary/80" />
               <div>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Employees</p>
                 <p className="text-sm font-bold text-foreground">{employeesDisplay}</p>
@@ -803,7 +847,7 @@ export default function CompanyProfilePage() {
             </div>
           )}
           {totalFundingDisplay && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-obsidian-800/50 border border-obsidian-700/30">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
               <DollarSign className="w-5 h-5 text-emerald-500/80" />
               <div>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Funding</p>
@@ -812,7 +856,7 @@ export default function CompanyProfilePage() {
             </div>
           )}
           {readinessScore != null && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-obsidian-800/50 border border-obsidian-700/30">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
               <Target className="w-5 h-5 text-amber-500/80" />
               <div>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Readiness</p>
@@ -821,7 +865,7 @@ export default function CompanyProfilePage() {
             </div>
           )}
           {hasMeaningfulRevenue && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-obsidian-800/50 border border-obsidian-700/30">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
               <TrendingUp className="w-5 h-5 text-emerald-500/80" />
               <div>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Revenue</p>
@@ -830,7 +874,7 @@ export default function CompanyProfilePage() {
             </div>
           )}
           {(canonical?.traction ?? initDetails.traction ?? initDetails.milestones) && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-obsidian-800/50 border border-obsidian-700/30">
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
               <TrendingUp className="w-5 h-5 text-amber-500/80" />
               <div>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Momentum</p>
@@ -858,7 +902,7 @@ export default function CompanyProfilePage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="border-electric-blue/40 text-electric-blue hover:bg-electric-blue/10"
+                className="border-primary/40 text-primary hover:bg-primary/10"
                 onClick={fillProfileWithAI}
                 disabled={fillProfileLoading}
               >
@@ -890,8 +934,8 @@ export default function CompanyProfilePage() {
                   const v = initDetails[k];
                   if (!v) return null;
                   return (
-                    <div key={k} className="p-3 rounded-xl bg-obsidian-800/30 border border-obsidian-700/30">
-                      <p className="text-[10px] font-bold text-obsidian-500 uppercase tracking-tight">{k}</p>
+                    <div key={k} className="p-3 rounded-xl bg-muted/30 border border-border">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">{k}</p>
                       <p className="text-sm text-foreground break-words mt-1">{String(v)}</p>
                     </div>
                   );
@@ -910,7 +954,7 @@ export default function CompanyProfilePage() {
             <motion.section
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-obsidian-700/50 bg-obsidian-900/40 overflow-hidden"
+              className="rounded-2xl border border-border/50 bg-muted/40 overflow-hidden"
             >
               <CoreIdentityAccordion
                 fields={unifiedFields}
@@ -930,9 +974,9 @@ export default function CompanyProfilePage() {
             <motion.section
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-obsidian-700/50 bg-obsidian-900/40 overflow-hidden"
+              className="rounded-2xl border border-border/50 bg-muted/40 overflow-hidden"
             >
-              <div className="flex items-center gap-2 p-5 pb-3 border-b border-obsidian-700/30">
+              <div className="flex items-center gap-2 p-5 pb-3 border-b border-border">
                 <DollarSign className="w-5 h-5 text-emerald-500" />
                 <h3 className="text-sm font-semibold text-foreground">Financial snapshot</h3>
               </div>
@@ -947,11 +991,11 @@ export default function CompanyProfilePage() {
                     const longTextKeys = ['financial_notes', 'notes', 'description', 'comment'];
                     const useReadMore = isLongText || longTextKeys.includes(key.toLowerCase());
                     return (
-                      <div key={key} className="space-y-1.5 p-3 rounded-xl bg-obsidian-800/20 border border-obsidian-700/30 min-w-0 min-h-[4.5rem]">
-                        <label className="text-[10px] font-bold text-obsidian-500 uppercase tracking-tighter block">{key.replace(/_/g, ' ')}</label>
+                      <div key={key} className="space-y-1.5 p-3 rounded-xl bg-muted/20 border border-border min-w-0 min-h-[4.5rem]">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter block">{key.replace(/_/g, ' ')}</label>
                         {isEditing ? (
                           <div className="flex gap-1">
-                            <Input value={editValue} onChange={(e) => setEditValue(e.target.value)} className="bg-obsidian-900 h-8 text-xs px-2" autoFocus />
+                            <Input value={editValue} onChange={(e) => setEditValue(e.target.value)} className="bg-muted h-8 text-xs px-2" autoFocus />
                             <Button size="sm" className="h-8 w-8 p-0" onClick={() => saveExtractionField(path, isNaN(Number(editValue)) ? editValue : Number(editValue))} disabled={saving}><Save className="w-3 h-3" /></Button>
                           </div>
                         ) : useReadMore ? (
@@ -959,7 +1003,7 @@ export default function CompanyProfilePage() {
                             <ProfileCardExpandableBody text={displayVal} clampLines={3} emptyPlaceholder="—" />
                             <button
                               type="button"
-                              className="inline-flex items-center gap-1 mt-1 text-xs text-obsidian-500 hover:text-electric-blue focus:outline-none focus:ring-2 focus:ring-electric-blue/50 rounded"
+                              className="inline-flex items-center gap-1 mt-1 text-xs text-muted-foreground hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
                               onClick={() => { setEditingField(path); setEditValue(displayVal); }}
                             >
                               <Edit3 className="w-3 h-3" /> Edit
@@ -968,7 +1012,7 @@ export default function CompanyProfilePage() {
                         ) : (
                           <div className="flex items-start justify-between gap-2 group cursor-pointer min-h-[2rem]" onClick={() => { setEditingField(path); setEditValue(displayVal); }}>
                             <span className="text-sm font-mono font-bold text-foreground break-words flex-1 min-w-0">{displayVal}</span>
-                            <Edit3 className="w-3 h-3 text-obsidian-600 opacity-0 group-hover:opacity-100 shrink-0 mt-0.5" />
+                            <Edit3 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0 mt-0.5" />
                           </div>
                         )}
                       </div>
@@ -987,7 +1031,7 @@ export default function CompanyProfilePage() {
             aiInsightsDeduped={canonical?.ai_insights_deduped ?? null}
             aiSummary={canonical?.ai_summary ?? aiSummary ?? null}
             headerAction={
-              <Button variant="ghost" size="sm" className="text-electric-blue hover:bg-electric-blue/10 -mr-1" onClick={() => extraction && questionnaire && generateAIInsights(extraction, questionnaire).then(() => fetchProfile())} disabled={aiLoading}>
+              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10 -mr-1" onClick={() => extraction && questionnaire && generateAIInsights(extraction, questionnaire).then(() => fetchProfile())} disabled={aiLoading}>
                 {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                 <span className="ml-1">Refresh</span>
               </Button>
@@ -998,10 +1042,10 @@ export default function CompanyProfilePage() {
           <motion.section
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
-            className="rounded-2xl border border-obsidian-700/50 bg-obsidian-900/40 p-5"
+            className="rounded-2xl border border-border/50 bg-muted/40 p-5"
           >
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-              <Linkedin className="w-5 h-5 text-electric-blue" />
+              <Linkedin className="w-5 h-5 text-primary" />
               Refresh from LinkedIn
             </h3>
             {linkedinForDisplay && (
@@ -1014,7 +1058,7 @@ export default function CompanyProfilePage() {
               placeholder="https://linkedin.com/company/..."
               value={linkedinUrl}
               onChange={(e) => setLinkedinUrl(e.target.value)}
-              className="bg-obsidian-900 border-obsidian-700 mb-3"
+              className="bg-muted border-border mb-3"
             />
             {(scrapeError || scrapeStatus === 'failed') && (
               <p className="text-xs text-red-400 mb-2">{extraction?.meta?.linkedin_scrape_error || scrapeError}</p>
@@ -1023,7 +1067,7 @@ export default function CompanyProfilePage() {
               <p className="text-xs text-emerald-500/90 mb-2">Last scraped: {new Date(lastScrapedAt).toLocaleString()}</p>
             )}
             <div className="flex gap-2">
-              <Button size="sm" className="bg-electric-blue hover:bg-electric-blue/90" onClick={triggerLinkedInScrape} disabled={scrapeInProgress || !linkedinUrl.trim()}>
+              <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={triggerLinkedInScrape} disabled={scrapeInProgress || !linkedinUrl.trim()}>
                 {scrapeInProgress ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                 <span className="ml-2">{scrapeInProgress ? 'Scraping…' : 'Re-scrape'}</span>
               </Button>
@@ -1035,17 +1079,17 @@ export default function CompanyProfilePage() {
 
           {/* Team: always show when we have profile so user can add first person */}
           {(extraction || questionnaire) && (
-            <motion.section initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-obsidian-700/50 bg-obsidian-900/40 p-5">
+            <motion.section initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-border/50 bg-muted/40 p-5">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Users className="w-5 h-5 text-electric-blue" />
+                  <Users className="w-5 h-5 text-primary" />
                   Founders & team
                 </h3>
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="border-electric-blue/40 text-electric-blue hover:bg-electric-blue/10"
+                  className="border-primary/40 text-primary hover:bg-primary/10"
                   onClick={() => setAddPersonModalOpen(true)}
                 >
                   <UserPlus className="w-4 h-4" />
@@ -1067,15 +1111,17 @@ export default function CompanyProfilePage() {
                       extraction={extraction}
                       getToken={getToken}
                       onImageSynced={fetchProfile}
+                      confidence_score={f.confidence_score}
+                      evidence_links={f.evidence_links}
                     />
                   ))}
                 </ul>
               ) : Object.keys(founderData).length > 0 ? (
-                <div className="rounded-xl border border-dashed border-obsidian-700 p-4 space-y-2">
+                <div className="rounded-xl border border-dashed border-border p-4 space-y-2">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">From pitch deck</p>
                   {Object.entries(founderData).slice(0, 4).map(([k, v]) => (
                     <div key={k} className="flex flex-col gap-0.5">
-                      <span className="text-[10px] font-semibold text-obsidian-500">{k.replace(/_/g, ' ')}</span>
+                      <span className="text-[10px] font-semibold text-muted-foreground">{k.replace(/_/g, ' ')}</span>
                       <span className="text-xs text-foreground break-words">{Array.isArray(v) ? (v as unknown[]).join(', ') || '—' : String(v || '—')}</span>
                     </div>
                   ))}
@@ -1099,7 +1145,7 @@ export default function CompanyProfilePage() {
 
           {/* Readiness questionnaire */}
           {questionnaire && (
-            <motion.section initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-obsidian-700/50 bg-obsidian-900/40 p-5">
+            <motion.section initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-border/50 bg-muted/40 p-5">
               <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
                 <Globe className="w-5 h-5 text-indigo-400" />
                 Readiness signals
@@ -1111,14 +1157,14 @@ export default function CompanyProfilePage() {
                   const options = q?.options ?? [];
                   return (
                     <div key={key} className="space-y-2">
-                      <label className="text-xs font-semibold text-obsidian-400 uppercase tracking-tight">{q?.question}</label>
+                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-tight">{q?.question}</label>
                       <div className="flex flex-wrap gap-1.5">
                         {options.map((o) => (
                           <button
                             key={o.value}
                             type="button"
                             onClick={() => setQuestionnaireEdits((p) => ({ ...p, [key]: o.value }))}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${currentVal === o.value ? 'bg-electric-blue text-white' : 'bg-obsidian-800/80 text-obsidian-400 hover:bg-obsidian-700 hover:text-foreground border border-obsidian-700'}`}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${currentVal === o.value ? 'bg-primary text-primary-foreground' : 'bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground border border-border'}`}
                           >
                             {o.label}
                           </button>

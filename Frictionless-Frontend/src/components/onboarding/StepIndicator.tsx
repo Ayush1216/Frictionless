@@ -59,7 +59,7 @@ export function StepIndicator({ steps, currentStep, className }: StepIndicatorPr
                     <span
                       className={cn(
                         'text-xs font-mono font-bold',
-                        isActive ? 'text-white' : 'text-obsidian-400'
+                        isActive ? 'text-white' : 'text-muted-foreground'
                       )}
                     >
                       {idx + 1}
@@ -70,7 +70,7 @@ export function StepIndicator({ steps, currentStep, className }: StepIndicatorPr
                   className={cn(
                     'mt-2 text-[10px] sm:text-xs font-medium text-center max-w-[60px] sm:max-w-[80px] leading-tight',
                     isActive
-                      ? 'text-electric-blue'
+                      ? 'text-primary'
                       : isCompleted
                         ? 'text-score-excellent'
                         : 'text-muted-foreground'
@@ -82,7 +82,7 @@ export function StepIndicator({ steps, currentStep, className }: StepIndicatorPr
 
               {/* Connector line */}
               {idx < steps.length - 1 && (
-                <div className="flex-1 h-0.5 mx-2 rounded-full bg-obsidian-700 relative -mt-5 sm:-mt-4">
+                <div className="flex-1 h-0.5 mx-2 rounded-full bg-muted relative -mt-5 sm:-mt-4">
                   <motion.div
                     className="absolute inset-y-0 left-0 rounded-full bg-score-excellent"
                     initial={false}

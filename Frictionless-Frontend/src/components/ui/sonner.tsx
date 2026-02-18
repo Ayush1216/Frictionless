@@ -1,16 +1,15 @@
 "use client"
 
-import { useTheme } from "next-themes"
 import { Toaster as Sonner } from "sonner"
+import { useUIStore } from "@/stores/ui-store"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
+  const theme = useUIStore((s) => s.theme)
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme={theme === "dark" ? "dark" : "light"}
       className="toaster group"
       toastOptions={{
         classNames: {

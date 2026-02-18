@@ -25,7 +25,7 @@ export function PageHeader({ title, subtitle, actions, breadcrumbs, className }:
           <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
             {breadcrumbs.map((crumb, i) => (
               <React.Fragment key={i}>
-                {i > 0 && <span className="text-obsidian-600">/</span>}
+                {i > 0 && <span className="text-border">/</span>}
                 {crumb.href ? (
                   <a
                     href={crumb.href}

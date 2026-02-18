@@ -25,10 +25,10 @@ function getScoreColor(score: number) {
 
 function getBadgeLabel(badge: string) {
   const map: Record<string, { label: string; color: string }> = {
-    assessed: { label: 'Assessed', color: 'bg-obsidian-600/50 text-muted-foreground border-obsidian-500/50' },
+    assessed: { label: 'Assessed', color: 'bg-border/50 text-muted-foreground border-muted-foreground/50' },
     exceptional: { label: 'Exceptional', color: 'bg-score-excellent/20 text-score-excellent border-score-excellent/30' },
     strong: { label: 'Strong', color: 'bg-score-good/20 text-score-good border-score-good/30' },
-    promising: { label: 'Promising', color: 'bg-electric-cyan/20 text-electric-cyan border-electric-cyan/30' },
+    promising: { label: 'Promising', color: 'bg-accent/20 text-accent border-accent/30' },
     developing: { label: 'Developing', color: 'bg-score-fair/20 text-score-fair border-score-fair/30' },
     early: { label: 'Early Stage', color: 'bg-score-poor/20 text-score-poor border-score-poor/30' },
   };
@@ -79,7 +79,7 @@ export function ScoreHero({ score, badge, delta, lastAssessed, onRunAssessment }
               stroke="currentColor"
               strokeWidth="12"
               strokeLinecap="round"
-              className="text-obsidian-700"
+              className="text-muted"
             />
             {/* Score arc */}
             <motion.path
@@ -124,7 +124,7 @@ export function ScoreHero({ score, badge, delta, lastAssessed, onRunAssessment }
 
         <Button
           onClick={onRunAssessment}
-          className="bg-electric-blue hover:bg-electric-blue/90 text-white gap-2"
+          className="bg-primary hover:bg-primary/90 text-white gap-2"
         >
           <RefreshCw className="w-4 h-4" />
           Run New Assessment

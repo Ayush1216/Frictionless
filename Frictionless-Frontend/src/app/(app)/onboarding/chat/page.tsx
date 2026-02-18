@@ -471,14 +471,14 @@ export default function OnboardingChatPage() {
   if (!user || (user.org_type !== 'startup' && user.org_type !== 'capital_provider')) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-electric-blue" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-obsidian-900">
-      <div className="border-b border-obsidian-700/50 px-4 py-3">
+    <div className="flex flex-col h-full min-h-0 bg-background">
+      <div className="border-b border-border/50 px-4 py-3">
         <h1 className="text-lg font-display font-bold text-foreground">Onboarding</h1>
         <p className="text-sm text-muted-foreground">
           {isInvestor ? 'Upload your thesis fit document to get started.' : 'Share your website and pitch deck to get started.'}
@@ -493,7 +493,7 @@ export default function OnboardingChatPage() {
           >
             <div
               className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                m.role === 'assistant' ? 'bg-electric-blue/20 text-electric-blue' : 'bg-obsidian-600 text-foreground'
+                m.role === 'assistant' ? 'bg-primary/20 text-primary' : 'bg-border text-foreground'
               }`}
             >
               {m.role === 'assistant' ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
@@ -501,8 +501,8 @@ export default function OnboardingChatPage() {
             <div
               className={`max-w-[85%] rounded-xl px-4 py-2.5 ${
                 m.role === 'assistant'
-                  ? 'bg-obsidian-800 text-foreground'
-                  : 'bg-electric-blue/20 text-foreground border border-electric-blue/30'
+                  ? 'bg-card text-foreground'
+                  : 'bg-primary/20 text-foreground border border-primary/30'
               }`}
             >
               <p className="text-sm whitespace-pre-wrap">{m.content}</p>
@@ -513,7 +513,7 @@ export default function OnboardingChatPage() {
 
         {showWaitingExtractionStep && (
           <div className="flex justify-end">
-            <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 bg-obsidian-800/50 text-muted-foreground">
+            <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 bg-card/50 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-xs">Processing…</span>
             </div>
@@ -521,7 +521,7 @@ export default function OnboardingChatPage() {
         )}
         {showCalculatingStep && (
           <div className="flex justify-end">
-            <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 bg-obsidian-800/50 text-muted-foreground">
+            <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 bg-card/50 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="text-xs">Calculating readiness score…</span>
             </div>
@@ -539,20 +539,20 @@ export default function OnboardingChatPage() {
                       value={otherInputValue}
                       onChange={(e) => setOtherInputValue(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && submitOtherInput()}
-                      className="bg-electric-blue/10 border-electric-blue/30 flex-1 max-w-[200px]"
+                      className="bg-primary/10 border-primary/30 flex-1 max-w-[200px]"
                       autoFocus
                     />
                     <Button
                       size="sm"
                       onClick={submitOtherInput}
                       disabled={!otherInputValue.trim()}
-                      className="bg-electric-blue hover:bg-electric-blue/90 shrink-0"
+                      className="bg-primary hover:bg-primary/90 shrink-0"
                     >
                       Send
                     </Button>
                   </div>
                 </div>
-                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-obsidian-600 text-foreground">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-border text-foreground">
                   <User className="w-4 h-4" />
                 </div>
               </div>
@@ -566,14 +566,14 @@ export default function OnboardingChatPage() {
                         key={o.value}
                         type="button"
                         onClick={() => selectOption(QUESTION_ORDER[questionnaireIndex], o.value, o.label)}
-                        className="px-3 py-2 rounded-xl text-sm font-medium bg-electric-blue/20 hover:bg-electric-blue/30 border border-electric-blue/40 text-foreground transition-colors"
+                        className="px-3 py-2 rounded-xl text-sm font-medium bg-primary/20 hover:bg-primary/30 border border-primary/40 text-foreground transition-colors"
                       >
                         {o.label}
                       </button>
                     ))}
                   </div>
                 </div>
-                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-obsidian-600 text-foreground">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-border text-foreground">
                   <User className="w-4 h-4" />
                 </div>
               </div>
@@ -582,7 +582,7 @@ export default function OnboardingChatPage() {
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className={`border-t border-obsidian-700/50 p-4 ${showQuestionnaireStep || showCalculatingStep || showWaitingExtractionStep ? 'hidden' : ''}`}>
+      <form onSubmit={handleSubmit} className={`border-t border-border/50 p-4 ${showQuestionnaireStep || showCalculatingStep || showWaitingExtractionStep ? 'hidden' : ''}`}>
         <div className="flex gap-2 items-end">
           {(showPitchDeckStep || showThesisStep) && (
             <>
@@ -616,11 +616,11 @@ export default function OnboardingChatPage() {
                   ? 'Upload your thesis document using the attachment button →'
                   : 'Or type a message...'
             }
-            className="flex-1 h-11 rounded-lg bg-obsidian-800 border border-obsidian-600 px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-electric-blue/50"
+            className="flex-1 h-11 rounded-lg bg-card border border-border px-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             disabled={step === 'done' || sending || uploading}
           />
           {step === 'website' && (
-            <Button type="submit" className="h-11 px-4 bg-electric-blue hover:bg-electric-blue/90" disabled={sending || !input.trim()}>
+            <Button type="submit" className="h-11 px-4 bg-primary hover:bg-primary/90" disabled={sending || !input.trim()}>
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           )}

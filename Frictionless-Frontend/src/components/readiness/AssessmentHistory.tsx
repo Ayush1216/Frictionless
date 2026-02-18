@@ -62,17 +62,17 @@ function CustomTooltip({
   const dateLabel = xAxisMode === 'hour' ? data.fullDateHour : data.fullDate;
 
   return (
-    <div className="glass-card px-3 py-2 text-xs border border-obsidian-600/50">
+    <div className="glass-card px-3 py-2 text-xs border border-border/50">
       <p className="text-foreground font-semibold">Run #{data.run}</p>
       <p className="text-muted-foreground">{dateLabel}</p>
       <div className="flex items-center gap-2 mt-1">
-        <span className="text-lg font-bold text-electric-blue tabular-nums">
+        <span className="text-lg font-bold text-primary tabular-nums">
           {data.score}
         </span>
         {Number.isFinite(data.delta) && data.delta !== 0 && <DeltaArrow delta={data.delta} size="sm" />}
       </div>
       {data.update_source && (
-        <p className="text-obsidian-400 mt-1 capitalize">{data.update_source.replace(/_/g, ' ')}</p>
+        <p className="text-muted-foreground mt-1 capitalize">{data.update_source.replace(/_/g, ' ')}</p>
       )}
       {data.note && <p className="text-muted-foreground mt-0.5 italic">{data.note}</p>}
     </div>
@@ -235,13 +235,13 @@ export function AssessmentHistory({ runs = [], scoreHistory }: AssessmentHistory
         </div>
         <div className="flex items-center gap-2">
           {count > 0 && (
-            <div className="flex rounded-lg bg-obsidian-800/60 border border-obsidian-700/50 p-0.5">
+            <div className="flex rounded-lg bg-card/60 border border-border/50 p-0.5">
               <button
                 type="button"
                 onClick={() => setXAxisMode('day')}
                 className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
                   xAxisMode === 'day'
-                    ? 'bg-electric-blue/20 text-electric-blue'
+                    ? 'bg-primary/20 text-primary'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -252,7 +252,7 @@ export function AssessmentHistory({ runs = [], scoreHistory }: AssessmentHistory
                 onClick={() => setXAxisMode('hour')}
                 className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
                   xAxisMode === 'hour'
-                    ? 'bg-electric-blue/20 text-electric-blue'
+                    ? 'bg-primary/20 text-primary'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
@@ -261,7 +261,7 @@ export function AssessmentHistory({ runs = [], scoreHistory }: AssessmentHistory
             </div>
           )}
           {showLatestDelta && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-obsidian-700/60 text-xs">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/60 text-xs">
               <span className="text-muted-foreground">Latest</span>
               <DeltaArrow delta={latestDelta} size="sm" />
             </div>
@@ -270,7 +270,7 @@ export function AssessmentHistory({ runs = [], scoreHistory }: AssessmentHistory
       </div>
 
       {count === 0 ? (
-        <div className="h-[180px] lg:h-[200px] flex items-center justify-center rounded-lg border border-dashed border-obsidian-600/50 bg-obsidian-900/30">
+        <div className="h-[180px] lg:h-[200px] flex items-center justify-center rounded-lg border border-dashed border-border/50 bg-background/30">
           <p className="text-sm text-muted-foreground">
             Run an assessment to see your score history
           </p>

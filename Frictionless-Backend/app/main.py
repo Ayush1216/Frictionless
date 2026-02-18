@@ -56,9 +56,14 @@ from app.services.supabase_client import (
     upload_ocr_text,
     upsert_apollo_enrichment,
     upsert_extraction_result,
+    upsert_person_provenance,
     upsert_readiness_result,
 )
 from app.services.task_chat import get_task_chat_response
+from app.services.ai_cache import get_cached_analysis, set_cached_analysis
+from app.services.activity import log_activity, get_activity_events
+from app.services.share import create_share_link, validate_share_link, revoke_share_link, get_share_links
+from app.services.team import invite_member, accept_invite, get_team_members, get_pending_invites, update_member_role, revoke_invite
 from app.utils.domain import extract_domain
 
 logging.basicConfig(
@@ -443,22 +448,29 @@ def _build_startup_dashboard(supabase, org_id: str) -> dict:
     mark_tasks_done_by_subcategories(supabase, org_id, done_subcategories)
     groups = get_task_groups_with_tasks(supabase, org_id)
     by_cat_key = {g.get("category_key"): g for g in groups_data}
+    completed_flat = []
     for g in groups:
         gd = by_cat_key.get(g.get("category_key"))
         if gd:
             g["total_in_category"] = gd.get("total_in_category", 0)
             g["done_count"] = gd.get("done_count", 0)
         all_tasks = g.get("tasks") or []
+        completed_flat.extend(t for t in all_tasks if (t.get("status") or "todo") == "done")
         g["tasks"] = [t for t in all_tasks if (t.get("status") or "todo") != "done"]
         for t in g["tasks"]:
             sc = t.get("subcategory_name") or ""
             if sc and sc in potential_by_subcategory:
                 t["potential_points"] = potential_by_subcategory[sc]
+    for t in completed_flat:
+        sc = t.get("subcategory_name") or ""
+        if sc and sc in potential_by_subcategory:
+            t["potential_points"] = potential_by_subcategory[sc]
     tasks_flat = [t for g in groups for t in g.get("tasks", [])]
     return {
         "readiness": readiness,
         "task_groups": groups,
         "tasks": tasks_flat,
+        "completed_tasks": completed_flat,
         "task_progress": {"allotted_total": allotted_total, "current_pending": current_pending},
     }
 
@@ -615,7 +627,8 @@ async def profile_image_endpoint(body: ProfileImageRequest):
             detail="Invalid URL: use a LinkedIn person profile (linkedin.com/in/...).",
         )
     try:
-        person = run_linkedin_person_profile(url)
+        result = run_linkedin_person_profile(url)
+        person = result.get("person", result) if isinstance(result.get("person"), dict) else result
         profile_image_url = (person.get("profile_image_url") or "").strip()
         return {"profile_image_url": profile_image_url or None}
     except ValueError as e:
@@ -633,11 +646,14 @@ async def add_team_from_linkedin_endpoint(body: AddTeamFromLinkedInRequest):
     """Add a team member from a LinkedIn person profile URL. Validates URL, scrapes profile, merges into extraction_data."""
     from datetime import datetime, timezone
 
+    log.info("add-from-linkedin: org_id=%s linkedin_url=%s role_type=%s", body.org_id, (body.linkedin_url or "")[:60], body.role_type or "Other")
     url = (body.linkedin_url or "").strip()
     if not url:
+        log.warning("add-from-linkedin 400: linkedin_url is required")
         raise HTTPException(status_code=400, detail="linkedin_url is required")
     url = sanitize_linkedin(url)
     if not url or not is_person_linkedin(url):
+        log.warning("add-from-linkedin 400: Invalid URL sanitized=%r original=%r", url, body.linkedin_url)
         raise HTTPException(
             status_code=400,
             detail="Invalid URL: use a LinkedIn person profile (linkedin.com/in/...). Company pages are not supported here.",
@@ -675,9 +691,31 @@ async def add_team_from_linkedin_endpoint(body: AddTeamFromLinkedInRequest):
             "message": "This person is already in the team list.",
         }
 
+    # Get company context for disambiguation
+    company_domain = None
+    company_name = None
+    apollo = get_apollo_data(supabase, body.org_id)
+    if apollo:
+        website = apollo.get("website") or apollo.get("primary_domain") or ""
+        if website:
+            company_domain = extract_domain(website)
+        company_name = (apollo.get("name") or existing.get("meta", {}).get("company_name") or "").strip() or None
+    if not company_name and body.company_name_override:
+        company_name = body.company_name_override.strip() or None
+    if not company_domain and existing:
+        meta = existing.get("meta") or {}
+        website = meta.get("company_website") or ""
+        if website:
+            company_domain = extract_domain(website)
+
     try:
-        person = run_linkedin_person_profile(body.linkedin_url)
+        result = run_linkedin_person_profile(
+            body.linkedin_url,
+            company_domain=company_domain or None,
+            company_name=company_name,
+        )
     except ValueError as e:
+        log.warning("add-from-linkedin 400 (ValueError): %s", e)
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         log.exception("Person profile scrape failed for org %s: %s", body.org_id, e)
@@ -686,12 +724,44 @@ async def add_team_from_linkedin_endpoint(body: AddTeamFromLinkedInRequest):
             detail="Could not fetch profile. The page may be private or unavailable. Try again later.",
         )
 
+    person = result.get("person", result)
+    confidence_score = result.get("confidence_score", 0.9)
+    evidence_links = result.get("evidence_links", [])
+    identity_key = result.get("identity_key", "")
+
+    CONFIDENCE_THRESHOLD = 0.75
+    if confidence_score < CONFIDENCE_THRESHOLD:
+        log.warning("Rejected low-confidence person org=%s url=%s score=%.2f", body.org_id, url_lower, confidence_score)
+        return {
+            "ok": False,
+            "status": "rejected",
+            "rejection_reason": "Profile could not be verified with sufficient confidence. Please verify the LinkedIn URL or add more company context.",
+            "confidence_score": confidence_score,
+        }
+
     now_iso = datetime.now(timezone.utc).isoformat()
     person["role_type"] = role_type
     person["source"] = "linkedin"
     person["scraped_at"] = now_iso
     person["scrape_status"] = "success"
     person["updated_by_source"] = "linkedin"
+    person["confidence_score"] = confidence_score
+    person["evidence_links"] = evidence_links
+    person["identity_key"] = identity_key
+
+    # Persist to person_provenance for canonical record
+    try:
+        upsert_person_provenance(
+            supabase,
+            body.org_id,
+            identity_key,
+            person,
+            confidence_score=confidence_score,
+            evidence_links=evidence_links,
+            source="linkedin",
+        )
+    except Exception as e:
+        log.warning("Could not persist person_provenance: %s", e)
 
     if role_type == "Founder":
         founders.append(person)
@@ -768,6 +838,7 @@ async def startup_tasks_endpoint(org_id: str):
     mark_tasks_done_by_subcategories(supabase, org_id, done_subcategories)
     groups = get_task_groups_with_tasks(supabase, org_id)
     by_cat_key = {g.get("category_key"): g for g in groups_data}
+    completed_flat = []
     for g in groups:
         gd = by_cat_key.get(g.get("category_key"))
         if gd:
@@ -775,15 +846,21 @@ async def startup_tasks_endpoint(org_id: str):
             g["done_count"] = gd.get("done_count", 0)
         # Return only pending tasks so the UI shows the remaining layout; completed stay in DB for history
         all_tasks = g.get("tasks") or []
+        completed_flat.extend(t for t in all_tasks if (t.get("status") or "todo") == "done")
         g["tasks"] = [t for t in all_tasks if (t.get("status") or "todo") != "done"]
         for t in g["tasks"]:
             sc = t.get("subcategory_name") or ""
             if sc and sc in potential_by_subcategory:
                 t["potential_points"] = potential_by_subcategory[sc]
+    for t in completed_flat:
+        sc = t.get("subcategory_name") or ""
+        if sc and sc in potential_by_subcategory:
+            t["potential_points"] = potential_by_subcategory[sc]
     tasks_flat = [t for g in groups for t in g.get("tasks", [])]
     return {
         "task_groups": groups,
         "tasks": tasks_flat,
+        "completed_tasks": completed_flat,
         "task_progress": {"allotted_total": allotted_total, "current_pending": current_pending},
     }
 
@@ -960,4 +1037,383 @@ class TaskCommentBody(BaseModel):
 async def add_task_comment_endpoint(task_id: str, body: TaskCommentBody):
     """Task comments (stub)."""
     return {"ok": True, "comment": {"id": "", "content": body.content, "author": "", "created_at": ""}}
+
+
+# ---------------------------------------------------------------------------
+# Activity Events
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/activity-events")
+async def activity_events_endpoint(org_id: str, limit: int = 50, event_type: str | None = None, resource_type: str | None = None):
+    """Return filtered activity events for an org."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    events = get_activity_events(supabase, org_id, limit=min(limit, 100), event_type=event_type, resource_type=resource_type)
+    return {"events": events}
+
+
+# ---------------------------------------------------------------------------
+# Share Links
+# ---------------------------------------------------------------------------
+
+
+class CreateShareLinkBody(BaseModel):
+    org_id: str
+    share_type: str = "data_room"
+    scope: dict | None = None
+    expires_in_days: int = 30
+    watermark: str | None = None
+    created_by: str | None = None
+
+
+@app.post("/api/share-links")
+async def create_share_link_endpoint(body: CreateShareLinkBody):
+    """Create a tokenized, scoped share link."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    link = create_share_link(
+        supabase, body.org_id, body.share_type,
+        created_by=body.created_by, scope=body.scope,
+        expires_in_days=body.expires_in_days, watermark=body.watermark,
+    )
+    if not link:
+        raise HTTPException(status_code=500, detail="Could not create share link")
+    log_activity(supabase, body.org_id, "share_link_created", "share_link", link.get("id", ""), actor_user_id=body.created_by)
+    return {"ok": True, "link": link}
+
+
+@app.get("/api/share-links/{token}")
+async def validate_share_link_endpoint(token: str):
+    """Validate a share link token and increment view count."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    link = validate_share_link(supabase, token)
+    if not link:
+        raise HTTPException(status_code=404, detail="Link not found or expired")
+    return {"ok": True, "link": link}
+
+
+@app.get("/api/share-links")
+async def list_share_links_endpoint(org_id: str):
+    """List all share links for an org."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    return {"links": get_share_links(supabase, org_id)}
+
+
+@app.delete("/api/share-links/{link_id}")
+async def revoke_share_link_endpoint(link_id: str):
+    """Revoke (delete) a share link."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    ok = revoke_share_link(supabase, link_id)
+    return {"ok": ok}
+
+
+# ---------------------------------------------------------------------------
+# Team Management & RBAC
+# ---------------------------------------------------------------------------
+
+
+class InviteMemberBody(BaseModel):
+    org_id: str
+    email: str
+    role: str = "viewer"
+    created_by: str | None = None
+
+
+class AcceptInviteBody(BaseModel):
+    user_id: str
+
+
+class UpdateRoleBody(BaseModel):
+    org_id: str
+    user_id: str
+    role: str
+
+
+@app.post("/api/team/invite")
+async def invite_member_endpoint(body: InviteMemberBody):
+    """Send a team invite."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    invite = invite_member(supabase, body.org_id, body.email, body.role, created_by=body.created_by)
+    if not invite:
+        raise HTTPException(status_code=500, detail="Could not create invite")
+    log_activity(supabase, body.org_id, "team_invite_sent", "team_invite", invite.get("id", ""), actor_user_id=body.created_by, metadata={"email": body.email, "role": body.role})
+    return {"ok": True, "invite": invite}
+
+
+@app.post("/api/team/invite/{invite_token}/accept")
+async def accept_invite_endpoint(invite_token: str, body: AcceptInviteBody):
+    """Accept a team invite."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    invite = accept_invite(supabase, invite_token, body.user_id)
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite not found, expired, or already accepted")
+    log_activity(supabase, invite.get("org_id", ""), "team_invite_accepted", "team_invite", invite.get("id", ""), actor_user_id=body.user_id)
+    return {"ok": True, "invite": invite}
+
+
+@app.get("/api/team/members")
+async def team_members_endpoint(org_id: str):
+    """List team members for an org."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    return {"members": get_team_members(supabase, org_id), "invites": get_pending_invites(supabase, org_id)}
+
+
+@app.patch("/api/team/role")
+async def update_role_endpoint(body: UpdateRoleBody):
+    """Update a team member's role."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    ok = update_member_role(supabase, body.org_id, body.user_id, body.role)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Invalid role or member not found")
+    log_activity(supabase, body.org_id, "team_role_changed", "team_membership", body.user_id, metadata={"new_role": body.role})
+    return {"ok": True}
+
+
+@app.delete("/api/team/invite/{invite_id}")
+async def revoke_invite_endpoint(invite_id: str):
+    """Revoke a pending invite."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    ok = revoke_invite(supabase, invite_id)
+    return {"ok": ok}
+
+
+# ---------------------------------------------------------------------------
+# AI Analysis (cached)
+# ---------------------------------------------------------------------------
+
+
+class AIAnalysisRequest(BaseModel):
+    org_id: str
+    analysis_type: str = "readiness_strategic"
+    input_data: dict = {}
+    force: bool = False
+
+
+@app.post("/api/ai-analysis")
+async def ai_analysis_endpoint(body: AIAnalysisRequest):
+    """Return cached AI analysis or generate new one. Currently returns placeholder structure."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    if not body.force:
+        cached = get_cached_analysis(supabase, body.org_id, body.analysis_type, body.input_data)
+        if cached:
+            return {"ok": True, "cached": True, "result": cached}
+    # For now return a structured placeholder. Real LLM call will be added when cost routing is in place.
+    result = {
+        "strengths": ["Readiness score is being tracked", "Data extraction pipeline complete"],
+        "risks": ["Score below fundraise-ready threshold", "Missing key financial documentation"],
+        "top_blockers": ["Complete financial projections", "Add team compensation details"],
+        "plan_30_60_90": {
+            "30_days": ["Complete all high-impact readiness tasks", "Upload missing documents"],
+            "60_days": ["Reach score >70 for investor outreach", "Prepare pitch materials"],
+            "90_days": ["Begin investor conversations", "Close readiness gaps"],
+        },
+        "investor_objections": [
+            {"objection": "Incomplete financial model", "response": "Projections are being finalized with historical data backing"},
+        ],
+    }
+    set_cached_analysis(supabase, body.org_id, body.analysis_type, body.input_data, result, model="placeholder")
+    return {"ok": True, "cached": False, "result": result}
+
+
+# ---------------------------------------------------------------------------
+# Task Validation & Verdicts
+# ---------------------------------------------------------------------------
+
+
+class TaskVerdictBody(BaseModel):
+    verdict: str  # approve, reject, request_changes
+    verdict_by: str | None = None
+    verdict_notes: str | None = None
+
+
+@app.post("/api/tasks/{task_id}/verdicts")
+async def add_task_verdict_endpoint(task_id: str, body: TaskVerdictBody):
+    """Add a validation verdict for a task."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    task = get_task_by_id(supabase, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    row = {
+        "task_id": task_id,
+        "verdict": body.verdict,
+        "verdict_by": body.verdict_by,
+        "verdict_notes": body.verdict_notes,
+        "created_at": now,
+    }
+    try:
+        r = supabase.table("task_verdicts").insert(row).execute()
+        verdict_row = (r.data or [{}])[0] if r.data else row
+    except Exception as e:
+        log.warning("task_verdicts insert failed: %s", e)
+        verdict_row = row
+    return {"ok": True, "verdict": verdict_row}
+
+
+# ---------------------------------------------------------------------------
+# AI Chat Threads (persistent conversations)
+# ---------------------------------------------------------------------------
+
+
+class CreateChatThreadBody(BaseModel):
+    org_id: str
+    title: str = "New Chat"
+    created_by: str | None = None
+
+
+class ChatMessageBody(BaseModel):
+    role: str = "user"
+    content: str
+    metadata: dict | None = None
+
+
+@app.post("/api/chat-threads")
+async def create_chat_thread(body: CreateChatThreadBody):
+    """Create a new AI chat thread."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    row = {
+        "org_id": body.org_id,
+        "title": body.title,
+        "created_by": body.created_by,
+        "message_count": 0,
+        "pinned": False,
+        "created_at": now,
+        "updated_at": now,
+    }
+    try:
+        r = supabase.table("ai_chat_threads").insert(row).execute()
+        thread = (r.data or [{}])[0] if r.data else row
+    except Exception as e:
+        log.warning("chat thread insert failed: %s", e)
+        thread = {**row, "id": f"thread-{now}"}
+    return {"ok": True, "thread": thread}
+
+
+@app.get("/api/chat-threads")
+async def list_chat_threads(org_id: str, limit: int = 50):
+    """List chat threads for an org, most recent first."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    try:
+        r = (supabase.table("ai_chat_threads")
+             .select("*")
+             .eq("org_id", org_id)
+             .order("updated_at", desc=True)
+             .limit(min(limit, 100))
+             .execute())
+        return {"threads": r.data or []}
+    except Exception as e:
+        log.warning("chat threads list failed: %s", e)
+        return {"threads": []}
+
+
+@app.get("/api/chat-threads/{thread_id}/messages")
+async def get_chat_thread_messages(thread_id: str, limit: int = 100):
+    """Get messages for a chat thread."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    try:
+        r = (supabase.table("ai_chat_messages")
+             .select("*")
+             .eq("thread_id", thread_id)
+             .order("created_at", desc=False)
+             .limit(min(limit, 500))
+             .execute())
+        return {"messages": r.data or []}
+    except Exception as e:
+        log.warning("chat messages fetch failed: %s", e)
+        return {"messages": []}
+
+
+@app.post("/api/chat-threads/{thread_id}/messages")
+async def add_chat_thread_message(thread_id: str, body: ChatMessageBody):
+    """Add a message to a chat thread."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc).isoformat()
+    role = body.role.strip().lower()
+    if role not in ("user", "assistant", "system"):
+        role = "user"
+    row = {
+        "thread_id": thread_id,
+        "role": role,
+        "content": body.content,
+        "metadata": body.metadata or {},
+        "created_at": now,
+    }
+    try:
+        r = supabase.table("ai_chat_messages").insert(row).execute()
+        msg = (r.data or [{}])[0] if r.data else row
+        # Update thread message count and timestamp
+        supabase.table("ai_chat_threads").update({
+            "message_count": supabase.table("ai_chat_messages").select("id", count="exact").eq("thread_id", thread_id).execute().count or 0,
+            "updated_at": now,
+        }).eq("id", thread_id).execute()
+    except Exception as e:
+        log.warning("chat message insert failed: %s", e)
+        msg = row
+    return {"ok": True, "message": msg}
+
+
+@app.delete("/api/chat-threads/{thread_id}")
+async def delete_chat_thread(thread_id: str):
+    """Delete a chat thread and its messages."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    try:
+        supabase.table("ai_chat_messages").delete().eq("thread_id", thread_id).execute()
+        supabase.table("ai_chat_threads").delete().eq("id", thread_id).execute()
+    except Exception as e:
+        log.warning("chat thread delete failed: %s", e)
+    return {"ok": True}
+
+
+class PinThreadBody(BaseModel):
+    pinned: bool
+
+
+@app.patch("/api/chat-threads/{thread_id}/pin")
+async def pin_chat_thread(thread_id: str, body: PinThreadBody):
+    """Pin or unpin a chat thread."""
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+    try:
+        supabase.table("ai_chat_threads").update({"pinned": body.pinned}).eq("id", thread_id).execute()
+    except Exception as e:
+        log.warning("chat thread pin failed: %s", e)
+    return {"ok": True}
 

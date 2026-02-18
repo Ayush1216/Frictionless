@@ -20,14 +20,14 @@ export function Hero() {
       >
         <div className="glass rounded-full px-4 py-2 md:px-5 md:py-2.5 flex items-center gap-2 text-sm text-muted-foreground">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-electric-blue opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-electric-blue" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
           </span>
           <span>Now in public beta</span>
           <span className="text-muted-foreground/70">·</span>
           <Link
             href="/pricing"
-            className="text-electric-blue hover:text-electric-cyan transition-colors"
+            className="text-primary hover:text-accent transition-colors"
           >
             See what&apos;s new →
           </Link>

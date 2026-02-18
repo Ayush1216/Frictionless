@@ -77,7 +77,7 @@ export function TestimonialCarousel() {
           Loved by <span className="gradient-text">founders & investors</span>
         </motion.h2>
         <motion.p
-          className="text-obsidian-400 text-base md:text-lg mb-16 max-w-2xl mx-auto"
+          className="text-muted-foreground text-base md:text-lg mb-16 max-w-2xl mx-auto"
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -98,8 +98,8 @@ export function TestimonialCarousel() {
               transition={{ duration: 0.4, ease: 'easeInOut' }}
               className="glass-card p-8 md:p-12"
             >
-              <Quote className="w-8 h-8 text-electric-blue/40 mb-6 mx-auto" />
-              <p className="text-lg md:text-xl text-obsidian-200 leading-relaxed mb-8 font-body">
+              <Quote className="w-8 h-8 text-primary/40 mb-6 mx-auto" />
+              <p className="text-lg md:text-xl text-foreground/80 leading-relaxed mb-8 font-body">
                 &ldquo;{testimonials[current].quote}&rdquo;
               </p>
               <div className="flex items-center justify-center gap-4">
@@ -110,7 +110,7 @@ export function TestimonialCarousel() {
                   <div className="font-display font-semibold text-white">
                     {testimonials[current].name}
                   </div>
-                  <div className="text-sm text-obsidian-400">
+                  <div className="text-sm text-muted-foreground">
                     {testimonials[current].title}, {testimonials[current].company}
                   </div>
                 </div>
@@ -126,7 +126,7 @@ export function TestimonialCarousel() {
             className="p-2 rounded-full glass hover:bg-white/10 transition-colors"
             aria-label="Previous testimonial"
           >
-            <ChevronLeft className="w-5 h-5 text-obsidian-300" />
+            <ChevronLeft className="w-5 h-5 text-muted-foreground" />
           </button>
 
           <div className="flex gap-2">
@@ -139,8 +139,8 @@ export function TestimonialCarousel() {
                 }}
                 className={`w-2 h-2 rounded-full transition-all duration-300 ${
                   i === current
-                    ? 'bg-electric-blue w-6'
-                    : 'bg-obsidian-600 hover:bg-obsidian-500'
+                    ? 'bg-primary w-6'
+                    : 'bg-border hover:bg-muted-foreground'
                 }`}
                 aria-label={`Go to testimonial ${i + 1}`}
               />
@@ -152,7 +152,7 @@ export function TestimonialCarousel() {
             className="p-2 rounded-full glass hover:bg-white/10 transition-colors"
             aria-label="Next testimonial"
           >
-            <ChevronRight className="w-5 h-5 text-obsidian-300" />
+            <ChevronRight className="w-5 h-5 text-muted-foreground" />
           </button>
         </div>
       </div>

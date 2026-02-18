@@ -11,6 +11,40 @@ BUCKET = "org-assets"
 SIGNED_URL_EXPIRES = 3600  # 1 hour
 
 
+def upsert_person_provenance(
+    supabase: Client,
+    org_id: str,
+    identity_key: str,
+    person_jsonb: dict,
+    confidence_score: float | None = None,
+    evidence_links: list | None = None,
+    source: str = "linkedin",
+) -> None:
+    """Upsert person_provenance for canonical record and audit."""
+    now = datetime.now(timezone.utc).isoformat()
+    row = {
+        "org_id": org_id,
+        "identity_key": identity_key,
+        "person_jsonb": person_jsonb,
+        "confidence_score": confidence_score,
+        "evidence_links": evidence_links or [],
+        "evidence_snippets": [],
+        "source": source,
+        "created_at": now,
+    }
+    try:
+        supabase.table("person_provenance").upsert(
+            row,
+            on_conflict="org_id,identity_key",
+        ).execute()
+    except Exception as e:
+        log.warning("person_provenance upsert failed (table may not exist): %s", e)
+        raise
+    except Exception as e:
+        log.warning("upsert_person_provenance failed (table may not exist): %s", e)
+        raise
+
+
 def get_supabase() -> Client | None:
     """Create Supabase client with service role key (bypasses RLS)."""
     url = os.getenv("SUPABASE_URL")
@@ -469,18 +503,17 @@ def mark_tasks_done_by_subcategories(
     if not group_ids:
         return
     now = datetime.now(timezone.utc).isoformat()
-    for sc in subcategory_names:
-        try:
-            (
-                supabase.table("tasks")
-                .update({"status": "done", "updated_at": now, "completed_at": now})
-                .in_("group_id", group_ids)
-                .eq("subcategory_name", sc)
-                .neq("status", "done")
-                .execute()
-            )
-        except Exception as e:
-            log.warning("mark_tasks_done_by_subcategories %s: %s", sc, e)
+    try:
+        (
+            supabase.table("tasks")
+            .update({"status": "done", "updated_at": now, "completed_at": now})
+            .in_("group_id", group_ids)
+            .in_("subcategory_name", subcategory_names)
+            .neq("status", "done")
+            .execute()
+        )
+    except Exception as e:
+        log.warning("mark_tasks_done_by_subcategories bulk update failed: %s", e)
 
 
 def get_task_ai_chat_messages(supabase: Client, task_id: str) -> list[dict]:

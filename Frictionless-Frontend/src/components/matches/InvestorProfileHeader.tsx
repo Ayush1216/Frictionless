@@ -42,7 +42,7 @@ function LargeGauge({ score, size = 72 }: { score: number; size?: number }) {
           fill="none"
           stroke="currentColor"
           strokeWidth={4}
-          className="text-obsidian-700"
+          className="text-muted"
         />
         <motion.circle
           cx={size / 2}
@@ -85,7 +85,7 @@ export function InvestorProfileHeader({ investor, match }: InvestorProfileHeader
       <div className="flex flex-col lg:flex-row lg:items-start gap-5">
         {/* Logo + Name */}
         <div className="flex items-start gap-4 flex-1 min-w-0">
-          <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-xl bg-obsidian-700 border border-obsidian-600/50 flex items-center justify-center overflow-hidden shrink-0">
+          <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-xl bg-muted border border-border/50 flex items-center justify-center overflow-hidden shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={investor.org.logo_url}
@@ -99,7 +99,7 @@ export function InvestorProfileHeader({ investor, match }: InvestorProfileHeader
               {investor.org.name}
             </h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <Badge className="bg-electric-purple/15 text-electric-purple border-electric-purple/30 text-xs">
+              <Badge className="bg-accent/15 text-accent border-accent/30 text-xs">
                 <Building2 className="w-3 h-3 mr-1" />
                 {providerTypeLabels[investor.provider_type] ?? investor.provider_type}
               </Badge>
@@ -131,7 +131,7 @@ export function InvestorProfileHeader({ investor, match }: InvestorProfileHeader
             <Button
               variant="outline"
               size="sm"
-              className="border-obsidian-600/50 gap-1.5"
+              className="border-border/50 gap-1.5"
             >
               <Bookmark className="w-4 h-4" />
               Save

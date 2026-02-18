@@ -9,7 +9,7 @@ export default function OnboardingPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="min-h-[calc(100vh-4rem)] bg-obsidian-900"
+      className="min-h-[calc(100vh-4rem)] bg-background"
     >
       <OnboardingWizard />
     </motion.div>

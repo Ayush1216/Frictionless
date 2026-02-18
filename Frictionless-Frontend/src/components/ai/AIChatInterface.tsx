@@ -157,8 +157,8 @@ export function AIChatInterface({ initialMessages = [], className }: AIChatInter
             animate={{ opacity: 1 }}
             className="flex flex-col items-center justify-center h-full text-center px-4"
           >
-            <div className="w-16 h-16 rounded-2xl bg-neon-gradient/20 border border-electric-blue/20 flex items-center justify-center mb-4">
-              <Sparkles className="w-8 h-8 text-electric-blue" />
+            <div className="w-16 h-16 rounded-2xl bg-neon-gradient/20 border border-primary/20 flex items-center justify-center mb-4">
+              <Sparkles className="w-8 h-8 text-primary" />
             </div>
             <h3 className="text-lg font-display font-bold text-foreground mb-1">
               Hi there! How can I help?

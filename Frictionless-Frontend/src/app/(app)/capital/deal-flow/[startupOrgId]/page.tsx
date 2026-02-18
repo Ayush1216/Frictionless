@@ -111,7 +111,7 @@ function ScoreGaugeLarge({ score, badge }: { score: number; badge: string }) {
   return (
     <div className="relative w-28 h-28">
       <svg className="w-28 h-28 -rotate-90" viewBox="0 0 112 112">
-        <circle cx="56" cy="56" r={radius} fill="none" stroke="currentColor" strokeWidth="6" className="text-obsidian-700" />
+        <circle cx="56" cy="56" r={radius} fill="none" stroke="currentColor" strokeWidth="6" className="text-muted" />
         <motion.circle
           cx="56" cy="56" r={radius} fill="none" stroke={color} strokeWidth="6"
           strokeLinecap="round"
@@ -139,7 +139,7 @@ function MetricCard({ label, value, icon, delay = 0 }: { label: string; value: s
       className="glass-card p-4"
     >
       <div className="flex items-center gap-2 mb-1">
-        <div className="w-7 h-7 rounded-lg bg-obsidian-700/80 flex items-center justify-center">{icon}</div>
+        <div className="w-7 h-7 rounded-lg bg-muted/80 flex items-center justify-center">{icon}</div>
         <span className="text-xs text-muted-foreground">{label}</span>
       </div>
       <p className="text-lg font-mono font-bold text-foreground">{value}</p>
@@ -196,14 +196,14 @@ export default function StartupDetailPage() {
         <div className="flex flex-col lg:flex-row lg:items-center gap-6">
           {/* Logo + info */}
           <div className="flex items-center gap-4 flex-1 min-w-0">
-            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-obsidian-700 ring-1 ring-white/5 flex-shrink-0">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-muted ring-1 ring-white/5 flex-shrink-0">
               <Image src={startup.org.logo_url} alt={startup.org.name} width={64} height={64} className="w-full h-full object-cover" />
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl font-display font-bold text-foreground truncate">{startup.org.name}</h1>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <StatusChip status={startup.stage} />
-                <span className="px-2 py-0.5 text-[11px] rounded-full bg-electric-purple/15 text-electric-purple border border-electric-purple/30 font-semibold">
+                <span className="px-2 py-0.5 text-[11px] rounded-full bg-accent/15 text-accent border border-accent/30 font-semibold">
                   {startup.sector.name}
                 </span>
                 <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -224,7 +224,7 @@ export default function StartupDetailPage() {
 
       {/* ─── Tabs ─── */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="bg-obsidian-800/60 border border-white/5 p-1 flex-wrap h-auto">
+        <TabsList className="bg-card/60 border border-white/5 p-1 flex-wrap h-auto">
           <TabsTrigger value="overview" className="text-xs gap-1.5"><Info className="w-3.5 h-3.5" /> Overview</TabsTrigger>
           <TabsTrigger value="metrics" className="text-xs gap-1.5"><BarChart3 className="w-3.5 h-3.5" /> Metrics</TabsTrigger>
           <TabsTrigger value="team" className="text-xs gap-1.5"><Users className="w-3.5 h-3.5" /> Team</TabsTrigger>
@@ -244,17 +244,17 @@ export default function StartupDetailPage() {
 
           {/* Key metrics */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-            <MetricCard label="MRR" value={fmt(m.mrr)} icon={<DollarSign className="w-3.5 h-3.5 text-electric-blue" />} delay={0.05} />
+            <MetricCard label="MRR" value={fmt(m.mrr)} icon={<DollarSign className="w-3.5 h-3.5 text-primary" />} delay={0.05} />
             <MetricCard label="ARR" value={fmt(m.arr)} icon={<TrendingUp className="w-3.5 h-3.5 text-score-excellent" />} delay={0.1} />
             <MetricCard label="Burn" value={fmt(m.burn_monthly)} icon={<Flame className="w-3.5 h-3.5 text-score-poor" />} delay={0.15} />
             <MetricCard label="Runway" value={`${m.runway_months}mo`} icon={<Clock className="w-3.5 h-3.5 text-score-fair" />} delay={0.2} />
-            <MetricCard label="Customers" value={String(m.customer_count)} icon={<UserCheck className="w-3.5 h-3.5 text-electric-purple" />} delay={0.25} />
+            <MetricCard label="Customers" value={String(m.customer_count)} icon={<UserCheck className="w-3.5 h-3.5 text-accent" />} delay={0.25} />
           </div>
 
           {/* Tags */}
           <div className="flex flex-wrap gap-2">
             {startup.tags.map((tag) => (
-              <span key={tag} className="px-3 py-1 text-xs rounded-full bg-obsidian-700/60 text-obsidian-300 border border-obsidian-600/30 font-medium">
+              <span key={tag} className="px-3 py-1 text-xs rounded-full bg-muted/60 text-muted-foreground border border-border/30 font-medium">
                 {tag}
               </span>
             ))}
@@ -272,12 +272,12 @@ export default function StartupDetailPage() {
                   transition={{ delay: i * 0.1 }}
                   className="glass-card p-4 flex items-start gap-3"
                 >
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-obsidian-700 flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-muted flex-shrink-0">
                     <Image src={f.photo_url} alt={f.full_name} width={40} height={40} className="w-full h-full object-cover" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-sm text-foreground">{f.full_name}</p>
-                    <p className="text-xs text-electric-blue">{f.title}</p>
+                    <p className="text-xs text-primary">{f.title}</p>
                     <p className="text-xs text-muted-foreground mt-1">{f.bio}</p>
                   </div>
                 </motion.div>
@@ -290,18 +290,18 @@ export default function StartupDetailPage() {
         <TabsContent value="metrics" className="space-y-6">
           {/* Financial metrics */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <MetricCard label="MRR" value={fmt(m.mrr)} icon={<DollarSign className="w-3.5 h-3.5 text-electric-blue" />} />
+            <MetricCard label="MRR" value={fmt(m.mrr)} icon={<DollarSign className="w-3.5 h-3.5 text-primary" />} />
             <MetricCard label="ARR" value={fmt(m.arr)} icon={<TrendingUp className="w-3.5 h-3.5 text-score-excellent" />} delay={0.05} />
-            <MetricCard label="Revenue TTM" value={fmt(m.revenue_ttm)} icon={<BarChart3 className="w-3.5 h-3.5 text-electric-purple" />} delay={0.1} />
-            <MetricCard label="Gross Margin" value={pct(m.gross_margin_pct)} icon={<TrendingUp className="w-3.5 h-3.5 text-electric-cyan" />} delay={0.15} />
+            <MetricCard label="Revenue TTM" value={fmt(m.revenue_ttm)} icon={<BarChart3 className="w-3.5 h-3.5 text-accent" />} delay={0.1} />
+            <MetricCard label="Gross Margin" value={pct(m.gross_margin_pct)} icon={<TrendingUp className="w-3.5 h-3.5 text-accent" />} delay={0.15} />
             <MetricCard label="Burn Rate" value={fmt(m.burn_monthly)} icon={<Flame className="w-3.5 h-3.5 text-score-poor" />} delay={0.2} />
             <MetricCard label="Runway" value={`${m.runway_months} months`} icon={<Clock className="w-3.5 h-3.5 text-score-fair" />} delay={0.25} />
             <MetricCard label="CAC" value={fmt(m.cac)} icon={<DollarSign className="w-3.5 h-3.5 text-score-fair" />} delay={0.3} />
             <MetricCard label="LTV" value={fmt(m.ltv)} icon={<DollarSign className="w-3.5 h-3.5 text-score-excellent" />} delay={0.35} />
             <MetricCard label="Churn Rate" value={pct(m.churn_rate_pct)} icon={<TrendingDown className="w-3.5 h-3.5 text-score-poor" />} delay={0.4} />
-            <MetricCard label="NPS" value={String(m.nps_score)} icon={<Users className="w-3.5 h-3.5 text-electric-blue" />} delay={0.45} />
+            <MetricCard label="NPS" value={String(m.nps_score)} icon={<Users className="w-3.5 h-3.5 text-primary" />} delay={0.45} />
             <MetricCard label="LTV/CAC" value={`${(m.ltv / m.cac).toFixed(1)}x`} icon={<BarChart3 className="w-3.5 h-3.5 text-score-excellent" />} delay={0.5} />
-            <MetricCard label="Headcount" value={String(m.headcount)} icon={<Users className="w-3.5 h-3.5 text-electric-purple" />} delay={0.55} />
+            <MetricCard label="Headcount" value={String(m.headcount)} icon={<Users className="w-3.5 h-3.5 text-accent" />} delay={0.55} />
           </div>
 
           {/* MRR Trend Chart */}
@@ -368,20 +368,20 @@ export default function StartupDetailPage() {
                 className="glass-card p-6"
               >
                 <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 rounded-2xl overflow-hidden bg-obsidian-700 flex-shrink-0 ring-1 ring-white/5">
+                  <div className="w-14 h-14 rounded-2xl overflow-hidden bg-muted flex-shrink-0 ring-1 ring-white/5">
                     <Image src={f.photo_url} alt={f.full_name} width={56} height={56} className="w-full h-full object-cover" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <h3 className="font-display font-semibold text-foreground">{f.full_name}</h3>
                       {f.is_primary && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-electric-blue/20 text-electric-blue">PRIMARY</span>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/20 text-primary">PRIMARY</span>
                       )}
                     </div>
-                    <p className="text-sm text-electric-blue">{f.title}</p>
+                    <p className="text-sm text-primary">{f.title}</p>
                     <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{f.bio}</p>
                     {f.linkedin_url && (
-                      <a href={f.linkedin_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-electric-blue hover:underline mt-2">
+                      <a href={f.linkedin_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline mt-2">
                         <Linkedin className="w-3.5 h-3.5" /> LinkedIn
                       </a>
                     )}
@@ -406,11 +406,11 @@ export default function StartupDetailPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: i * 0.03 }}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-obsidian-800/30 transition-colors"
+                  className="flex items-center justify-between px-4 py-3 hover:bg-card/30 transition-colors"
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-8 h-8 rounded-lg bg-obsidian-700/80 flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-4 h-4 text-electric-blue" />
+                    <div className="w-8 h-8 rounded-lg bg-muted/80 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-4 h-4 text-primary" />
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm text-foreground truncate">{doc.name}</p>
@@ -425,7 +425,7 @@ export default function StartupDetailPage() {
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <StatusChip status={doc.validation_status} />
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-electric-blue">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-primary">
                       <Download className="w-3.5 h-3.5" />
                     </Button>
                   </div>
@@ -473,7 +473,7 @@ export default function StartupDetailPage() {
                     )}
                   </div>
                 </div>
-                <div className="w-full h-2 bg-obsidian-700 rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
                   <motion.div
                     className={`h-full rounded-full ${getScoreBarColor(cat.score)}`}
                     initial={{ width: 0 }}
@@ -520,19 +520,19 @@ export default function StartupDetailPage() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={6}
-              className="bg-obsidian-800/50 border-obsidian-600/30 resize-none"
+              className="bg-card/50 border-border/30 resize-none"
             />
             <div className="flex flex-wrap gap-2">
-              <Button className="gap-1.5 bg-electric-blue hover:bg-electric-blue/90 text-white">
+              <Button className="gap-1.5 bg-primary hover:bg-primary/90 text-white">
                 <PlusCircle className="w-4 h-4" /> Add to Pipeline
               </Button>
-              <Button variant="outline" className="gap-1.5 border-obsidian-600/50 text-muted-foreground hover:text-foreground">
+              <Button variant="outline" className="gap-1.5 border-border/50 text-muted-foreground hover:text-foreground">
                 <XCircle className="w-4 h-4" /> Pass
               </Button>
-              <Button variant="outline" className="gap-1.5 border-obsidian-600/50 text-muted-foreground hover:text-electric-purple">
+              <Button variant="outline" className="gap-1.5 border-border/50 text-muted-foreground hover:text-accent">
                 <CalendarCheck className="w-4 h-4" /> Schedule Intro
               </Button>
-              <Button variant="outline" className="gap-1.5 border-obsidian-600/50 text-muted-foreground hover:text-score-excellent">
+              <Button variant="outline" className="gap-1.5 border-border/50 text-muted-foreground hover:text-score-excellent">
                 <Send className="w-4 h-4" /> Save Notes
               </Button>
             </div>

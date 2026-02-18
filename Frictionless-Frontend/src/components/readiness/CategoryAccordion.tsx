@@ -211,7 +211,7 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
       transition={{ duration: 0.5, delay: 0.2 }}
       className="glass-card overflow-hidden"
     >
-      <div className="p-4 lg:p-6 border-b border-obsidian-600/50">
+      <div className="p-4 lg:p-6 border-b border-border/50">
         <h2 className="text-lg font-display font-semibold text-foreground">
           Category Breakdown
         </h2>
@@ -220,7 +220,7 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
         </p>
       </div>
 
-      <Accordion type="multiple" className="divide-y divide-obsidian-600/30">
+      <Accordion type="multiple" className="divide-y divide-border/30">
         {displayCategories.map((cat, idx) => {
           const missing = getMissingForCategory(cat.name);
           const tips = CATEGORY_TIPS[cat.name] ?? [];
@@ -228,10 +228,10 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
 
           return (
             <AccordionItem key={cat.name} value={cat.name} className="border-none">
-              <AccordionTrigger className="px-4 lg:px-6 hover:no-underline hover:bg-obsidian-700/30 transition-colors">
+              <AccordionTrigger className="px-4 lg:px-6 hover:no-underline hover:bg-muted/30 transition-colors">
                 <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
                   {/* Icon */}
-                  <div className="w-8 h-8 rounded-lg bg-obsidian-700/60 flex items-center justify-center text-muted-foreground shrink-0">
+                  <div className="w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground shrink-0">
                     {getCategoryIcon(cat.name)}
                   </div>
 
@@ -248,7 +248,7 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
                         <DeltaArrow delta={cat.delta} size="sm" />
                       </div>
                     </div>
-                    <div className="w-full h-1.5 bg-obsidian-700 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
                       <motion.div
                         className={cn('h-full rounded-full', getScoreColor(cat.score))}
                         initial={{ width: 0 }}
@@ -267,7 +267,7 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
                     <div className="overflow-x-auto -mx-2">
                       <table className="w-full text-sm border-collapse">
                         <thead>
-                          <tr className="border-b border-obsidian-600/50">
+                          <tr className="border-b border-border/50">
                             <th className="text-left py-2 px-2 font-semibold text-muted-foreground">Question</th>
                             <th className="text-left py-2 px-2 font-semibold text-muted-foreground w-24">Answer</th>
                             <th className="text-left py-2 px-2 font-semibold text-muted-foreground w-16">Points</th>
@@ -276,9 +276,9 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
                         </thead>
                         <tbody>
                           {rubricCategory.items.map((item, i) => (
-                            <tr key={i} className="border-b border-obsidian-600/20">
+                            <tr key={i} className="border-b border-border/20">
                               <td className="py-2.5 px-2 text-foreground">{item.Question ?? '—'}</td>
-                              <td className="py-2.5 px-2 text-obsidian-300">{String(item.Answer ?? '—')}</td>
+                              <td className="py-2.5 px-2 text-muted-foreground">{String(item.Answer ?? '—')}</td>
                               <td className="py-2.5 px-2 tabular-nums">
                                 <span className={cn(
                                   'font-medium',
@@ -289,7 +289,7 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
                                   {(item.Points ?? 0)}/{(item.maximum_points ?? 0)}
                                 </span>
                               </td>
-                              <td className="py-2.5 px-2 text-obsidian-300">
+                              <td className="py-2.5 px-2 text-muted-foreground">
                                 {item.Value && <span className="block text-xs mb-1">{item.Value}</span>}
                                 {item.Reasoning && (
                                   <span className="block text-xs italic text-muted-foreground">{item.Reasoning}</span>
@@ -311,7 +311,7 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
                       </h4>
                       <ul className="space-y-1.5">
                         {tips.map((tip) => (
-                          <li key={tip} className="flex items-start gap-2 text-sm text-obsidian-300">
+                          <li key={tip} className="flex items-start gap-2 text-sm text-muted-foreground">
                             <Lightbulb className="w-3.5 h-3.5 text-score-fair mt-0.5 shrink-0" />
                             {tip}
                           </li>
@@ -348,7 +348,7 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-electric-blue/30 text-electric-blue hover:bg-electric-blue/10 gap-1.5"
+                    className="border-primary/30 text-primary hover:bg-primary/10 gap-1.5"
                   >
                     Improve This
                     <ArrowRight className="w-3.5 h-3.5" />

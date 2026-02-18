@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText,
@@ -26,6 +27,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import { getAuthHeaders } from '@/lib/api/tasks';
+import { toast } from 'sonner';
 import type { DummyDocument, DummyValidationStatus } from '@/lib/dummy-data/documents';
 
 interface FilePreviewProps {
@@ -46,7 +49,7 @@ function getFileIcon(fileType: string) {
     return { icon: FileImage, color: 'text-purple-400', bg: 'bg-purple-400/10' };
   if (fileType.includes('zip') || fileType.includes('archive'))
     return { icon: Archive, color: 'text-amber-400', bg: 'bg-amber-400/10' };
-  return { icon: File, color: 'text-obsidian-400', bg: 'bg-obsidian-400/10' };
+  return { icon: File, color: 'text-muted-foreground', bg: 'bg-muted' };
 }
 
 function getValidationStyle(status: DummyValidationStatus) {
@@ -58,7 +61,7 @@ function getValidationStyle(status: DummyValidationStatus) {
     case 'invalid':
       return 'bg-red-500/10 text-red-400 border-red-500/20';
     case 'expired':
-      return 'bg-obsidian-500/10 text-obsidian-400 border-obsidian-500/20';
+      return 'bg-muted text-muted-foreground border-border';
   }
 }
 
@@ -77,15 +80,36 @@ function formatDate(dateStr: string): string {
 }
 
 export function FilePreview({ document: doc, open, onOpenChange, onShare }: FilePreviewProps) {
+  const handleDownload = useCallback(async () => {
+    if (!doc) return;
+    const storagePath = (doc as DummyDocument & { storage_path?: string }).storage_path;
+    if (!storagePath) {
+      toast.error('Download not available for this file');
+      return;
+    }
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/startup/data-room/download?path=${encodeURIComponent(storagePath)}`, { headers });
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, '_blank');
+      } else {
+        toast.error(data.error || 'Download failed');
+      }
+    } catch {
+      toast.error('Download failed');
+    }
+  }, [doc]);
+
   if (!doc) return null;
 
   const { icon: Icon, color, bg } = getFileIcon(doc.file_type);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl bg-obsidian-800 border-obsidian-600 p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-xl bg-card border-border p-0 overflow-hidden">
         {/* Preview area */}
-        <div className="relative h-48 bg-obsidian-900 flex items-center justify-center border-b border-obsidian-700">
+        <div className="relative h-48 bg-muted flex items-center justify-center border-b border-border">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -125,14 +149,14 @@ export function FilePreview({ document: doc, open, onOpenChange, onShare }: File
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2">
-            <Button variant="default" size="sm" className="gap-2 bg-electric-blue hover:bg-electric-blue/90">
+            <Button variant="default" size="sm" className="gap-2" onClick={handleDownload}>
               <Download className="w-4 h-4" /> Download
             </Button>
             <Button variant="secondary" size="sm" className="gap-2" onClick={onShare}>
               <Share2 className="w-4 h-4" /> Share
             </Button>
             <Button variant="secondary" size="sm" className="gap-2">
-              <Sparkles className="w-4 h-4 text-electric-purple" /> AI Analyze
+              <Sparkles className="w-4 h-4 text-primary" /> AI Analyze
             </Button>
             <Button variant="secondary" size="sm" className="gap-2 text-red-400 hover:text-red-300">
               <Trash2 className="w-4 h-4" /> Delete
@@ -157,7 +181,7 @@ function MetaItem({
 }) {
   return (
     <div className="flex items-start gap-2.5">
-      <div className="w-8 h-8 rounded-lg bg-obsidian-700 flex items-center justify-center shrink-0 mt-0.5">
+      <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0 mt-0.5">
         <Icon className="w-4 h-4 text-muted-foreground" />
       </div>
       <div>

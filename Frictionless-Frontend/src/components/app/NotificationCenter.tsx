@@ -38,10 +38,10 @@ const typeIcons: Record<string, React.ElementType> = {
 
 const typeColors: Record<string, string> = {
   score_change: 'text-score-excellent bg-score-excellent/10',
-  new_match: 'text-electric-blue bg-electric-blue/10',
+  new_match: 'text-primary bg-primary/10',
   task_due: 'text-score-fair bg-score-fair/10',
-  message: 'text-electric-purple bg-electric-purple/10',
-  system: 'text-obsidian-400 bg-obsidian-700/50',
+  message: 'text-accent bg-accent/10',
+  system: 'text-muted-foreground bg-muted',
 };
 
 function timeAgo(dateStr: string): string {
@@ -109,14 +109,14 @@ export function NotificationCenter() {
   const content = (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-obsidian-700/50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           <Bell className="w-5 h-5 text-foreground" />
           <h2 className="text-base font-display font-semibold text-foreground">
             Notifications
           </h2>
           {unreadCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full bg-electric-blue/20 text-electric-blue text-[10px] font-bold">
+            <span className="px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-bold">
               {unreadCount}
             </span>
           )}
@@ -136,7 +136,7 @@ export function NotificationCenter() {
           {!isMobile && (
             <button
               onClick={toggleNotifications}
-              className="p-1 rounded-md text-obsidian-400 hover:text-foreground hover:bg-obsidian-800/50 transition-colors"
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -148,14 +148,14 @@ export function NotificationCenter() {
       <ScrollArea className="flex-1">
         {groups.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Bell className="w-10 h-10 text-obsidian-600 mb-3" />
+            <Bell className="w-10 h-10 text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground">No notifications yet</p>
           </div>
         ) : (
           <div className="py-2">
             {groups.map((group) => (
               <div key={group.label}>
-                <p className="text-[10px] uppercase tracking-widest text-obsidian-500 font-semibold px-4 py-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold px-4 py-2">
                   {group.label}
                 </p>
                 {group.items.map((notification) => {
@@ -166,8 +166,8 @@ export function NotificationCenter() {
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
                       className={cn(
-                        'w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-obsidian-800/50',
-                        !notification.read && 'bg-obsidian-800/30'
+                        'w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-muted',
+                        !notification.read && 'bg-muted/30'
                       )}
                     >
                       <div
@@ -185,19 +185,19 @@ export function NotificationCenter() {
                               'text-sm truncate',
                               !notification.read
                                 ? 'font-semibold text-foreground'
-                                : 'font-medium text-obsidian-300'
+                                : 'font-medium text-foreground'
                             )}
                           >
                             {notification.title}
                           </p>
                           {!notification.read && (
-                            <div className="w-1.5 h-1.5 rounded-full bg-electric-blue flex-shrink-0" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                           {notification.description}
                         </p>
-                        <p className="text-[10px] text-obsidian-500 mt-1">
+                        <p className="text-[10px] text-muted-foreground mt-1">
                           {timeAgo(notification.created_at)}
                         </p>
                       </div>
@@ -216,7 +216,7 @@ export function NotificationCenter() {
   if (isMobile) {
     return (
       <Sheet open={notificationsOpen} onOpenChange={toggleNotifications}>
-        <SheetContent side="right" className="w-full sm:max-w-md p-0 bg-obsidian-950 border-obsidian-700/50">
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 bg-background border-border">
           <SheetHeader className="sr-only">
             <SheetTitle>Notifications</SheetTitle>
           </SheetHeader>

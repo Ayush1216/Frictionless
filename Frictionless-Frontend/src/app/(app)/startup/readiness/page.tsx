@@ -1,229 +1,300 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
-import { ScoreHero } from '@/components/readiness/ScoreHero';
-import { CategoryAccordion } from '@/components/readiness/CategoryAccordion';
-import { MissingDataBanner } from '@/components/readiness/MissingDataBanner';
-import { AssessmentHistory, type ScoreHistoryEntry } from '@/components/readiness/AssessmentHistory';
-import { ImprovementChart } from '@/components/readiness/ImprovementChart';
-import { getMissingItemsFromRubric } from '@/lib/readiness-rubric';
-import { dummyStartups } from '@/lib/dummy-data/startups';
-import { dummyAssessmentRuns } from '@/lib/dummy-data/assessments';
+import { Target, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
+import { useReadinessStore } from '@/stores/readiness-store';
+import { useTaskStore } from '@/stores/task-store';
+import { TasksSyncProvider } from '@/contexts/TasksSyncContext';
+import { fetchBootstrap } from '@/lib/api/bootstrap';
 import { supabase } from '@/lib/supabase/client';
+import { parseScoredRubric, type ParsedRubricCategory } from '@/lib/readiness-rubric';
+import { ReadinessScoreHero } from '@/components/readiness/ReadinessScoreHero';
+import { ReadinessShareButton } from '@/components/readiness/ReadinessShareButton';
+import { AIScoreDeepDive } from '@/components/readiness/AIScoreDeepDive';
+import { ReadinessRadarChart } from '@/components/readiness/ReadinessRadarChart';
+import { ReadinessCategorySidebar } from '@/components/readiness/ReadinessCategorySidebar';
+import { ReadinessCategoryDetail } from '@/components/readiness/ReadinessCategoryDetail';
+import { CompetitiveBenchmark } from '@/components/readiness/CompetitiveBenchmark';
+import { InvestorLensPreview } from '@/components/readiness/InvestorLensPreview';
+import { WhatIfSimulator, type WhatIfTask } from '@/components/readiness/WhatIfSimulator';
+import { RecommendedActionsSection } from '@/components/readiness/RecommendedActionsSection';
+import { AskFrictionlessPanel } from '@/components/readiness/AskFrictionlessPanel';
+import type { Task } from '@/types/database';
 
-/** From rubric: lowest-scoring category → task in that category with highest impact (potential points). */
-function getRecommendedTask(
-  categories: { name: string; score: number }[],
-  scoredRubric: Record<string, unknown> | null | undefined,
-  currentScore: number
-): { taskTitle: string; impactPoints: number; projectedScore: number } | null {
-  if (!scoredRubric || categories.length === 0) return null;
-  const sorted = [...categories].sort((a, b) => a.score - b.score);
-  const lowestCategoryName = sorted[0].name;
-  const formatKey = (k: string) =>
-    k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-  const METADATA_KEYS = ['weight', 'Category_Name', 'maximum_point'];
-
-  let rubricTotalMax = 0;
-  let bestTask: { title: string; impact: number } | null = null;
-
-  for (const [catKey, catVal] of Object.entries(scoredRubric)) {
-    if (['totals', '_overall'].includes(catKey.toLowerCase())) continue;
-    if (!catVal || typeof catVal !== 'object' || Array.isArray(catVal)) continue;
-    const meta = catVal as Record<string, unknown>;
-    const categoryName = (meta.Category_Name as string) || formatKey(catKey);
-    for (const [subKey, subVal] of Object.entries(meta)) {
-      if (METADATA_KEYS.includes(subKey) || !Array.isArray(subVal)) continue;
-      for (const item of subVal) {
-        if (!item || typeof item !== 'object' || !('options' in item)) continue;
-        const maxPts = Number((item as { maximum_points?: number }).maximum_points ?? 0);
-        const pts = Number((item as { Points?: number }).Points ?? 0);
-        rubricTotalMax += maxPts;
-        if (categoryName !== lowestCategoryName) continue;
-        const impact = maxPts - pts;
-        if (impact <= 0) continue;
-        const title =
-          (item as { Question?: string }).Question ||
-          (item as { subcategory_name?: string }).subcategory_name ||
-          '';
-        if (!bestTask || impact > bestTask.impact) bestTask = { title, impact };
-      }
-    }
-  }
-  if (!bestTask || bestTask.impact <= 0) return null;
-  if (rubricTotalMax <= 0) rubricTotalMax = 1;
-  const projectedScore = Math.min(
-    100,
-    Math.round((currentScore + (bestTask.impact / rubricTotalMax) * 100) * 10) / 10
-  );
-  return {
-    taskTitle: bestTask.title,
-    impactPoints: bestTask.impact,
-    projectedScore,
-  };
-}
-
-export default function ReadinessPage() {
+function ReadinessContent() {
   const user = useAuthStore((s) => s.user);
-  const isStartup = user?.org_type === 'startup';
-  const startup = dummyStartups[0]; // fallback
-  const { assessment } = startup;
-  const runs = dummyAssessmentRuns.filter(
-    (r) => r.startup_org_id === startup.org_id
-  );
-  const latestRun = runs[runs.length - 1];
+  const { readiness, scoreHistory, bootstrapLoaded } = useReadinessStore();
+  const { tasks, taskGroups, taskProgress, tasksLoaded } = useTaskStore();
 
-  const [readiness, setReadiness] = useState<{
-    score_summary?: { _overall?: { raw_percentage?: number }; [k: string]: unknown };
-    scored_rubric?: unknown;
-    updated_at?: string | null;
-  } | null>(null);
-  const [scoreHistory, setScoreHistory] = useState<ScoreHistoryEntry[]>([]);
-  const [readinessChecked, setReadinessChecked] = useState(!isStartup);
+  const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
+  const [taskFilterCategory, setTaskFilterCategory] = useState('all');
+  const [askPanel, setAskPanel] = useState<{ task: Task; categoryName: string } | null>(null);
 
+  // Bootstrap
   useEffect(() => {
-    if (!user) return;
-    if (user.org_type !== 'startup') {
-      setReadinessChecked(true);
-      return;
-    }
+    if (tasksLoaded) return;
     let cancelled = false;
     (async () => {
       if (!supabase) return;
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token ?? null;
       if (!token || cancelled) return;
-      const [statusRes, historyRes] = await Promise.all([
-        fetch('/api/readiness/status', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch('/api/readiness/score-history', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
-      const [statusJson, historyJson] = await Promise.all([
-        statusRes.json().catch(() => ({})),
-        historyRes.json().catch(() => ({ entries: [] })),
-      ]);
-      if (cancelled) return;
-      if (statusJson.status === 'ready' && statusJson.score_summary) {
-        setReadiness({
-          score_summary: statusJson.score_summary,
-          scored_rubric: statusJson.scored_rubric,
-          updated_at: statusJson.updated_at ?? null,
-        });
-      }
-      if (historyJson.entries?.length) {
-        setScoreHistory(historyJson.entries);
-      }
-      if (!cancelled) setReadinessChecked(true);
+      try { await fetchBootstrap(token); } catch { useTaskStore.getState().setTasksLoaded(true); }
     })();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [tasksLoaded]);
 
-  const readinessScore = readiness?.score_summary?._overall?.raw_percentage ?? assessment.overall_score;
-  // Delta = current vs previous (from score history)
-  const readinessDelta =
-    readiness && scoreHistory.length >= 2
-      ? Math.round((readinessScore - scoreHistory[scoreHistory.length - 2].score) * 10) / 10
-      : readiness
-        ? 0
-        : startup.score_delta;
-  const readinessCategories =
-    readiness?.score_summary && typeof readiness.score_summary === 'object'
-      ? Object.entries(readiness.score_summary)
-          .filter(([k]) => k !== '_overall' && k !== 'totals')
-          .map(([, v]) => {
-            const cat = v as { category_name?: string; percentage?: number; weight?: number };
-            return {
-              name: cat.category_name ?? '',
-              score: cat.percentage ?? 0,
-              delta: 0,
-              weight: cat.weight ?? 0,
-            };
-          })
-          .filter((c) => c.name)
-      : assessment.categories;
-  const lastAssessedIso = readiness?.updated_at ?? latestRun?.scored_at ?? new Date().toISOString();
+  // Readiness data
+  const readinessScore = readiness?.score_summary?._overall?.raw_percentage ?? 0;
+  const readinessDelta = readiness && scoreHistory.length >= 2
+    ? Math.round((readinessScore - scoreHistory[scoreHistory.length - 2].score) * 10) / 10
+    : 0;
 
-  const recommendedTask = useMemo(
-    () =>
-      getRecommendedTask(
-        readinessCategories,
-        readiness?.scored_rubric as Record<string, unknown> | undefined,
-        readinessScore
-      ),
-    [readinessCategories, readiness?.scored_rubric, readinessScore]
-  );
+  // Parse rubric categories
+  const parsedCategories = useMemo((): ParsedRubricCategory[] => {
+    const rubric = readiness?.scored_rubric as Record<string, unknown> | undefined;
+    if (!rubric || typeof rubric !== 'object') return [];
+    return parseScoredRubric(rubric);
+  }, [readiness?.scored_rubric]);
 
-  const missingItems = useMemo(
-    () =>
-      getMissingItemsFromRubric(
-        readinessCategories,
-        readiness?.scored_rubric as Record<string, unknown> | undefined
-      ),
-    [readinessCategories, readiness?.scored_rubric]
-  );
+  // Auto-select first category
+  useEffect(() => {
+    if (parsedCategories.length > 0 && !selectedCategoryKey) {
+      setSelectedCategoryKey(parsedCategories[0].key);
+    }
+  }, [parsedCategories, selectedCategoryKey]);
 
-  if (!user || (isStartup && !readinessChecked)) {
+  const selectedCategory = parsedCategories.find((c) => c.key === selectedCategoryKey) ?? parsedCategories[0] ?? null;
+
+  // Task stats
+  const stats = useMemo(() => {
+    if (taskProgress?.allotted_total && taskProgress.allotted_total > 0) {
+      const total = taskProgress.allotted_total;
+      const done = Math.max(0, total - (taskProgress.current_pending ?? 0));
+      return { done, total };
+    }
+    const done = taskGroups.reduce((s, g) => s + (g.done_count ?? 0), 0);
+    const total = tasks.length + done;
+    return { done, total };
+  }, [taskProgress, taskGroups, tasks]);
+
+  // What-If tasks
+  const whatIfTasks = useMemo((): WhatIfTask[] => {
+    return tasks
+      .filter((t) => t.status !== 'done' && t.potential_points)
+      .map((t) => {
+        const group = taskGroups.find((g) => g.id === t.task_group_id);
+        return {
+          id: t.id,
+          title: t.title,
+          impactPoints: t.potential_points ?? 0,
+          category: group?.category ?? 'Other',
+        };
+      })
+      .sort((a, b) => b.impactPoints - a.impactPoints);
+  }, [tasks, taskGroups]);
+
+  const handleRefresh = useCallback(async () => {
+    useTaskStore.getState().setTasksLoaded(false);
+    if (!supabase) return;
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token ?? null;
+    if (token) {
+      try { await fetchBootstrap(token, true); } catch { useTaskStore.getState().setTasksLoaded(true); }
+    } else {
+      useTaskStore.getState().setTasksLoaded(true);
+    }
+  }, []);
+
+  const handleViewTasks = useCallback((categoryName: string) => {
+    setTaskFilterCategory(categoryName);
+    setTimeout(() => {
+      document.getElementById('recommended-actions')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  }, []);
+
+  const handleAskTask = useCallback((task: Task) => {
+    const group = taskGroups.find((g) => g.id === task.task_group_id);
+    setAskPanel({ task, categoryName: group?.category ?? 'General' });
+  }, [taskGroups]);
+
+  const handleTaskCompleted = useCallback(() => {
+    handleRefresh();
+  }, [handleRefresh]);
+
+  if (!user || !bootstrapLoaded) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-electric-blue" />
-        <p className="text-sm text-muted-foreground">Loading your readiness score…</p>
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading Readiness...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 lg:p-8 space-y-6 pb-24 lg:pb-8">
-      {/* Page header */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-      >
-        <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground">
-          Readiness Score
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Track and improve your investment readiness across key dimensions.
-        </p>
-      </motion.div>
+    <TasksSyncProvider>
+      <div className="p-4 lg:p-6 xl:p-8 space-y-6 w-full max-w-[1600px] mx-auto">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3"
+        >
+          <Target className="w-6 h-6 text-primary shrink-0" />
+          <div className="flex-1">
+            <h1 className="text-xl lg:text-2xl font-display font-bold text-foreground">Readiness</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Your investor readiness score, category insights, and improvement roadmap.
+            </p>
+          </div>
+          {parsedCategories.length > 0 && (
+            <ReadinessShareButton
+              overallScore={readinessScore}
+              categories={parsedCategories}
+              completedTasks={stats.done}
+              totalTasks={stats.total}
+              delta={readinessDelta}
+            />
+          )}
+        </motion.div>
 
-      {/* Desktop: 2-column top section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Score Hero */}
-        <ScoreHero
+        {/* Score Hero: Gauge + Stats + History Chart */}
+        <ReadinessScoreHero
           score={readinessScore}
-          badge={readiness ? 'assessed' : assessment.badge}
           delta={readinessDelta}
-          lastAssessed={lastAssessedIso}
-          onRunAssessment={() => {}}
+          scoreHistory={scoreHistory}
+          completedTasks={stats.done}
+          totalTasks={stats.total}
+          onRefresh={handleRefresh}
         />
 
-        {/* Right: Missing Data + Assessment History */}
-        <div className="space-y-6">
-          <MissingDataBanner items={missingItems} />
-          <AssessmentHistory runs={runs} scoreHistory={scoreHistory} />
-        </div>
+        {/* AI Score Deep Dive */}
+        {parsedCategories.length > 0 && (
+          <AIScoreDeepDive
+            overallScore={readinessScore}
+            categories={parsedCategories}
+          />
+        )}
+
+        {/* Radar Chart + Category Browser — equal height 3-panel */}
+        {parsedCategories.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            {/* Desktop: 3-panel equal height */}
+            <div className="hidden lg:flex gap-4 h-[520px]">
+              <ReadinessRadarChart
+                categories={parsedCategories}
+                className="w-[320px] shrink-0"
+              />
+              <ReadinessCategorySidebar
+                overallScore={readinessScore}
+                categories={parsedCategories}
+                selectedKey={selectedCategoryKey}
+                onSelect={setSelectedCategoryKey}
+              />
+              {selectedCategory && (
+                <ReadinessCategoryDetail
+                  category={selectedCategory}
+                  onViewTasks={handleViewTasks}
+                />
+              )}
+            </div>
+
+            {/* Mobile: stacked */}
+            <div className="lg:hidden space-y-3">
+              <ReadinessRadarChart categories={parsedCategories} />
+              <ReadinessCategorySidebar
+                overallScore={readinessScore}
+                categories={parsedCategories}
+                selectedKey={selectedCategoryKey}
+                onSelect={setSelectedCategoryKey}
+              />
+              {selectedCategory && (
+                <ReadinessCategoryDetail
+                  category={selectedCategory}
+                  onViewTasks={handleViewTasks}
+                />
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* AI Insights Row: Competitive Benchmark + Investor Lens */}
+        {parsedCategories.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+            className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+          >
+            <CompetitiveBenchmark
+              overallScore={readinessScore}
+              categories={parsedCategories}
+            />
+            <InvestorLensPreview
+              overallScore={readinessScore}
+              categories={parsedCategories}
+            />
+          </motion.div>
+        )}
+
+        {/* Recommended Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.14 }}
+        >
+          <RecommendedActionsSection
+            tasks={tasks.filter((t) => t.status !== 'done')}
+            taskGroups={taskGroups}
+            filterCategory={taskFilterCategory}
+            onFilterChange={setTaskFilterCategory}
+            onAskTask={handleAskTask}
+            completedCount={stats.done}
+          />
+        </motion.div>
+
+        {/* What-If Simulator — at the end */}
+        {whatIfTasks.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.16 }}
+          >
+            <WhatIfSimulator
+              currentScore={readinessScore}
+              tasks={whatIfTasks}
+              categories={parsedCategories}
+            />
+          </motion.div>
+        )}
+
+        {/* Ask Frictionless Side Panel */}
+        <AskFrictionlessPanel
+          task={askPanel?.task ?? null}
+          categoryName={askPanel?.categoryName}
+          isOpen={!!askPanel}
+          onClose={() => setAskPanel(null)}
+          onTaskCompleted={handleTaskCompleted}
+        />
       </div>
+    </TasksSyncProvider>
+  );
+}
 
-      {/* Full-width: Category Breakdown */}
-      <CategoryAccordion
-        categories={readinessCategories}
-        missingData={missingItems}
-        scoredRubric={readiness?.scored_rubric as Record<string, unknown> | undefined}
-      />
-
-      {/* Improvement Chart: lowest-scoring category → highest-impact task */}
-      <ImprovementChart
-        currentScore={readinessScore}
-        recommendedTask={recommendedTask}
-        missingData={recommendedTask ? undefined : missingItems}
-      />
-    </div>
+export default function ReadinessPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    }>
+      <ReadinessContent />
+    </Suspense>
   );
 }

@@ -72,8 +72,20 @@ export function AddPersonModal({ open, onOpenChange, onSuccess, getToken }: AddP
         setLoading(false);
         return;
       }
+      if (data.ok === false && data.status === 'rejected') {
+        setError(data.rejection_reason || 'Profile could not be verified. Please verify the LinkedIn URL or add company context.');
+        setLoading(false);
+        return;
+      }
       if (data.person) {
-        onSuccess(data.person, data.extraction_data, data.status);
+        // Pass confidence_score and evidence_links for display (B3)
+        const personWithMeta = {
+          ...data.person,
+          confidence_score: data.person.confidence_score ?? data.confidence_score,
+          evidence_links: data.person.evidence_links ?? data.evidence_links ?? [],
+          identity_key: data.person.identity_key ?? data.identity_key,
+        };
+        onSuccess(personWithMeta, data.extraction_data, data.status);
         onOpenChange(false);
         setLinkedinUrl('');
         setCompanyNameOverride('');
@@ -90,10 +102,10 @@ export function AddPersonModal({ open, onOpenChange, onSuccess, getToken }: AddP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md border-obsidian-700 bg-obsidian-900">
+      <DialogContent className="sm:max-w-md border-border bg-background">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
-            <UserPlus className="w-5 h-5 text-electric-blue" />
+            <UserPlus className="w-5 h-5 text-primary" />
             Add team member
           </DialogTitle>
           <DialogDescription>
@@ -110,7 +122,7 @@ export function AddPersonModal({ open, onOpenChange, onSuccess, getToken }: AddP
               value={linkedinUrl}
               onChange={setLinkedinUrl}
               placeholder="https://linkedin.com/in/username"
-              className="bg-obsidian-800 border-obsidian-700"
+              className="bg-card border-border"
               disabled={loading}
             />
           </div>
@@ -122,7 +134,7 @@ export function AddPersonModal({ open, onOpenChange, onSuccess, getToken }: AddP
               id="role-type"
               value={roleType}
               onChange={(e) => setRoleType(e.target.value as RoleType)}
-              className="w-full rounded-lg border border-obsidian-700 bg-obsidian-800 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-electric-blue/50"
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               disabled={loading}
             >
               {ROLE_OPTIONS.map((opt) => (
@@ -141,7 +153,7 @@ export function AddPersonModal({ open, onOpenChange, onSuccess, getToken }: AddP
               value={companyNameOverride}
               onChange={(e) => setCompanyNameOverride(e.target.value)}
               placeholder="Leave blank to use current company"
-              className="bg-obsidian-800 border-obsidian-700"
+              className="bg-card border-border"
               disabled={loading}
             />
           </div>
@@ -157,7 +169,7 @@ export function AddPersonModal({ open, onOpenChange, onSuccess, getToken }: AddP
             variant="outline"
             onClick={() => onOpenChange(false)}
             disabled={loading}
-            className="border-obsidian-600"
+            className="border-border"
           >
             Cancel
           </Button>
@@ -165,7 +177,7 @@ export function AddPersonModal({ open, onOpenChange, onSuccess, getToken }: AddP
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="bg-electric-blue hover:bg-electric-blue/90"
+            className="bg-primary hover:bg-primary/90"
           >
             {loading ? (
               <>

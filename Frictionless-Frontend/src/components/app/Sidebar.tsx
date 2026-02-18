@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { featureFlags } from '@/lib/feature-flags';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -11,7 +12,6 @@ import {
   Handshake,
   MessageSquare,
   Bot,
-  CheckSquare,
   FolderOpen,
   BarChart3,
   TrendingUp,
@@ -29,6 +29,8 @@ import {
   LogOut,
   X,
   Building2,
+  ShieldAlert,
+  Send,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -52,15 +54,23 @@ interface NavItem {
   badge?: number;
 }
 
-const startupNav: NavItem[] = [
+const baseStartupNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Readiness', href: '/startup/readiness', icon: Gauge },
   { label: 'Company Profile', href: '/startup/company-profile', icon: Building2 },
-  { label: 'Readiness Score', href: '/startup/readiness', icon: Gauge },
   { label: 'Matches', href: '/startup/matches', icon: Handshake },
   { label: 'AI Chat', href: '/startup/chat', icon: Bot },
-  { label: 'Tasks', href: '/startup/tasks', icon: CheckSquare, badge: 5 },
   { label: 'Data Room', href: '/startup/data-room', icon: FolderOpen },
-  { label: 'Analytics', href: '/startup/analytics', icon: BarChart3 },
+];
+
+const optionalStartupNav: NavItem[] = [
+  { label: 'Insights Lab', href: '/startup/insights-lab', icon: Sparkles },
+  { label: 'Risk Monitor', href: '/startup/risk-monitor', icon: ShieldAlert },
+  { label: 'Investor Outreach', href: '/startup/investor-outreach', icon: Send },
+  { label: 'Deal Memo', href: '/startup/deal-memo', icon: FileText },
+  { label: 'Diligence Copilot', href: '/startup/diligence-copilot', icon: ShieldAlert },
+  { label: 'Outreach Studio', href: '/startup/outreach-studio', icon: Send },
+  { label: 'Growth Hub', href: '/startup/growth-hub', icon: TrendingUp },
 ];
 
 const capitalNav: NavItem[] = [
@@ -84,16 +94,29 @@ const commonNav: NavItem[] = [
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
+function getStartupNav(): NavItem[] {
+  const optional = [
+    featureFlags.insightsLab && optionalStartupNav[0],
+    featureFlags.riskMonitor && optionalStartupNav[1],
+    featureFlags.investorOutreachPlanner && optionalStartupNav[2],
+    featureFlags.dealMemo && optionalStartupNav[3],
+    featureFlags.diligenceCopilot && optionalStartupNav[4],
+    featureFlags.outreachStudio && optionalStartupNav[5],
+    featureFlags.growthHub && optionalStartupNav[6],
+  ].filter(Boolean) as NavItem[];
+  return [...baseStartupNav, ...optional];
+}
+
 function getNavForOrgType(orgType: string): NavItem[] {
   switch (orgType) {
     case 'startup':
-      return startupNav;
+      return getStartupNav();
     case 'capital_provider':
       return capitalNav;
     case 'accelerator':
       return acceleratorNav;
     default:
-      return startupNav;
+      return getStartupNav();
   }
 }
 
@@ -170,14 +193,14 @@ export function Sidebar() {
             {/* User info */}
             <div
               className={cn(
-                'flex items-center gap-3 rounded-xl bg-obsidian-800/50 shrink-0',
+                'flex items-center gap-3 rounded-xl bg-muted shrink-0',
                 sidebarCollapsed ? 'justify-center px-0 py-1.5 mb-3' : 'px-2 py-1.5 mb-2 mt-4'
               )}
             >
               <Avatar className={cn('flex-shrink-0', sidebarCollapsed ? 'h-6 w-6' : 'h-9 w-9')}>
                 <AvatarImage src={user?.avatar_url ?? undefined} alt={user?.full_name} />
                 <AvatarFallback className={cn(
-                  "bg-electric-blue/20 text-electric-blue font-bold",
+                  "bg-primary/20 text-primary font-bold",
                   sidebarCollapsed ? "text-[10px]" : "text-xs"
                 )}>
                   {initials}
@@ -235,7 +258,7 @@ export function Sidebar() {
             {/* Primary nav */}
             <div className={cn('space-y-0.5', sidebarCollapsed ? 'mb-1.5' : 'mb-2')}>
               {!sidebarCollapsed && (
-                <p className="text-[10px] uppercase tracking-widest text-obsidian-500 font-semibold px-3 mb-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold px-3 mb-2">
                   {orgType === 'startup'
                     ? 'Startup'
                     : orgType === 'capital_provider'
@@ -258,7 +281,7 @@ export function Sidebar() {
             {/* Common nav */}
             <div className={cn('space-y-0.5 shrink-0', sidebarCollapsed ? 'mb-0.5' : 'mb-2')}>
               {!sidebarCollapsed && (
-                <p className="text-[10px] uppercase tracking-widest text-obsidian-500 font-semibold px-3 mb-2">
+                <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold px-3 mb-2">
                   General
                 </p>
               )}
@@ -288,16 +311,16 @@ export function Sidebar() {
                   exit={{ opacity: 0, height: 0 }}
                   className="mb-2 overflow-hidden"
                 >
-                  <div className="relative p-4 rounded-xl bg-neon-gradient/10 border border-electric-blue/20">
+                  <div className="relative p-4 rounded-xl bg-primary/5 border border-primary/20">
                     <button
                       onClick={dismissUpgrade}
-                      className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-obsidian-800/50 transition-colors"
+                      className="absolute top-2 right-2 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                       aria-label="Dismiss"
                     >
                       <X className="w-4 h-4" />
                     </button>
                     <div className="flex items-center gap-2 mb-2 pr-6">
-                      <Sparkles className="w-4 h-4 text-electric-blue shrink-0" />
+                      <Sparkles className="w-4 h-4 text-primary shrink-0" />
                       <span className="text-sm font-semibold text-foreground">
                         Upgrade to Pro
                       </span>
@@ -307,7 +330,7 @@ export function Sidebar() {
                     </p>
                     <Link
                       href="/pricing"
-                      className="block w-full px-3 py-1.5 rounded-lg bg-electric-blue text-white text-xs font-medium hover:bg-electric-blue/90 transition-colors text-center"
+                      className="block w-full px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors text-center"
                     >
                       Learn more
                     </Link>
@@ -331,7 +354,7 @@ export function Sidebar() {
             <button
               onClick={collapseSidebar}
               className={cn(
-                "flex items-center justify-center w-full rounded-lg text-obsidian-400 hover:text-foreground hover:bg-obsidian-800/50 transition-colors shrink-0",
+                "flex items-center justify-center w-full rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0",
                 sidebarCollapsed ? "mt-1 h-6" : "mt-2 h-8"
               )}
             >
@@ -366,8 +389,8 @@ function NavLink({
       className={cn(
         'flex items-center gap-3 rounded-lg cursor-pointer transition-all duration-150 group relative',
         isActive
-          ? 'bg-electric-blue/15 text-electric-blue'
-          : 'text-obsidian-300 hover:text-foreground hover:bg-obsidian-800/50',
+          ? 'bg-primary/15 text-primary'
+          : 'text-muted-foreground hover:text-foreground hover:bg-muted',
         collapsed ? 'justify-center px-2 py-2 my-1' : 'px-2.5 py-2 my-0.5'
       )}
       whileHover={{ x: collapsed ? 0 : 2 }}
@@ -377,7 +400,7 @@ function NavLink({
         <motion.div
           layoutId="sidebar-active"
           className={cn(
-            "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full bg-electric-blue",
+            "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] rounded-r-full bg-primary",
             collapsed ? "h-3" : "h-5"
           )}
           transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
@@ -397,12 +420,12 @@ function NavLink({
         )}
       </AnimatePresence>
       {item.badge && !collapsed && (
-        <Badge className="ml-auto h-5 min-w-5 flex items-center justify-center bg-electric-blue/20 text-electric-blue border-0 text-[10px] font-bold">
+        <Badge className="ml-auto h-5 min-w-5 flex items-center justify-center bg-primary/20 text-primary border-0 text-[10px] font-bold">
           {item.badge}
         </Badge>
       )}
       {item.badge && collapsed && (
-        <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-electric-blue" />
+        <div className="absolute top-1 right-1 w-2 h-2 rounded-full bg-primary" />
       )}
     </motion.div>
   );
@@ -432,7 +455,7 @@ function NavLink({
           <div className="flex items-center gap-2">
             {item.label}
             {item.badge && (
-              <Badge className="h-4 min-w-4 flex items-center justify-center bg-electric-blue/20 text-electric-blue border-0 text-[10px] font-bold">
+              <Badge className="h-4 min-w-4 flex items-center justify-center bg-primary/20 text-primary border-0 text-[10px] font-bold">
                 {item.badge}
               </Badge>
             )}
@@ -466,7 +489,7 @@ function SidebarIconButton({
         <button
           onClick={onClick}
           className={cn(
-            'relative flex items-center gap-2 rounded-lg text-obsidian-400 hover:text-foreground hover:bg-obsidian-800/50 transition-colors touch-target min-w-0 shrink-0',
+            'relative flex items-center gap-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors touch-target min-w-0 shrink-0',
             collapsed ? 'justify-center w-full h-9 my-1' : 'flex-1 min-w-0 h-9 overflow-hidden my-0.5'
           )}
         >
@@ -475,12 +498,12 @@ function SidebarIconButton({
             <span className="text-xs truncate">{label}</span>
           )}
           {shortcut && !collapsed && (
-            <kbd className="shrink-0 text-[10px] text-obsidian-500 font-mono bg-obsidian-800 px-1.5 py-0.5 rounded">
+            <kbd className="shrink-0 text-[10px] text-muted-foreground font-mono bg-muted px-1.5 py-0.5 rounded">
               {'\u2318'}{shortcut}
             </kbd>
           )}
           {badge && badge > 0 && (
-            <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-electric-blue text-white text-[9px] font-bold flex items-center justify-center min-w-4">
+            <span className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center min-w-4">
               {badge > 9 ? '9+' : badge}
             </span>
           )}
@@ -490,7 +513,7 @@ function SidebarIconButton({
         <TooltipContent side="right" sideOffset={8}>
           {label}
           {shortcut && (
-            <kbd className="ml-2 text-[10px] font-mono bg-obsidian-700 px-1 py-0.5 rounded">
+            <kbd className="ml-2 text-[10px] font-mono bg-muted px-1 py-0.5 rounded">
               {'\u2318'}{shortcut}
             </kbd>
           )}

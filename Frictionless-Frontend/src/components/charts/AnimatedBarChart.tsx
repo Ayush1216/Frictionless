@@ -18,10 +18,9 @@ interface AnimatedBarChartProps {
 }
 
 function getBarColor(score: number): string {
-  if (score >= 80) return '#10B981';
-  if (score >= 60) return '#3B82F6';
-  if (score >= 40) return '#F59E0B';
-  return '#EF4444';
+  // Unified primary blue — opacity varies with score for visual differentiation
+  const opacity = 0.35 + (score / 100) * 0.65;
+  return `hsl(217 91% 60% / ${opacity})`;
 }
 
 export function AnimatedBarChart({
@@ -34,7 +33,7 @@ export function AnimatedBarChart({
     : categories;
 
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('space-y-2.5', className)}>
       {sorted.map((cat, i) => {
         const color = getBarColor(cat.score);
         return (
@@ -43,7 +42,7 @@ export function AnimatedBarChart({
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, delay: i * 0.08 }}
-            className="space-y-1.5"
+            className="space-y-1"
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-body text-muted-foreground truncate pr-3">
@@ -56,7 +55,7 @@ export function AnimatedBarChart({
                 <DeltaIndicator delta={cat.delta} />
               </div>
             </div>
-            <div className="h-2 rounded-full bg-obsidian-700/50 overflow-hidden">
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
               <motion.div
                 className="h-full rounded-full"
                 style={{ backgroundColor: color }}

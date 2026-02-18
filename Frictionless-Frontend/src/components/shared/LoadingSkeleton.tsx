@@ -6,7 +6,7 @@ function Bone({ className, style }: { className?: string; style?: React.CSSPrope
   return (
     <div
       className={cn(
-        'rounded-lg bg-obsidian-700/60 animate-pulse skeleton-shimmer',
+        'rounded-lg bg-muted/60 animate-pulse skeleton-shimmer',
         className
       )}
       style={style}
@@ -46,7 +46,7 @@ export function CardSkeleton({ count = 3 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="p-4 rounded-xl bg-obsidian-800/50 border border-obsidian-700/50 space-y-3"
+          className="p-4 rounded-xl bg-card/50 border border-muted/50 space-y-3"
         >
           <div className="flex items-center justify-between">
             <Bone className="h-5 w-40" />
@@ -70,7 +70,7 @@ export function ListSkeleton({ rows = 5 }: { rows?: number }) {
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-3 p-3 rounded-lg bg-obsidian-800/30"
+          className="flex items-center gap-3 p-3 rounded-lg bg-card/30"
         >
           <Bone className="h-5 w-5 rounded flex-shrink-0" />
           <Bone className="h-4 flex-1" />
@@ -84,7 +84,7 @@ export function ListSkeleton({ rows = 5 }: { rows?: number }) {
 
 export function ChartSkeleton() {
   return (
-    <div className="p-6 rounded-xl bg-obsidian-800/50 border border-obsidian-700/50">
+    <div className="p-6 rounded-xl bg-card/50 border border-muted/50">
       <div className="flex items-center justify-between mb-6">
         <Bone className="h-5 w-32" />
         <Bone className="h-8 w-24 rounded-lg" />

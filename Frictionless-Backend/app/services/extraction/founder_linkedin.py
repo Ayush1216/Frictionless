@@ -1,6 +1,7 @@
 """Grounded founder/team extractor via Gemini + Google Search."""
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -345,8 +346,36 @@ def run(
     return final
 
 
-def run_person_profile(linkedin_url: str) -> Dict[str, Any]:
-    """Fetch and extract a single person's profile from a LinkedIn /in/ URL. Returns one person dict."""
+def _identity_key(linkedin_url: str) -> str:
+    """Deterministic identity key from normalized LinkedIn URL."""
+    u = _sanitize_linkedin(linkedin_url).lower()
+    return hashlib.sha256(u.encode()).hexdigest()
+
+
+def _confidence_score(person: Dict[str, Any], evidence_links: List[Dict[str, str]]) -> float:
+    """Compute confidence 0-1 from profile completeness and evidence."""
+    score = 0.0
+    if person.get("full_name"):
+        score += 0.3
+    if person.get("title"):
+        score += 0.2
+    if person.get("work_experience") and len(person["work_experience"]) > 0:
+        score += 0.2
+    if person.get("profile_image_url") or person.get("summary"):
+        score += 0.1
+    # Evidence from grounding boosts confidence
+    if evidence_links:
+        score += min(0.3, 0.1 * len(evidence_links))
+    return min(1.0, score)
+
+
+def run_person_profile(
+    linkedin_url: str,
+    company_domain: str | None = None,
+    company_name: str | None = None,
+) -> Dict[str, Any]:
+    """Fetch and extract a single person's profile from a LinkedIn /in/ URL.
+    Returns dict with: person, confidence_score, evidence_links, identity_key."""
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         raise ValueError("Missing GEMINI_API_KEY")
@@ -354,8 +383,15 @@ def run_person_profile(linkedin_url: str) -> Dict[str, Any]:
     if not url or not _is_person_linkedin(url):
         raise ValueError(f"Invalid person LinkedIn URL: must be linkedin.com/in/... (got {linkedin_url!r})")
     client = genai.Client(api_key=api_key)
+
+    ctx = f"LinkedIn profile URL: {url}"
+    if company_domain:
+        ctx += f"\nCompany domain (for disambiguation): {company_domain}"
+    if company_name:
+        ctx += f"\nCompany name (for disambiguation): {company_name}"
+
     prompt = f"""You are a people-research engine. Use Google Search grounding to find this person's public profile.
-LinkedIn profile URL: {url}
+{ctx}
 
 TASK: Extract this person's profile so it can be stored alongside founders and leadership. Return ONLY valid JSON (no markdown, no backticks) with exactly this schema:
 {_PERSON_SCHEMA}
@@ -366,7 +402,8 @@ RULES:
 3. profile_image_url: Search for this person's LinkedIn profile/headshot image. Use a direct image URL (e.g. media.licdn.com) if found; otherwise set to "".
 4. education: array of objects with university, degree, field_of_study, start_year, end_year.
 5. work_experience: array of objects with company, position, start_year, end_year, is_current.
-6. linkedin_url: use the normalized person URL (https://www.linkedin.com/in/...). Do not use a company page URL."""
+6. linkedin_url: use the normalized person URL (https://www.linkedin.com/in/...). Do not use a company page URL.
+7. Ensure the person matches the LinkedIn URL - avoid attaching a different person with the same name."""
     tools = [types.Tool(google_search=types.GoogleSearch())]
     resp = _gemini_call(client, prompt, tools, 4096)
     raw = ""
@@ -394,5 +431,15 @@ RULES:
     })
     if not person["full_name"]:
         person["full_name"] = (person["first_name"] + " " + person["last_name"]).strip() or "Unknown"
-    log.info("Person profile fetched: %s", person.get("full_name"))
-    return person
+
+    evidence_links = _grounding_urls(resp)
+    identity_key = _identity_key(url)
+    confidence = _confidence_score(person, evidence_links)
+
+    log.info("Person profile fetched: %s confidence=%.2f", person.get("full_name"), confidence)
+    return {
+        "person": person,
+        "confidence_score": round(confidence, 2),
+        "evidence_links": evidence_links,
+        "identity_key": identity_key,
+    }

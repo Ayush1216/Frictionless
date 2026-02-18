@@ -162,9 +162,9 @@ export function OnboardingWizard() {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: 'spring', delay: 0.2 }}
-                    className="w-16 h-16 rounded-2xl bg-electric-blue/10 flex items-center justify-center mx-auto"
+                    className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto"
                   >
-                    <Rocket className="w-8 h-8 text-electric-blue" />
+                    <Rocket className="w-8 h-8 text-primary" />
                   </motion.div>
                   <h2 className="text-2xl font-display font-bold text-foreground">
                     Welcome to Frictionless
@@ -185,13 +185,13 @@ export function OnboardingWizard() {
                       onClick={() => setRole(r.value)}
                       className={`p-4 rounded-xl border-2 text-center transition-all ${
                         role === r.value
-                          ? 'border-electric-blue bg-electric-blue/10'
-                          : 'border-obsidian-600 bg-obsidian-800/50 hover:border-obsidian-500'
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border bg-card/50 hover:border-muted-foreground'
                       }`}
                     >
                       <r.icon
                         className={`w-6 h-6 mx-auto mb-2 ${
-                          role === r.value ? 'text-electric-blue' : 'text-muted-foreground'
+                          role === r.value ? 'text-primary' : 'text-muted-foreground'
                         }`}
                       />
                       <p className="text-sm font-medium text-foreground">{r.label}</p>
@@ -215,8 +215,8 @@ export function OnboardingWizard() {
                 className="space-y-5"
               >
                 <div className="text-center space-y-2">
-                  <div className="w-12 h-12 rounded-xl bg-electric-purple/10 flex items-center justify-center mx-auto">
-                    <Building2 className="w-6 h-6 text-electric-purple" />
+                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mx-auto">
+                    <Building2 className="w-6 h-6 text-accent" />
                   </div>
                   <h2 className="text-xl font-display font-bold text-foreground">
                     Company Information
@@ -235,7 +235,7 @@ export function OnboardingWizard() {
                       value={company.name}
                       onChange={(e) => setCompany({ ...company, name: e.target.value })}
                       placeholder="e.g. NeuralPay"
-                      className="bg-obsidian-800 border-obsidian-600"
+                      className="bg-card border-border"
                     />
                   </div>
                   <div>
@@ -246,7 +246,7 @@ export function OnboardingWizard() {
                       value={company.website}
                       onChange={(e) => setCompany({ ...company, website: e.target.value })}
                       placeholder="https://example.com"
-                      className="bg-obsidian-800 border-obsidian-600"
+                      className="bg-card border-border"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
@@ -256,10 +256,10 @@ export function OnboardingWizard() {
                         value={company.sector}
                         onValueChange={(v) => setCompany({ ...company, sector: v })}
                       >
-                        <SelectTrigger className="bg-obsidian-800 border-obsidian-600">
+                        <SelectTrigger className="bg-card border-border">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
-                        <SelectContent className="bg-obsidian-800 border-obsidian-600">
+                        <SelectContent className="bg-card border-border">
                           {['Fintech', 'Healthtech', 'SaaS', 'Cleantech', 'E-commerce', 'Cybersecurity', 'Edtech', 'Biotech', 'Other'].map(
                             (s) => (
                               <SelectItem key={s} value={s.toLowerCase()}>
@@ -276,10 +276,10 @@ export function OnboardingWizard() {
                         value={company.stage}
                         onValueChange={(v) => setCompany({ ...company, stage: v })}
                       >
-                        <SelectTrigger className="bg-obsidian-800 border-obsidian-600">
+                        <SelectTrigger className="bg-card border-border">
                           <SelectValue placeholder="Select" />
                         </SelectTrigger>
-                        <SelectContent className="bg-obsidian-800 border-obsidian-600">
+                        <SelectContent className="bg-card border-border">
                           {['Pre-Seed', 'Seed', 'Series A', 'Series B', 'Series C+'].map((s) => (
                             <SelectItem key={s} value={s.toLowerCase().replace(/\s+/g, '_')}>
                               {s}
@@ -296,7 +296,7 @@ export function OnboardingWizard() {
                         value={company.city}
                         onChange={(e) => setCompany({ ...company, city: e.target.value })}
                         placeholder="San Francisco"
-                        className="bg-obsidian-800 border-obsidian-600"
+                        className="bg-card border-border"
                       />
                     </div>
                     <div>
@@ -305,7 +305,7 @@ export function OnboardingWizard() {
                         value={company.state}
                         onChange={(e) => setCompany({ ...company, state: e.target.value })}
                         placeholder="CA"
-                        className="bg-obsidian-800 border-obsidian-600"
+                        className="bg-card border-border"
                       />
                     </div>
                   </div>
@@ -326,8 +326,8 @@ export function OnboardingWizard() {
                 className="space-y-5"
               >
                 <div className="text-center space-y-2">
-                  <div className="w-12 h-12 rounded-xl bg-electric-cyan/10 flex items-center justify-center mx-auto">
-                    <Users className="w-6 h-6 text-electric-cyan" />
+                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mx-auto">
+                    <Users className="w-6 h-6 text-accent" />
                   </div>
                   <h2 className="text-xl font-display font-bold text-foreground">
                     Founding Team
@@ -341,7 +341,7 @@ export function OnboardingWizard() {
                   {founders.map((founder, idx) => (
                     <div
                       key={idx}
-                      className="space-y-3 p-4 rounded-xl bg-obsidian-800/50 border border-obsidian-600/50"
+                      className="space-y-3 p-4 rounded-xl bg-card/50 border border-border/50"
                     >
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         Founder {idx + 1}
@@ -351,20 +351,20 @@ export function OnboardingWizard() {
                           value={founder.name}
                           onChange={(e) => updateFounder(idx, 'name', e.target.value)}
                           placeholder="Full name"
-                          className="bg-obsidian-800 border-obsidian-600"
+                          className="bg-card border-border"
                         />
                         <Input
                           value={founder.title}
                           onChange={(e) => updateFounder(idx, 'title', e.target.value)}
                           placeholder="Title (e.g. CEO)"
-                          className="bg-obsidian-800 border-obsidian-600"
+                          className="bg-card border-border"
                         />
                       </div>
                       <Textarea
                         value={founder.bio}
                         onChange={(e) => updateFounder(idx, 'bio', e.target.value)}
                         placeholder="Short bio..."
-                        className="bg-obsidian-800 border-obsidian-600 resize-none"
+                        className="bg-card border-border resize-none"
                         rows={2}
                       />
                     </div>
@@ -445,9 +445,9 @@ export function OnboardingWizard() {
                     <motion.div
                       animate={{ rotate: 360 }}
                       transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-                      className="w-16 h-16 rounded-2xl bg-electric-purple/10 flex items-center justify-center mx-auto"
+                      className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto"
                     >
-                      <Sparkles className="w-8 h-8 text-electric-purple" />
+                      <Sparkles className="w-8 h-8 text-accent" />
                     </motion.div>
                     <div className="space-y-2">
                       <h2 className="text-xl font-display font-bold text-foreground">
@@ -462,7 +462,7 @@ export function OnboardingWizard() {
                       {[1, 2, 3].map((i) => (
                         <motion.div
                           key={i}
-                          className="h-3 rounded-full bg-obsidian-700 overflow-hidden"
+                          className="h-3 rounded-full bg-muted overflow-hidden"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           transition={{ delay: i * 0.2 }}

@@ -43,8 +43,8 @@ export function MetaChips({ items, variant = 'keywords', className, label, maxVi
               'inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium',
               'border transition-colors',
               isIndustries
-                ? 'bg-electric-blue/10 text-electric-blue border-electric-blue/30'
-                : 'bg-obsidian-700/60 text-foreground border-obsidian-600/50'
+                ? 'bg-primary/10 text-primary border-primary/30'
+                : 'bg-muted/60 text-foreground border-border/50'
             )}
           >
             {item}
@@ -56,7 +56,7 @@ export function MetaChips({ items, variant = 'keywords', className, label, maxVi
             onClick={() => setExpanded(true)}
             className={cn(
               'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
-              'text-muted-foreground hover:text-foreground border-obsidian-600/50 hover:border-obsidian-500'
+              'text-muted-foreground hover:text-foreground border-border/50 hover:border-muted-foreground'
             )}
           >
             +{remaining} more

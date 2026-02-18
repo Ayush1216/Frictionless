@@ -70,7 +70,7 @@ export default function SettingsSecurityPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}
       >
-        <Card className="glass-card border-obsidian-600/50">
+        <Card className="glass-card border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Key className="w-5 h-5" />
@@ -88,7 +88,7 @@ export default function SettingsSecurityPage() {
                   setPasswordForm((p) => ({ ...p, current: e.target.value }))
                 }
                 placeholder="••••••••"
-                className="mt-2 bg-obsidian-900/50 border-obsidian-600"
+                className="mt-2 bg-background/50 border-border"
               />
             </div>
             <div>
@@ -101,7 +101,7 @@ export default function SettingsSecurityPage() {
                   setPasswordForm((p) => ({ ...p, new: e.target.value }))
                 }
                 placeholder="••••••••"
-                className="mt-2 bg-obsidian-900/50 border-obsidian-600"
+                className="mt-2 bg-background/50 border-border"
               />
             </div>
             <div>
@@ -114,10 +114,10 @@ export default function SettingsSecurityPage() {
                   setPasswordForm((p) => ({ ...p, confirm: e.target.value }))
                 }
                 placeholder="••••••••"
-                className="mt-2 bg-obsidian-900/50 border-obsidian-600"
+                className="mt-2 bg-background/50 border-border"
               />
             </div>
-            <Button onClick={handleChangePassword} className="bg-electric-blue hover:bg-electric-blue/90">
+            <Button onClick={handleChangePassword} className="bg-primary hover:bg-primary/90">
               Update password
             </Button>
           </CardContent>
@@ -130,7 +130,7 @@ export default function SettingsSecurityPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, delay: 0.1 }}
       >
-        <Card className="glass-card border-obsidian-600/50">
+        <Card className="glass-card border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="w-5 h-5" />
@@ -161,7 +161,7 @@ export default function SettingsSecurityPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, delay: 0.15 }}
       >
-        <Card className="glass-card border-obsidian-600/50">
+        <Card className="glass-card border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Monitor className="w-5 h-5" />
@@ -173,14 +173,14 @@ export default function SettingsSecurityPage() {
               {dummySessions.map((session) => (
                 <div
                   key={session.id}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-obsidian-800/30 border border-obsidian-600/30"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl bg-card/30 border border-border/30"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-obsidian-700 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                       {session.device.includes('iPhone') ? (
-                        <Smartphone className="w-5 h-5 text-obsidian-400" />
+                        <Smartphone className="w-5 h-5 text-muted-foreground" />
                       ) : (
-                        <Monitor className="w-5 h-5 text-obsidian-400" />
+                        <Monitor className="w-5 h-5 text-muted-foreground" />
                       )}
                     </div>
                     <div>
@@ -191,7 +191,7 @@ export default function SettingsSecurityPage() {
                       </p>
                     </div>
                     {session.current && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-electric-blue/20 text-electric-blue">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary">
                         Current
                       </span>
                     )}
@@ -201,7 +201,7 @@ export default function SettingsSecurityPage() {
                       variant="outline"
                       size="sm"
                       onClick={handleRevokeSession}
-                      className="border-obsidian-600 text-muted-foreground hover:text-destructive"
+                      className="border-border text-muted-foreground hover:text-destructive"
                     >
                       Revoke
                     </Button>
@@ -219,16 +219,16 @@ export default function SettingsSecurityPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, delay: 0.2 }}
       >
-        <Card className="glass-card border-obsidian-600/50">
+        <Card className="glass-card border-border/50">
           <CardHeader>
             <CardTitle>API keys</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="p-4 rounded-xl bg-obsidian-800/30 border border-obsidian-600/30">
+            <div className="p-4 rounded-xl bg-card/30 border border-border/30">
               <p className="text-sm text-muted-foreground">
                 API keys are available on the Enterprise plan. Upgrade to access programmatic access to Frictionless Intelligence.
               </p>
-              <Button asChild variant="outline" size="sm" className="mt-4 border-obsidian-600">
+              <Button asChild variant="outline" size="sm" className="mt-4 border-border">
                 <a href="/pricing">View plans</a>
               </Button>
             </div>
@@ -242,7 +242,7 @@ export default function SettingsSecurityPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, delay: 0.25 }}
       >
-        <Card className="glass-card border-obsidian-600/50">
+        <Card className="glass-card border-border/50">
           <CardHeader>
             <CardTitle>Login history</CardTitle>
           </CardHeader>
@@ -250,15 +250,15 @@ export default function SettingsSecurityPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-obsidian-600/50">
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-obsidian-400 uppercase">Date</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-obsidian-400 uppercase">IP Address</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-obsidian-400 uppercase">Status</th>
+                  <tr className="border-b border-border/50">
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase">Date</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase">IP Address</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {dummyLoginHistory.map((login) => (
-                    <tr key={login.id} className="border-b border-obsidian-600/30 last:border-0">
+                    <tr key={login.id} className="border-b border-border/30 last:border-0">
                       <td className="py-3 px-4 text-sm">
                         {format(new Date(login.date), 'MMM d, yyyy h:mm a')}
                       </td>

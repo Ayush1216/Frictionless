@@ -60,13 +60,13 @@ export function TaskComments({ taskId, comments, onCommentAdded, className }: Ta
                 exit={{ opacity: 0 }}
                 className={cn(
                   'flex gap-3 p-3 rounded-lg',
-                  ai ? 'bg-electric-blue/5 border border-electric-blue/10' : 'bg-obsidian-800/40'
+                  ai ? 'bg-primary/5 border border-primary/10' : 'bg-muted/40'
                 )}
               >
                 <Avatar className="h-7 w-7 flex-shrink-0">
                   <AvatarFallback className={cn(
                     'text-[10px] font-bold',
-                    ai ? 'bg-electric-blue/20 text-electric-blue' : 'bg-obsidian-600 text-obsidian-300'
+                    ai ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
                   )}>
                     {ai ? <Bot className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
                   </AvatarFallback>
@@ -95,12 +95,12 @@ export function TaskComments({ taskId, comments, onCommentAdded, className }: Ta
           onChange={(e) => setNewComment(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSubmit()}
           placeholder="Add a comment..."
-          className="flex-1 text-sm px-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50 text-foreground placeholder:text-obsidian-500 focus:outline-none focus:border-electric-blue/50 transition-colors"
+          className="flex-1 text-sm px-3 py-2 rounded-lg bg-muted/50 border border-border/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
         />
         <button
           onClick={handleSubmit}
           disabled={!newComment.trim() || submitting}
-          className="px-3 py-2 rounded-lg bg-electric-blue text-white hover:bg-electric-blue/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <Send className="w-4 h-4" />
         </button>

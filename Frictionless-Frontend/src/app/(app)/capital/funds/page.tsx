@@ -39,7 +39,7 @@ function FundCard({ fund, index }: { fund: (typeof investor.funds)[number]; inde
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="min-w-0 flex-1">
-            <h3 className="font-display font-semibold text-foreground text-lg truncate group-hover:text-electric-blue transition-colors">
+            <h3 className="font-display font-semibold text-foreground text-lg truncate group-hover:text-primary transition-colors">
               {fund.name}
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">Vintage {fund.vintage_year}</p>
@@ -49,13 +49,13 @@ function FundCard({ fund, index }: { fund: (typeof investor.funds)[number]; inde
 
         {/* Metrics */}
         <div className="grid grid-cols-2 gap-3 mb-4">
-          <div className="p-3 rounded-lg bg-obsidian-800/50">
+          <div className="p-3 rounded-lg bg-card/50">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Target Size</p>
             <p className="text-base font-mono font-bold text-foreground mt-0.5">{fmt(fund.target_size)}</p>
           </div>
-          <div className="p-3 rounded-lg bg-obsidian-800/50">
+          <div className="p-3 rounded-lg bg-card/50">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Deployed</p>
-            <p className="text-base font-mono font-bold text-electric-blue mt-0.5">{fmt(fund.capital_deployed)}</p>
+            <p className="text-base font-mono font-bold text-primary mt-0.5">{fmt(fund.capital_deployed)}</p>
           </div>
         </div>
 
@@ -65,9 +65,9 @@ function FundCard({ fund, index }: { fund: (typeof investor.funds)[number]; inde
             <span className="text-muted-foreground">Capital Deployed</span>
             <span className="font-mono font-semibold text-foreground">{deployedPct}%</span>
           </div>
-          <div className="w-full h-2.5 bg-obsidian-700 rounded-full overflow-hidden">
+          <div className="w-full h-2.5 bg-muted rounded-full overflow-hidden">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-electric-blue to-electric-purple"
+              className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
               initial={{ width: 0 }}
               animate={{ width: `${deployedPct}%` }}
               transition={{ duration: 0.8, ease: 'easeOut', delay: index * 0.08 + 0.2 }}
@@ -84,7 +84,7 @@ function FundCard({ fund, index }: { fund: (typeof investor.funds)[number]; inde
             <Briefcase className="w-3.5 h-3.5" />
             <span>{fund.investments.length} investments</span>
           </div>
-          <ArrowRight className="w-4 h-4 text-obsidian-500 group-hover:text-electric-blue group-hover:translate-x-1 transition-all" />
+          <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
         </div>
       </Link>
     </motion.div>
@@ -134,7 +134,7 @@ export default function FundsPage() {
         <SummaryStat
           label="Total Target"
           value={fmt(totalTarget)}
-          icon={<Wallet className="w-5 h-5 text-electric-blue" />}
+          icon={<Wallet className="w-5 h-5 text-primary" />}
           color="bg-electric-blue/10"
           delay={0.1}
         />

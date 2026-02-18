@@ -39,6 +39,12 @@ export const metadata: Metadata = {
     "AI investment",
     "fundraising",
   ],
+  icons: {
+    icon: "/ai-logo.png",
+    shortcut: "/ai-logo.png",
+    apple: "/ai-logo.png",
+  },
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {

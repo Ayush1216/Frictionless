@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Upload, Search, HardDrive, FolderOpen, Loader2 } from 'lucide-react';
+import { Upload, Search, HardDrive, FolderOpen, Loader2, ShieldCheck, AlertTriangle, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FileGrid } from '@/components/data-room/FileGrid';
@@ -10,6 +10,8 @@ import { FilePreview } from '@/components/data-room/FilePreview';
 import { UploadModal } from '@/components/data-room/UploadModal';
 import { ShareModal } from '@/components/data-room/ShareModal';
 import { getAuthHeaders } from '@/lib/api/tasks';
+import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase/client';
 import type { DummyDocument, DummyDocumentCategory } from '@/lib/dummy-data/documents';
 
 type FilterTab = 'all' | DummyDocumentCategory;
@@ -95,11 +97,22 @@ export default function DataRoomPage() {
     100
   );
 
+  // Diligence completeness — check for required doc types
+  const REQUIRED_DOCS = ['Pitch Deck', 'Cap Table', 'Financial Model', 'Incorporation Docs', 'Term Sheet'];
+  const uploadedDocNames = documents.map((d) => d.name.toLowerCase());
+  const completedDocs = REQUIRED_DOCS.filter((req) =>
+    uploadedDocNames.some((name) => name.includes(req.toLowerCase().split(' ')[0]))
+  );
+  const diligencePercent = Math.round((completedDocs.length / REQUIRED_DOCS.length) * 100);
+  const missingDocs = REQUIRED_DOCS.filter((req) =>
+    !uploadedDocNames.some((name) => name.includes(req.toLowerCase().split(' ')[0]))
+  );
+
   // Avoid flash of empty state: show loading until first fetch completes
   if (loading) {
     return (
       <div className="p-4 lg:p-8 flex flex-col items-center justify-center min-h-[50vh] gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-electric-blue" />
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">Loading data room…</p>
       </div>
     );
@@ -116,7 +129,7 @@ export default function DataRoomPage() {
       >
         <div className="space-y-1">
           <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground flex items-center gap-3">
-            <FolderOpen className="w-7 h-7 text-electric-blue" />
+            <FolderOpen className="w-7 h-7 text-primary" />
             Data Room
           </h1>
           <p className="text-muted-foreground text-sm">
@@ -125,7 +138,7 @@ export default function DataRoomPage() {
         </div>
         <Button
           onClick={() => setUploadOpen(true)}
-          className="gap-2 bg-electric-blue hover:bg-electric-blue/90 self-start sm:self-auto"
+          className="gap-2 bg-primary hover:bg-primary/90 self-start sm:self-auto"
         >
           <Upload className="w-4 h-4" /> Upload
         </Button>
@@ -145,14 +158,61 @@ export default function DataRoomPage() {
           </div>
           <span className="text-sm font-mono text-foreground">{totalSize} / 100 MB</span>
         </div>
-        <div className="h-2 rounded-full bg-obsidian-700/50 overflow-hidden">
+        <div className="h-2 rounded-full bg-muted overflow-hidden">
           <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-electric-blue to-electric-purple"
+            className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
             initial={{ width: 0 }}
             animate={{ width: `${storagePercent}%` }}
             transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
           />
         </div>
+      </motion.div>
+
+      {/* Diligence Completeness */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.08 }}
+        className="glass-card p-5"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className={cn('w-5 h-5', diligencePercent >= 80 ? 'text-score-excellent' : diligencePercent >= 50 ? 'text-score-good' : 'text-score-fair')} />
+            <h3 className="text-sm font-semibold text-foreground">Diligence Completeness</h3>
+          </div>
+          <span className={cn('text-lg font-mono font-bold', diligencePercent >= 80 ? 'text-score-excellent' : diligencePercent >= 50 ? 'text-score-good' : 'text-score-fair')}>
+            {diligencePercent}%
+          </span>
+        </div>
+        <div className="h-2 rounded-full bg-muted overflow-hidden mb-3">
+          <motion.div
+            className={cn('h-full rounded-full', diligencePercent >= 80 ? 'bg-score-excellent' : diligencePercent >= 50 ? 'bg-score-good' : 'bg-score-fair')}
+            initial={{ width: 0 }}
+            animate={{ width: `${diligencePercent}%` }}
+            transition={{ duration: 0.8, ease: 'easeOut', delay: 0.4 }}
+          />
+        </div>
+        {missingDocs.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-score-fair" />
+              Missing documents for investor diligence:
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {missingDocs.map((doc) => (
+                <span key={doc} className="px-2.5 py-1 rounded-lg text-xs font-medium bg-muted border border-border text-muted-foreground">
+                  {doc}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {missingDocs.length === 0 && (
+          <p className="text-xs text-score-excellent flex items-center gap-1.5">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            All required diligence documents uploaded
+          </p>
+        )}
       </motion.div>
 
       {/* Search + Filters */}
@@ -169,7 +229,7 @@ export default function DataRoomPage() {
             placeholder="Search documents..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-obsidian-800 border-obsidian-600"
+            className="pl-9 bg-muted border-border"
           />
         </div>
 
@@ -181,8 +241,8 @@ export default function DataRoomPage() {
               onClick={() => setActiveTab(tab.value)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                 activeTab === tab.value
-                  ? 'bg-electric-blue text-white'
-                  : 'bg-obsidian-800 text-muted-foreground hover:text-foreground hover:bg-obsidian-700'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/80'
               }`}
             >
               {tab.label}
@@ -218,6 +278,12 @@ export default function DataRoomPage() {
         open={!!shareDoc}
         onOpenChange={(open) => !open && setShareDoc(null)}
         fileName={shareDoc?.name}
+        shareType="data_room"
+        getToken={async () => {
+          if (!supabase) return null;
+          const { data } = await supabase.auth.getSession();
+          return data?.session?.access_token ?? null;
+        }}
       />
     </div>
   );

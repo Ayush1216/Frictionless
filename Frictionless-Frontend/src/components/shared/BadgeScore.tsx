@@ -20,7 +20,7 @@ function getScoreColor(score: number) {
 function getDeltaColor(delta: number) {
   if (delta > 0) return 'text-score-excellent';
   if (delta < 0) return 'text-score-poor';
-  return 'text-obsidian-400';
+  return 'text-muted-foreground';
 }
 
 const sizes = {
@@ -51,7 +51,7 @@ export function BadgeScore({ score, delta, size = 'md', className }: BadgeScoreP
         </span>
       )}
       {delta === 0 && (
-        <Minus className="w-3 h-3 text-obsidian-400" />
+        <Minus className="w-3 h-3 text-muted-foreground" />
       )}
     </div>
   );

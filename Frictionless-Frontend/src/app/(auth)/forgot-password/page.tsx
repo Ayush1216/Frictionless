@@ -56,7 +56,7 @@ export default function ForgotPasswordPage() {
                     placeholder="you@company.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 h-11 bg-obsidian-800/50 border-obsidian-600/50 focus:border-electric-blue"
+                    className="pl-10 h-11 bg-card/50 border-border/50 focus:border-primary"
                     required
                   />
                 </div>
@@ -64,7 +64,7 @@ export default function ForgotPasswordPage() {
 
               <Button
                 type="submit"
-                className="w-full h-11 bg-electric-blue hover:bg-electric-blue/90 text-white font-medium"
+                className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-medium"
                 disabled={isLoading || !email}
               >
                 {isLoading ? (
@@ -112,7 +112,7 @@ export default function ForgotPasswordPage() {
             <div className="space-y-3">
               <Button
                 type="button"
-                className="w-full h-11 bg-electric-blue hover:bg-electric-blue/90 text-white font-medium"
+                className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-medium"
                 onClick={() => {
                   setIsSent(false);
                   setEmail('');

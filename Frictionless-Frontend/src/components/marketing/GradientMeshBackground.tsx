@@ -6,7 +6,7 @@ export function GradientMeshBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden -z-10">
       {/* Base gradient */}
-      <div className="absolute inset-0 bg-obsidian-900" />
+      <div className="absolute inset-0 bg-background" />
 
       {/* Animated orbs */}
       <motion.div
@@ -77,7 +77,7 @@ export function GradientMeshBackground() {
       />
 
       {/* Gradient fade at bottom */}
-      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-obsidian-900 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-background to-transparent" />
     </div>
   );
 }

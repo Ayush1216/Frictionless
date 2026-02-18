@@ -1,10 +1,18 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/sonner";
-import { SupabaseAuthProvider } from "@/components/auth/SupabaseAuthProvider";
 import { useState, useEffect } from "react";
 import { useUIStore } from "@/stores/ui-store";
+import dynamic from "next/dynamic";
+import { Toaster } from "@/components/ui/sonner";
+
+const AuthSessionEffect = dynamic(
+  () =>
+    import("@/components/auth/AuthSessionEffect").then((mod) => ({
+      default: mod.AuthSessionEffect,
+    })),
+  { ssr: false }
+);
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -12,8 +20,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60 * 1000,
+            staleTime: 5 * 60 * 1000, // 5 min before data considered stale
+            gcTime: 10 * 60 * 1000,    // 10 min garbage collection
             refetchOnWindowFocus: false,
+            refetchOnReconnect: false,
+            retry: 1,                   // Only retry once on failure
+            retryDelay: 1000,
           },
         },
       })
@@ -32,9 +44,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <SupabaseAuthProvider>
-        {children}
-      </SupabaseAuthProvider>
+      {children}
+      <AuthSessionEffect />
       <Toaster
         position="top-right"
         toastOptions={{

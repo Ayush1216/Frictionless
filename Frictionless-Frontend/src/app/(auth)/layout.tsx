@@ -21,7 +21,7 @@ export default function AuthLayout({
   return (
     <div className="flex min-h-screen">
       {/* Left panel - gradient brand imagery (desktop only) */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-obsidian-950">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-background">
         {/* Animated gradient background */}
         <div className="absolute inset-0 bg-neon-gradient opacity-20 animated-gradient" />
         <div className="absolute inset-0 bg-mesh-gradient" />
@@ -77,7 +77,7 @@ export default function AuthLayout({
               <span className="gradient-text">Investment Intelligence</span>
             </motion.h1>
             <motion.p
-              className="text-lg text-obsidian-300 max-w-md"
+              className="text-lg text-muted-foreground max-w-md"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
@@ -113,17 +113,17 @@ export default function AuthLayout({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.8 }}
           >
-            <p className="text-obsidian-200 text-sm italic leading-relaxed">
+            <p className="text-muted-foreground text-sm italic leading-relaxed">
               &ldquo;Frictionless Intelligence helped us identify the right
               investors and close our Series A 3 months faster than expected.&rdquo;
             </p>
             <div className="mt-3 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-electric-blue/20 flex items-center justify-center text-xs font-bold text-electric-blue">
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
                 JK
               </div>
               <div>
                 <p className="text-sm font-medium text-white">Jason Kim</p>
-                <p className="text-xs text-obsidian-400">CEO, DataFlow AI</p>
+                <p className="text-xs text-muted-foreground">CEO, DataFlow AI</p>
               </div>
             </div>
           </motion.div>

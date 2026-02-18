@@ -1,0 +1,17 @@
+{
+  "name": "Frictionless Intelligence",
+  "short_name": "Frictionless",
+  "description": "AI-powered investment readiness platform",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366F1",
+  "icons": [
+    {
+      "src": "/ai-logo.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

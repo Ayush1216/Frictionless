@@ -419,12 +419,14 @@ export function buildCanonicalCompanyProfile(rawSources: RawSources): CanonicalC
   const aiInsightsRaw = (extraction?.ai_insights && String(extraction.ai_insights)) || '';
   const aiTextForDedupe = String(aiInsightsRaw || aiSummaryRaw || '');
   const { overviewClean, aiClean } = removeOverlappingFragments(String(overviewRaw), aiTextForDedupe);
-  const overviewSentences = sentenceTokenize(overviewClean || overviewRaw);
+  const overviewSentences = sentenceTokenize(String(overviewClean || overviewRaw || ''));
   const overviewNoBusinessRepeat = removeOverviewSentencesRepeatingBusinessFields(overviewSentences, init);
-  const overviewFinal = overviewNoBusinessRepeat.length > 0 ? overviewNoBusinessRepeat.join('. ').trim() : (overviewClean || overviewRaw || null);
+  const overviewFallback = overviewClean != null && typeof overviewClean === 'string' ? overviewClean : (typeof overviewRaw === 'string' ? overviewRaw : '');
+  const overviewFinal = overviewNoBusinessRepeat.length > 0 ? overviewNoBusinessRepeat.join('. ').trim() : overviewFallback || null;
+  const aiSecond = aiClean || aiInsightsRaw;
   const ai_insights_structured = buildStructuredAIInsights(
     extraction?.ai_summary ? String(extraction.ai_summary) : null,
-    aiClean || aiInsightsRaw || null
+    aiSecond != null && typeof aiSecond === 'string' ? aiSecond : null
   );
 
   return {
@@ -454,8 +456,8 @@ export function buildCanonicalCompanyProfile(rawSources: RawSources): CanonicalC
     unique_value_proposition: init.unique_value_proposition || init.uvp || null,
     why_now: init.why_now || null,
     traction: init.traction || init.milestones || null,
-    overview_deduped: overviewFinal || null,
-    ai_insights_deduped: aiClean || null,
+    overview_deduped: overviewFinal != null && typeof overviewFinal === 'string' ? overviewFinal : null,
+    ai_insights_deduped: aiClean != null && typeof aiClean === 'string' ? aiClean : null,
     ai_insights_structured,
     ai_summary: extraction?.ai_summary ? String(extraction.ai_summary) : null,
     provenance,

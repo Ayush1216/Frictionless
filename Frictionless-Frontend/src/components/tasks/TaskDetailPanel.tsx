@@ -143,7 +143,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
             className={cn(
               'fixed z-50 right-0 top-0 flex flex-col',
-              'bg-obsidian-900 border-l border-obsidian-700/50',
+              'bg-card border-l border-border',
               // Use dvh so panel stays above browser/OS UI (e.g. taskbar)
               'h-dvh max-h-dvh',
               // Desktop: 40% width, Mobile: full screen
@@ -152,7 +152,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
           >
             {chatFullPanel ? (
               <>
-                <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b border-obsidian-700/50">
+                <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b border-border">
                   <button
                     onClick={() => setChatFullPanel(false)}
                     className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-muted-foreground"
@@ -163,7 +163,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                   <span className="text-sm font-semibold text-foreground">Chat with AI</span>
                   <button
                     onClick={onClose}
-                    className="p-2 rounded-lg hover:bg-obsidian-800 text-obsidian-400 hover:text-foreground"
+                    className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
                     title="Close panel"
                   >
                     <X className="w-5 h-5" />
@@ -191,7 +191,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-2 rounded-lg hover:bg-obsidian-800 text-obsidian-400 hover:text-foreground transition-colors flex-shrink-0"
+                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -208,24 +208,24 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                   </label>
                   <button
                     onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                    className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50 hover:border-obsidian-600 transition-colors"
+                    className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-muted border border-border hover:border-border transition-colors"
                   >
                     <StatusChip status={task.status} />
-                    <ChevronDown className="w-3.5 h-3.5 text-obsidian-400 ml-auto" />
+                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground ml-auto" />
                   </button>
                   {showStatusDropdown && (
                     <motion.div
                       initial={{ opacity: 0, y: -5 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="absolute top-full left-0 mt-1 w-full bg-obsidian-800 border border-obsidian-700 rounded-lg shadow-xl z-10 overflow-hidden"
+                      className="absolute top-full left-0 mt-1 w-full bg-muted border border-border rounded-lg shadow-xl z-10 overflow-hidden"
                     >
                       {statusOptions.map((opt) => (
                         <button
                           key={opt.value}
                           onClick={() => handleStatusChange(opt.value)}
                           className={cn(
-                            'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-obsidian-700/50 transition-colors',
-                            task.status === opt.value && 'bg-obsidian-700/30'
+                            'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors',
+                            task.status === opt.value && 'bg-muted/30'
                           )}
                         >
                           <StatusChip status={opt.value} />
@@ -239,7 +239,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                   <label className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 block">
                     Impact
                   </label>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border">
                     <span className={cn(
                       'text-sm font-medium capitalize',
                       (task.priority === 'critical' || task.priority === 'high') ? 'text-red-400' :
@@ -256,8 +256,8 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                   <label className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 block">
                     Due Date
                   </label>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50 text-sm">
-                    <Calendar className="w-3.5 h-3.5 text-obsidian-400" />
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-sm">
+                    <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
                     <span className="text-foreground">
                       {task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : 'None'}
                     </span>
@@ -268,8 +268,8 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                   <label className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 block">
                     Category
                   </label>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50 text-sm">
-                    <Tag className="w-3.5 h-3.5 text-obsidian-400" />
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-sm">
+                    <Tag className="w-3.5 h-3.5 text-muted-foreground" />
                     <span className="text-foreground truncate">{group?.category ?? '—'}</span>
                   </div>
                 </div>
@@ -286,13 +286,13 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
               {/* Badges */}
               <div className="flex items-center gap-2 flex-wrap">
                 {task.requires_rescore && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-electric-cyan/10 text-electric-cyan border border-electric-cyan/20">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-chart-5/10 text-chart-5 border border-chart-5/20">
                     <RefreshCw className="w-3 h-3" />
                     Requires Rescore
                   </span>
                 )}
                 {task.completion_source && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-electric-purple/10 text-electric-purple border border-electric-purple/20">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-accent/10 text-accent border border-accent/20">
                     <Sparkles className="w-3 h-3" />
                     {task.completion_source === 'ai_file_upload' ? 'AI File Upload' :
                      task.completion_source === 'ai_chat' ? 'AI Chat' : 'Manual'}
@@ -301,7 +301,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
               </div>
 
               {/* Tabs */}
-              <div className="flex border-b border-obsidian-700/50">
+              <div className="flex border-b border-border">
                 {[
                   { id: 'ai' as const, label: 'AI Completion', icon: Sparkles },
                   { id: 'comments' as const, label: 'Comments', icon: MessageSquare },
@@ -313,7 +313,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                     className={cn(
                       'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
                       activeTab === tab.id
-                        ? 'border-electric-blue text-electric-blue'
+                        ? 'border-primary text-primary'
                         : 'border-transparent text-muted-foreground hover:text-foreground'
                     )}
                   >
@@ -344,7 +344,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                       />
                     ) : (
                       <div className="text-center py-8">
-                        <FileText className="w-8 h-8 text-obsidian-500 mx-auto mb-2" />
+                        <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                         <p className="text-sm text-muted-foreground">Task is already complete</p>
                       </div>
                     )}
@@ -377,8 +377,8 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                           return (
                             <div key={event.id} className="flex gap-3">
                               <div className="flex flex-col items-center">
-                                <div className="w-2 h-2 rounded-full bg-electric-blue mt-2" />
-                                <div className="flex-1 w-px bg-obsidian-700/40 mt-1" />
+                                <div className="w-2 h-2 rounded-full bg-primary mt-2" />
+                                <div className="flex-1 w-px bg-border mt-1" />
                               </div>
                               <div className="pb-4">
                                 <p className="text-sm text-foreground">{desc}{detail}</p>

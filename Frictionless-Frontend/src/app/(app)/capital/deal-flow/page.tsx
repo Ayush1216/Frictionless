@@ -57,7 +57,7 @@ function MiniGauge({ score }: { score: number }) {
   return (
     <div className="relative w-10 h-10 flex-shrink-0">
       <svg className="w-10 h-10 -rotate-90" viewBox="0 0 40 40">
-        <circle cx="20" cy="20" r={radius} fill="none" stroke="currentColor" strokeWidth="3" className="text-obsidian-700" />
+        <circle cx="20" cy="20" r={radius} fill="none" stroke="currentColor" strokeWidth="3" className="text-muted" />
         <motion.circle
           cx="20" cy="20" r={radius} fill="none" stroke={color} strokeWidth="3"
           strokeLinecap="round"
@@ -86,16 +86,16 @@ function StartupCard({ startup, index, isNew }: { startup: DummyStartup; index: 
       <Link href={`/capital/deal-flow/${startup.org_id}`} className="block p-5">
         {/* Top row */}
         <div className="flex items-start gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl overflow-hidden bg-obsidian-700 flex-shrink-0 ring-1 ring-white/5">
+          <div className="w-10 h-10 rounded-xl overflow-hidden bg-muted flex-shrink-0 ring-1 ring-white/5">
             <Image src={startup.org.logo_url} alt={startup.org.name} width={40} height={40} className="w-full h-full object-cover" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="font-display font-semibold text-foreground truncate group-hover:text-electric-blue transition-colors">
+              <h3 className="font-display font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                 {startup.org.name}
               </h3>
               {isNew && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-electric-blue/20 text-electric-blue border border-electric-blue/30">
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/20 text-primary border border-primary/30">
                   NEW
                 </span>
               )}
@@ -113,15 +113,15 @@ function StartupCard({ startup, index, isNew }: { startup: DummyStartup; index: 
 
         {/* Metrics row */}
         <div className="grid grid-cols-3 gap-2 mb-3">
-          <div className="text-center p-2 rounded-lg bg-obsidian-800/50">
+          <div className="text-center p-2 rounded-lg bg-card/50">
             <p className="text-xs text-muted-foreground">MRR</p>
             <p className="text-sm font-mono font-bold text-foreground">{formatCurrency(startup.latest_metrics.mrr)}</p>
           </div>
-          <div className="text-center p-2 rounded-lg bg-obsidian-800/50">
+          <div className="text-center p-2 rounded-lg bg-card/50">
             <p className="text-xs text-muted-foreground">Customers</p>
             <p className="text-sm font-mono font-bold text-foreground">{startup.latest_metrics.customer_count}</p>
           </div>
-          <div className="text-center p-2 rounded-lg bg-obsidian-800/50">
+          <div className="text-center p-2 rounded-lg bg-card/50">
             <p className="text-xs text-muted-foreground">Runway</p>
             <p className="text-sm font-mono font-bold text-foreground">{startup.latest_metrics.runway_months}mo</p>
           </div>
@@ -131,7 +131,7 @@ function StartupCard({ startup, index, isNew }: { startup: DummyStartup; index: 
         <div className="flex items-center justify-between">
           <div className="flex flex-wrap gap-1">
             {startup.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="px-2 py-0.5 text-[10px] rounded-full bg-obsidian-700/60 text-obsidian-300 border border-obsidian-600/30">
+              <span key={tag} className="px-2 py-0.5 text-[10px] rounded-full bg-muted/60 text-muted-foreground border border-border/30">
                 {tag}
               </span>
             ))}
@@ -143,14 +143,14 @@ function StartupCard({ startup, index, isNew }: { startup: DummyStartup; index: 
       {/* Quick actions */}
       <div className="border-t border-white/5 px-5 py-2.5 flex items-center gap-2">
         <Link href={`/capital/deal-flow/${startup.org_id}`}>
-          <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-electric-blue">
+          <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-primary">
             <Eye className="w-3.5 h-3.5" /> View
           </Button>
         </Link>
         <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-score-fair">
           <Bookmark className="w-3.5 h-3.5" /> Save
         </Button>
-        <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-obsidian-400">
+        <Button variant="ghost" size="sm" className="h-7 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-muted-foreground">
           <XCircle className="w-3.5 h-3.5" /> Pass
         </Button>
       </div>
@@ -229,9 +229,9 @@ export default function DealFlowPage() {
         actions={
           <div className="flex items-center gap-2">
             {newStartups.length > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-electric-blue/10 border border-electric-blue/20">
-                <Sparkles className="w-3.5 h-3.5 text-electric-blue" />
-                <span className="text-xs font-semibold text-electric-blue">{newStartups.length} new</span>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-primary">{newStartups.length} new</span>
               </div>
             )}
           </div>
@@ -253,13 +253,13 @@ export default function DealFlowPage() {
               placeholder="Search startups, sectors, tags…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 bg-obsidian-800/50 border-obsidian-600/30"
+              className="pl-10 bg-card/50 border-border/30"
             />
           </div>
 
           {/* Sector */}
           <Select value={sectorFilter} onValueChange={setSectorFilter}>
-            <SelectTrigger className="w-full lg:w-[160px] bg-obsidian-800/50 border-obsidian-600/30">
+            <SelectTrigger className="w-full lg:w-[160px] bg-card/50 border-border/30">
               <SelectValue placeholder="Sector" />
             </SelectTrigger>
             <SelectContent>
@@ -272,7 +272,7 @@ export default function DealFlowPage() {
 
           {/* Stage */}
           <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="w-full lg:w-[160px] bg-obsidian-800/50 border-obsidian-600/30">
+            <SelectTrigger className="w-full lg:w-[160px] bg-card/50 border-border/30">
               <SelectValue placeholder="Stage" />
             </SelectTrigger>
             <SelectContent>
@@ -287,7 +287,7 @@ export default function DealFlowPage() {
 
           {/* Score min */}
           <Select value={String(scoreMin)} onValueChange={(v) => setScoreMin(Number(v))}>
-            <SelectTrigger className="w-full lg:w-[140px] bg-obsidian-800/50 border-obsidian-600/30">
+            <SelectTrigger className="w-full lg:w-[140px] bg-card/50 border-border/30">
               <SelectValue placeholder="Min Score" />
             </SelectTrigger>
             <SelectContent>
@@ -300,7 +300,7 @@ export default function DealFlowPage() {
 
           {/* Sort */}
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as 'score' | 'name' | 'date')}>
-            <SelectTrigger className="w-full lg:w-[140px] bg-obsidian-800/50 border-obsidian-600/30">
+            <SelectTrigger className="w-full lg:w-[140px] bg-card/50 border-border/30">
               <ArrowUpDown className="w-3.5 h-3.5 mr-1.5" />
               <SelectValue placeholder="Sort" />
             </SelectTrigger>
@@ -336,11 +336,11 @@ export default function DealFlowPage() {
           <motion.h2
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-sm font-display font-semibold text-electric-blue mb-3 flex items-center gap-2"
+            className="text-sm font-display font-semibold text-primary mb-3 flex items-center gap-2"
           >
             <Sparkles className="w-4 h-4" />
             New Startups
-            <span className="px-2 py-0.5 rounded-full bg-electric-blue/15 text-electric-blue text-[10px] font-bold">
+            <span className="px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold">
               {newStartups.length}
             </span>
           </motion.h2>
@@ -377,7 +377,7 @@ export default function DealFlowPage() {
           animate={{ opacity: 1, y: 0 }}
           className="glass-card p-12 flex flex-col items-center text-center"
         >
-          <Search className="w-8 h-8 text-obsidian-500 mb-3" />
+          <Search className="w-8 h-8 text-muted-foreground mb-3" />
           <p className="text-lg font-display font-semibold text-foreground mb-2">No startups found</p>
           <p className="text-sm text-muted-foreground">Try adjusting your filters to see more results.</p>
         </motion.div>

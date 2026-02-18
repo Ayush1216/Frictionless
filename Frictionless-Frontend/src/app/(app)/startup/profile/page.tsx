@@ -69,8 +69,8 @@ function MetricCard({
       className="glass-card p-4"
     >
       <div className="flex items-center gap-2 mb-2">
-        <div className="w-8 h-8 rounded-lg bg-electric-blue/10 flex items-center justify-center">
-          <Icon className="w-4 h-4 text-electric-blue" />
+        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Icon className="w-4 h-4 text-primary" />
         </div>
         <span className="text-xs text-muted-foreground">{label}</span>
       </div>
@@ -110,7 +110,7 @@ export default function StartupProfilePage() {
       >
         <div className="flex flex-col sm:flex-row gap-5">
           {/* Logo */}
-          <div className="w-20 h-20 rounded-2xl bg-obsidian-700 border border-obsidian-600 overflow-hidden shrink-0">
+          <div className="w-20 h-20 rounded-2xl bg-muted border border-border overflow-hidden shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={startup.org.logo_url}
@@ -136,10 +136,10 @@ export default function StartupProfilePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 mt-3">
-              <Badge variant="secondary" className="bg-electric-blue/10 text-electric-blue border-electric-blue/20">
+              <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
                 {startup.sector.name}
               </Badge>
-              <Badge variant="secondary" className="bg-electric-purple/10 text-electric-purple border-electric-purple/20">
+              <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20">
                 {formatStage(startup.stage)}
               </Badge>
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -148,7 +148,7 @@ export default function StartupProfilePage() {
               </span>
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Globe className="w-3 h-3" />
-                <a href={startup.org.website} className="hover:text-electric-blue transition-colors">
+                <a href={startup.org.website} className="hover:text-primary transition-colors">
                   {startup.org.website.replace('https://', '')}
                 </a>
               </span>
@@ -162,7 +162,7 @@ export default function StartupProfilePage() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="flex gap-1 bg-obsidian-800 p-1 rounded-xl border border-obsidian-600/50"
+        className="flex gap-1 bg-card p-1 rounded-xl border border-border/50"
       >
         {TABS.map((tab) => (
           <button
@@ -171,7 +171,7 @@ export default function StartupProfilePage() {
             className={cn(
               'flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all',
               activeTab === tab.key
-                ? 'bg-obsidian-700 text-foreground shadow-sm'
+                ? 'bg-muted text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -193,7 +193,7 @@ export default function StartupProfilePage() {
           >
             <div className="glass-card p-5 space-y-4">
               <h2 className="text-lg font-display font-semibold text-foreground flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-electric-blue" /> About
+                <Building2 className="w-5 h-5 text-primary" /> About
               </h2>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {startup.pitch_summary}
@@ -254,9 +254,9 @@ export default function StartupProfilePage() {
                 className="glass-card p-5"
               >
                 <div className="flex items-start gap-4">
-                  <Avatar className="w-14 h-14 rounded-xl border border-obsidian-600">
+                  <Avatar className="w-14 h-14 rounded-xl border border-border">
                     <AvatarImage src={founder.photo_url} alt={founder.full_name} />
-                    <AvatarFallback className="rounded-xl bg-obsidian-700 text-sm">
+                    <AvatarFallback className="rounded-xl bg-muted text-sm">
                       {founder.full_name.split(' ').map((n) => n[0]).join('')}
                     </AvatarFallback>
                   </Avatar>

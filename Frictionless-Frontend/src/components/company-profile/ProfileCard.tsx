@@ -23,7 +23,7 @@ export interface ProfileCardProps {
 export function ProfileCard({
   title,
   icon: Icon,
-  iconClassName = 'text-electric-blue',
+  iconClassName = 'text-primary',
   children,
   minHeightRem,
   className,
@@ -34,12 +34,12 @@ export function ProfileCard({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'rounded-2xl border border-obsidian-700/50 bg-obsidian-900/40 overflow-hidden flex flex-col transition-shadow hover:shadow-lg hover:shadow-black/10',
+        'rounded-2xl border border-border/50 bg-background/40 overflow-hidden flex flex-col transition-shadow hover:shadow-lg hover:shadow-black/10',
         className
       )}
       style={minHeightRem != null ? { minHeight: `${minHeightRem}rem` } : undefined}
     >
-      <div className="flex items-center justify-between gap-2 p-5 pb-3 border-b border-obsidian-700/30">
+      <div className="flex items-center justify-between gap-2 p-5 pb-3 border-b border-border/30">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 truncate">
           {Icon && <Icon className={cn('w-5 h-5 shrink-0', iconClassName)} />}
           {title}
@@ -88,7 +88,7 @@ export function ProfileCardExpandableBody({
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
-          className="mt-2 text-xs font-medium text-electric-blue hover:text-electric-blue/80 focus:outline-none focus:ring-2 focus:ring-electric-blue/50 rounded self-start inline-flex items-center gap-1"
+          className="mt-2 text-xs font-medium text-primary hover:text-primary/80 focus:outline-none focus:ring-2 focus:ring-primary/50 rounded self-start inline-flex items-center gap-1"
         >
           {expanded ? <>Read less <ChevronUp className="w-3.5 h-3.5" /></> : <>Read more <ChevronDown className="w-3.5 h-3.5" /></>}
         </button>

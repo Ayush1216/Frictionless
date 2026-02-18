@@ -36,7 +36,7 @@ export function AIFloatingButton({ onClick, className }: AIFloatingButtonProps) 
           >
             {/* Pulse ring */}
             <motion.div
-              className="absolute inset-0 rounded-full bg-electric-blue/20"
+              className="absolute inset-0 rounded-full bg-primary/20"
               animate={{ scale: [1, 1.4, 1], opacity: [0.5, 0, 0.5] }}
               transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
             />

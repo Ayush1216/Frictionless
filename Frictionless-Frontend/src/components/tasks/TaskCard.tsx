@@ -47,8 +47,8 @@ export function TaskCard({ task, category, onClick, className }: TaskCardProps) 
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
       className={cn(
-        'p-4 rounded-xl bg-obsidian-800/80 border border-obsidian-700/50 cursor-pointer',
-        'transition-colors hover:border-obsidian-600/60',
+        'p-4 rounded-xl bg-muted/80 border border-border cursor-pointer',
+        'transition-colors hover:border-primary/30',
         task.status === 'done' && 'opacity-70',
         className
       )}
@@ -74,7 +74,7 @@ export function TaskCard({ task, category, onClick, className }: TaskCardProps) 
 
         {/* AI badge */}
         {isAI && (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-electric-purple/15 text-electric-purple border border-electric-purple/30">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-accent/15 text-accent border border-accent/30">
             <Sparkles className="w-3 h-3" />
             AI
           </span>
@@ -82,7 +82,7 @@ export function TaskCard({ task, category, onClick, className }: TaskCardProps) 
 
         {/* Rescore badge */}
         {task.requires_rescore && (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-electric-cyan/15 text-electric-cyan border border-electric-cyan/30">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-chart-5/15 text-chart-5 border border-chart-5/30">
             <RefreshCw className="w-3 h-3" />
             Rescore
           </span>
@@ -105,11 +105,11 @@ export function TaskCard({ task, category, onClick, className }: TaskCardProps) 
             {format(parseISO(task.due_date), 'MMM d')}
           </span>
         ) : (
-          <span className="text-obsidian-500">No due date</span>
+          <span className="text-muted-foreground">No due date</span>
         )}
 
         {category && (
-          <span className="px-1.5 py-0.5 rounded bg-obsidian-700/50 text-[10px] font-medium text-obsidian-300 truncate max-w-[120px]">
+          <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-medium text-muted-foreground truncate max-w-[120px]">
             {category}
           </span>
         )}

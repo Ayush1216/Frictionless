@@ -16,6 +16,7 @@ export interface TaskProgress {
 
 interface TaskStore {
   tasks: Task[];
+  completedTasks: Task[];
   taskGroups: TaskGroup[];
   taskProgress: TaskProgress | null;
   tasksLoaded: boolean;
@@ -23,6 +24,7 @@ interface TaskStore {
   viewMode: ViewMode;
   filterStatus: string | null;
   setTasks: (tasks: Task[]) => void;
+  setCompletedTasks: (tasks: Task[]) => void;
   setTaskGroups: (taskGroups: TaskGroup[]) => void;
   setTaskProgress: (progress: TaskProgress | null) => void;
   setTasksLoaded: (loaded: boolean) => void;
@@ -43,6 +45,7 @@ interface TaskStore {
 
 export const useTaskStore = create<TaskStore>((set) => ({
   tasks: [],
+  completedTasks: [],
   taskGroups: [],
   taskProgress: null,
   tasksLoaded: false,
@@ -50,6 +53,7 @@ export const useTaskStore = create<TaskStore>((set) => ({
   viewMode: 'list',
   filterStatus: null,
   setTasks: (tasks) => set({ tasks }),
+  setCompletedTasks: (completedTasks) => set({ completedTasks }),
   setTaskGroups: (taskGroups) => set({ taskGroups }),
   setTaskProgress: (taskProgress) => set({ taskProgress }),
   setTasksLoaded: (tasksLoaded) => set({ tasksLoaded }),

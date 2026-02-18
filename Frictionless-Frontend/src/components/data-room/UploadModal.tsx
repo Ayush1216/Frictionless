@@ -50,7 +50,7 @@ function UploadContent({
       </p>
       <div className="flex justify-end gap-2">
         <Button
-          className="bg-electric-blue hover:bg-electric-blue/90"
+          className="bg-primary hover:bg-primary/90"
           onClick={onUploadClick}
           disabled={uploadDisabled}
         >
@@ -97,7 +97,7 @@ export function UploadModal({ open, onOpenChange, onUploadComplete }: UploadModa
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-lg bg-obsidian-800 border-obsidian-600">
+        <DialogContent className="sm:max-w-lg bg-card border-border">
           <DialogHeader>
             <DialogTitle className="font-display">Upload Documents</DialogTitle>
             <DialogDescription>
@@ -117,7 +117,7 @@ export function UploadModal({ open, onOpenChange, onUploadComplete }: UploadModa
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="bg-obsidian-800 border-obsidian-600 rounded-t-2xl max-h-[85vh] overflow-y-auto">
+      <SheetContent side="bottom" className="bg-card border-border rounded-t-2xl max-h-[85vh] overflow-y-auto">
         <SheetHeader className="text-left">
           <SheetTitle className="font-display">Upload Documents</SheetTitle>
           <SheetDescription>

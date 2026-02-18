@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Gauge,
@@ -9,7 +9,6 @@ import {
   Bot,
   CheckSquare,
   FolderOpen,
-  BarChart3,
   TrendingUp,
   Users,
   Settings,
@@ -17,6 +16,7 @@ import {
   FileText,
   Building2,
   Clock,
+  Send,
 } from 'lucide-react';
 import { useUIStore } from '@/stores/ui-store';
 import {
@@ -29,6 +29,9 @@ import {
   CommandSeparator,
 } from '@/components/ui/command';
 
+const RECENT_PAGES_KEY = 'frictionless-recent-pages';
+const MAX_RECENT = 5;
+
 interface SearchItem {
   label: string;
   icon: React.ElementType;
@@ -36,25 +39,54 @@ interface SearchItem {
   description?: string;
 }
 
-const recentItems: SearchItem[] = [
-  { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Readiness Score', icon: Gauge, href: '/startup/readiness' },
-  { label: 'AI Chat', icon: Bot, href: '/startup/chat' },
-];
+const PAGE_REGISTRY: Record<string, SearchItem> = {
+  '/dashboard': { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+  '/startup/company-profile': { label: 'Company Profile', icon: Building2, href: '/startup/company-profile' },
+  '/startup/readiness': { label: 'Readiness', icon: Gauge, href: '/startup/readiness', description: 'Score + Tasks + Simulator' },
+  '/startup/matches': { label: 'Investor Matches', icon: Handshake, href: '/startup/matches' },
+  '/startup/chat': { label: 'AI Chat', icon: Bot, href: '/startup/chat' },
+  '/startup/data-room': { label: 'Data Room', icon: FolderOpen, href: '/startup/data-room' },
+  '/capital/deal-flow': { label: 'Deal Flow', icon: TrendingUp, href: '/capital/deal-flow' },
+  '/capital/team': { label: 'Team', icon: Users, href: '/capital/team' },
+  '/messages': { label: 'Messages', icon: MessageSquare, href: '/messages' },
+  '/settings': { label: 'Settings', icon: Settings, href: '/settings' },
+  '/startup/deal-memo': { label: 'Deal Memo', icon: FileText, href: '/startup/deal-memo' },
+  '/startup/diligence-copilot': { label: 'Diligence Copilot', icon: FileText, href: '/startup/diligence-copilot' },
+  '/startup/outreach-studio': { label: 'Outreach Studio', icon: Send, href: '/startup/outreach-studio' },
+  '/startup/growth-hub': { label: 'Growth Hub', icon: TrendingUp, href: '/startup/growth-hub' },
+  '/startup/insights-lab': { label: 'Insights Lab', icon: Building2, href: '/startup/insights-lab' },
+  '/startup/risk-monitor': { label: 'Risk Monitor', icon: Building2, href: '/startup/risk-monitor' },
+  '/startup/investor-outreach': { label: 'Investor Outreach', icon: Send, href: '/startup/investor-outreach' },
+};
 
-const pageItems: SearchItem[] = [
-  { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Readiness Score', icon: Gauge, href: '/startup/readiness' },
-  { label: 'Investor Matches', icon: Handshake, href: '/startup/matches' },
-  { label: 'AI Chat', icon: Bot, href: '/startup/chat' },
-  { label: 'Tasks', icon: CheckSquare, href: '/startup/tasks' },
-  { label: 'Data Room', icon: FolderOpen, href: '/startup/data-room' },
-  { label: 'Analytics', icon: BarChart3, href: '/startup/analytics' },
-  { label: 'Deal Flow', icon: TrendingUp, href: '/capital/deal-flow' },
-  { label: 'Team', icon: Users, href: '/capital/team' },
-  { label: 'Messages', icon: MessageSquare, href: '/messages' },
-  { label: 'Settings', icon: Settings, href: '/settings' },
-];
+const pageItems = Object.values(PAGE_REGISTRY);
+
+function getRecentFromStorage(): SearchItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(RECENT_PAGES_KEY);
+    if (!raw) return [];
+    const hrefs = JSON.parse(raw) as string[];
+    return hrefs
+      .slice(0, MAX_RECENT)
+      .map((href) => PAGE_REGISTRY[href])
+      .filter(Boolean) as SearchItem[];
+  } catch {
+    return [];
+  }
+}
+
+function pushRecent(href: string) {
+  if (typeof window === 'undefined' || !href || !PAGE_REGISTRY[href]) return;
+  try {
+    const raw = localStorage.getItem(RECENT_PAGES_KEY);
+    const current: string[] = raw ? JSON.parse(raw) : [];
+    const next = [href, ...current.filter((h) => h !== href)].slice(0, MAX_RECENT);
+    localStorage.setItem(RECENT_PAGES_KEY, JSON.stringify(next));
+  } catch {
+    // ignore
+  }
+}
 
 const startupItems: SearchItem[] = [
   { label: 'NeuralPay', icon: Building2, href: '/startup/neuralpay', description: 'Fintech - Score 82' },
@@ -69,18 +101,36 @@ const investorItems: SearchItem[] = [
 ];
 
 const taskItems: SearchItem[] = [
-  { label: 'Update pitch deck financials', icon: CheckSquare, href: '/startup/tasks', description: 'Due in 3 days' },
-  { label: 'Add competitive analysis', icon: FileText, href: '/startup/tasks', description: 'Due in 7 days' },
-  { label: 'Upload cap table', icon: FolderOpen, href: '/startup/tasks', description: 'Overdue' },
+  { label: 'Update pitch deck financials', icon: CheckSquare, href: '/startup/readiness?tab=tasks', description: 'Due in 3 days' },
+  { label: 'Add competitive analysis', icon: FileText, href: '/startup/readiness?tab=tasks', description: 'Due in 7 days' },
+  { label: 'Upload cap table', icon: FolderOpen, href: '/startup/readiness?tab=tasks', description: 'Overdue' },
 ];
 
 export function SpotlightSearch() {
   const router = useRouter();
+  const pathname = usePathname();
   const { searchOpen, toggleSearch } = useUIStore();
+  const [recentItems, setRecentItems] = useState<SearchItem[]>([]);
+
+  useEffect(() => {
+    setRecentItems(getRecentFromStorage());
+  }, [searchOpen]);
+
+  useEffect(() => {
+    if (pathname && PAGE_REGISTRY[pathname]) pushRecent(pathname);
+  }, [pathname]);
+
+  const recentHrefs = useMemo(() => new Set(recentItems.map((r) => r.href)), [recentItems]);
+  const pageItemsDeduped = useMemo(
+    () => pageItems.filter((p) => !recentHrefs.has(p.href)),
+    [recentHrefs]
+  );
 
   const handleSelect = useCallback(
     (href: string) => {
       toggleSearch();
+      pushRecent(href);
+      setRecentItems(getRecentFromStorage());
       router.push(href);
     },
     [router, toggleSearch]
@@ -104,25 +154,26 @@ export function SpotlightSearch() {
       <CommandList className="max-h-[60vh]">
         <CommandEmpty>No results found.</CommandEmpty>
 
-        <CommandGroup heading="Recent">
-          {recentItems.map((item) => {
-            return (
-              <CommandItem
-                key={`recent-${item.href}`}
-                onSelect={() => handleSelect(item.href)}
-                className="cursor-pointer"
-              >
-                <Clock className="mr-2 h-4 w-4 text-obsidian-400" />
-                <span>{item.label}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
-
-        <CommandSeparator />
+        {recentItems.length > 0 && (
+          <>
+            <CommandGroup heading="Recent">
+              {recentItems.map((item) => (
+                <CommandItem
+                  key={`recent-${item.href}`}
+                  onSelect={() => handleSelect(item.href)}
+                  className="cursor-pointer"
+                >
+                  <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span>{item.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+          </>
+        )}
 
         <CommandGroup heading="Pages">
-          {pageItems.map((item) => {
+          {pageItemsDeduped.map((item) => {
             const ItemIcon = item.icon;
             return (
               <CommandItem
@@ -130,7 +181,7 @@ export function SpotlightSearch() {
                 onSelect={() => handleSelect(item.href)}
                 className="cursor-pointer"
               >
-                <ItemIcon className="mr-2 h-4 w-4 text-obsidian-400" />
+                <ItemIcon className="mr-2 h-4 w-4 text-muted-foreground" />
                 <span>{item.label}</span>
               </CommandItem>
             );
@@ -148,7 +199,7 @@ export function SpotlightSearch() {
                 onSelect={() => handleSelect(item.href)}
                 className="cursor-pointer"
               >
-                <Icon className="mr-2 h-4 w-4 text-electric-blue" />
+                <Icon className="mr-2 h-4 w-4 text-primary" />
                 <span>{item.label}</span>
                 {item.description && (
                   <span className="ml-auto text-xs text-muted-foreground">
@@ -171,7 +222,7 @@ export function SpotlightSearch() {
                 onSelect={() => handleSelect(item.href)}
                 className="cursor-pointer"
               >
-                <Icon className="mr-2 h-4 w-4 text-electric-purple" />
+                <Icon className="mr-2 h-4 w-4 text-accent" />
                 <span>{item.label}</span>
                 {item.description && (
                   <span className="ml-auto text-xs text-muted-foreground">
@@ -194,7 +245,7 @@ export function SpotlightSearch() {
                 onSelect={() => handleSelect(item.href)}
                 className="cursor-pointer"
               >
-                <Icon className="mr-2 h-4 w-4 text-electric-cyan" />
+                <Icon className="mr-2 h-4 w-4 text-chart-5" />
                 <span>{item.label}</span>
                 {item.description && (
                   <span className="ml-auto text-xs text-muted-foreground">

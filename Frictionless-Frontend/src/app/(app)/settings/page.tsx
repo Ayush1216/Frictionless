@@ -74,7 +74,7 @@ export default function SettingsPage() {
           <div className="flex flex-col items-center sm:items-start gap-2">
             <Avatar className="h-24 w-24">
               <AvatarImage src={user?.avatar_url ?? undefined} alt={profile.name} />
-              <AvatarFallback className="bg-electric-blue/20 text-electric-blue text-2xl font-bold">
+              <AvatarFallback className="bg-primary/20 text-primary text-2xl font-bold">
                 {profile.name
                   .split(' ')
                   .map((n) => n[0])
@@ -83,7 +83,7 @@ export default function SettingsPage() {
                   .slice(0, 2)}
               </AvatarFallback>
             </Avatar>
-            <Button variant="outline" size="sm" className="gap-2 border-obsidian-600">
+            <Button variant="outline" size="sm" className="gap-2 border-border">
               <Upload className="w-4 h-4" />
               Upload
             </Button>
@@ -95,7 +95,7 @@ export default function SettingsPage() {
                 id="name"
                 value={profile.name}
                 onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))}
-                className="mt-1.5 bg-obsidian-900/50 border-obsidian-600"
+                className="mt-1.5 bg-background/50 border-border"
               />
             </div>
             <div>
@@ -105,7 +105,7 @@ export default function SettingsPage() {
                 type="email"
                 value={profile.email}
                 onChange={(e) => setProfile((p) => ({ ...p, email: e.target.value }))}
-                className="mt-1.5 bg-obsidian-900/50 border-obsidian-600"
+                className="mt-1.5 bg-background/50 border-border"
               />
             </div>
             <div>
@@ -115,10 +115,10 @@ export default function SettingsPage() {
                 value={profile.bio}
                 onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))}
                 rows={3}
-                className="mt-1.5 bg-obsidian-900/50 border-obsidian-600"
+                className="mt-1.5 bg-background/50 border-border"
               />
             </div>
-            <Button onClick={handleSaveProfile} className="bg-electric-blue hover:bg-electric-blue/90">
+            <Button onClick={handleSaveProfile} className="bg-primary hover:bg-primary/90">
               Save Profile
             </Button>
           </div>
@@ -140,7 +140,7 @@ export default function SettingsPage() {
               id="org-name"
               value={org.name}
               onChange={(e) => setOrg((o) => ({ ...o, name: e.target.value }))}
-              className="mt-1.5 bg-obsidian-900/50 border-obsidian-600"
+              className="mt-1.5 bg-background/50 border-border"
             />
           </div>
           <div>
@@ -150,18 +150,18 @@ export default function SettingsPage() {
               value={org.website}
               onChange={(e) => setOrg((o) => ({ ...o, website: e.target.value }))}
               placeholder="https://"
-              className="mt-1.5 bg-obsidian-900/50 border-obsidian-600"
+              className="mt-1.5 bg-background/50 border-border"
             />
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-obsidian-700 flex items-center justify-center text-obsidian-400 text-sm font-bold">
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-muted-foreground text-sm font-bold">
               {org.name.charAt(0)}
             </div>
-            <Button variant="outline" size="sm" className="border-obsidian-600">
+            <Button variant="outline" size="sm" className="border-border">
               Upload logo
             </Button>
           </div>
-          <Button onClick={handleSaveOrg} className="bg-electric-blue hover:bg-electric-blue/90">
+          <Button onClick={handleSaveOrg} className="bg-primary hover:bg-primary/90">
             Save Organization
           </Button>
         </div>
@@ -177,10 +177,10 @@ export default function SettingsPage() {
         <h2 className="text-lg font-display font-semibold text-foreground mb-4">Preferences</h2>
 
         {/* Theme toggle */}
-        <div className="flex items-center justify-between py-4 border-b border-obsidian-600/50">
+        <div className="flex items-center justify-between py-4 border-b border-border/50">
           <div className="flex items-center gap-3">
             {theme === 'dark' ? (
-              <Moon className="w-5 h-5 text-electric-purple" />
+              <Moon className="w-5 h-5 text-accent" />
             ) : (
               <Sun className="w-5 h-5 text-score-fair" />
             )}
@@ -195,8 +195,8 @@ export default function SettingsPage() {
               className={cn(
                 'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
                 theme === 'dark'
-                  ? 'bg-electric-blue text-white'
-                  : 'bg-obsidian-800 text-obsidian-400 hover:text-foreground'
+                  ? 'bg-primary text-white'
+                  : 'bg-card text-muted-foreground hover:text-foreground'
               )}
             >
               Dark
@@ -206,8 +206,8 @@ export default function SettingsPage() {
               className={cn(
                 'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
                 theme === 'light'
-                  ? 'bg-electric-blue text-white'
-                  : 'bg-obsidian-800 text-obsidian-400 hover:text-foreground'
+                  ? 'bg-primary text-white'
+                  : 'bg-card text-muted-foreground hover:text-foreground'
               )}
             >
               Light
@@ -216,7 +216,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Notification preferences */}
-        <div className="space-y-4 py-4 border-b border-obsidian-600/50">
+        <div className="space-y-4 py-4 border-b border-border/50">
           <p className="font-medium text-foreground">Notifications</p>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -253,7 +253,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Language */}
-        <div className="py-4 border-b border-obsidian-600/50">
+        <div className="py-4 border-b border-border/50">
           <Label htmlFor="language">Language</Label>
           <Select
             value={preferences.language}
@@ -261,7 +261,7 @@ export default function SettingsPage() {
               setPreferences((p) => ({ ...p, language: v }))
             }
           >
-            <SelectTrigger id="language" className="mt-2 bg-obsidian-900/50 border-obsidian-600">
+            <SelectTrigger id="language" className="mt-2 bg-background/50 border-border">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -282,7 +282,7 @@ export default function SettingsPage() {
               setPreferences((p) => ({ ...p, timezone: v }))
             }
           >
-            <SelectTrigger id="timezone" className="mt-2 bg-obsidian-900/50 border-obsidian-600">
+            <SelectTrigger id="timezone" className="mt-2 bg-background/50 border-border">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -296,7 +296,7 @@ export default function SettingsPage() {
           </Select>
         </div>
 
-        <Button onClick={handleSavePreferences} className="mt-4 bg-electric-blue hover:bg-electric-blue/90">
+        <Button onClick={handleSavePreferences} className="mt-4 bg-primary hover:bg-primary/90">
           Save Preferences
         </Button>
       </motion.section>

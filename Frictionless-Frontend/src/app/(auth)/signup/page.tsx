@@ -34,36 +34,36 @@ const orgTypes = [
     label: 'Startup',
     description: 'Get scored, matched, and funded',
     icon: Rocket,
-    color: 'electric-blue',
-    borderColor: 'border-electric-blue/30',
-    bgColor: 'bg-electric-blue/10',
-    hoverBg: 'hover:border-electric-blue/60',
-    textColor: 'text-electric-blue',
-    selectedBg: 'bg-electric-blue/20 border-electric-blue',
+    color: 'primary',
+    borderColor: 'border-primary/30',
+    bgColor: 'bg-primary/10',
+    hoverBg: 'hover:border-primary/60',
+    textColor: 'text-primary',
+    selectedBg: 'bg-primary/20 border-primary',
   },
   {
     type: 'capital_provider' as OrgType,
     label: 'Investor',
     description: 'Discover startups and manage deal flow',
     icon: TrendingUp,
-    color: 'electric-purple',
-    borderColor: 'border-electric-purple/30',
-    bgColor: 'bg-electric-purple/10',
-    hoverBg: 'hover:border-electric-purple/60',
-    textColor: 'text-electric-purple',
-    selectedBg: 'bg-electric-purple/20 border-electric-purple',
+    color: 'accent',
+    borderColor: 'border-accent/30',
+    bgColor: 'bg-accent/10',
+    hoverBg: 'hover:border-accent/60',
+    textColor: 'text-accent',
+    selectedBg: 'bg-accent/20 border-accent',
   },
   {
     type: 'accelerator' as OrgType,
     label: 'Accelerator',
     description: 'Manage programs and mentor startups',
     icon: GraduationCap,
-    color: 'electric-cyan',
-    borderColor: 'border-electric-cyan/30',
-    bgColor: 'bg-electric-cyan/10',
-    hoverBg: 'hover:border-electric-cyan/60',
-    textColor: 'text-electric-cyan',
-    selectedBg: 'bg-electric-cyan/20 border-electric-cyan',
+    color: 'accent',
+    borderColor: 'border-accent/30',
+    bgColor: 'bg-accent/10',
+    hoverBg: 'hover:border-accent/60',
+    textColor: 'text-accent',
+    selectedBg: 'bg-accent/20 border-accent',
   },
 ];
 
@@ -159,10 +159,10 @@ export default function SignupPage() {
                 flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold transition-all
                 ${
                   i < step
-                    ? 'bg-electric-blue text-white'
+                    ? 'bg-primary text-white'
                     : i === step
-                    ? 'bg-electric-blue/20 text-electric-blue border border-electric-blue'
-                    : 'bg-obsidian-800 text-obsidian-400 border border-obsidian-600'
+                    ? 'bg-primary/20 text-primary border border-primary'
+                    : 'bg-card text-muted-foreground border border-border'
                 }
               `}
             >
@@ -170,7 +170,7 @@ export default function SignupPage() {
             </div>
             <span
               className={`text-xs hidden sm:block ${
-                i <= step ? 'text-foreground' : 'text-obsidian-400'
+                i <= step ? 'text-foreground' : 'text-muted-foreground'
               }`}
             >
               {label}
@@ -178,7 +178,7 @@ export default function SignupPage() {
             {i < steps.length - 1 && (
               <div
                 className={`flex-1 h-px ${
-                  i < step ? 'bg-electric-blue' : 'bg-obsidian-600'
+                  i < step ? 'bg-primary' : 'bg-border'
                 }`}
               />
             )}
@@ -210,7 +210,7 @@ export default function SignupPage() {
                     onClick={() => setSelectedOrgType(org.type)}
                     className={`
                       w-full flex items-center gap-4 p-5 rounded-xl border-2 transition-all duration-200 text-left
-                      ${isSelected ? org.selectedBg : `${org.borderColor} ${org.hoverBg} bg-obsidian-800/30`}
+                      ${isSelected ? org.selectedBg : `${org.borderColor} ${org.hoverBg} bg-card/30`}
                     `}
                   >
                     <div
@@ -230,7 +230,7 @@ export default function SignupPage() {
                       className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
                         isSelected
                           ? `${org.textColor} border-current`
-                          : 'border-obsidian-600'
+                          : 'border-border'
                       }`}
                     >
                       {isSelected && (
@@ -262,7 +262,7 @@ export default function SignupPage() {
                   placeholder="John Doe"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="pl-10 h-11 bg-obsidian-800/50 border-obsidian-600/50 focus:border-electric-blue"
+                  className="pl-10 h-11 bg-card/50 border-border/50 focus:border-primary"
                 />
               </div>
             </div>
@@ -277,7 +277,7 @@ export default function SignupPage() {
                   placeholder="you@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-11 bg-obsidian-800/50 border-obsidian-600/50 focus:border-electric-blue"
+                  className="pl-10 h-11 bg-card/50 border-border/50 focus:border-primary"
                 />
               </div>
             </div>
@@ -292,7 +292,7 @@ export default function SignupPage() {
                   placeholder="Minimum 8 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 h-11 bg-obsidian-800/50 border-obsidian-600/50 focus:border-electric-blue"
+                  className="pl-10 h-11 bg-card/50 border-border/50 focus:border-primary"
                 />
               </div>
               <p className="text-xs text-muted-foreground">
@@ -320,7 +320,7 @@ export default function SignupPage() {
                   placeholder="Acme Inc."
                   value={orgName}
                   onChange={(e) => setOrgName(e.target.value)}
-                  className="pl-10 h-11 bg-obsidian-800/50 border-obsidian-600/50 focus:border-electric-blue"
+                  className="pl-10 h-11 bg-card/50 border-border/50 focus:border-primary"
                 />
               </div>
             </div>
@@ -340,7 +340,7 @@ export default function SignupPage() {
                   placeholder="https://acme.com"
                   value={website}
                   onChange={(e) => setWebsite(e.target.value)}
-                  className="pl-10 h-11 bg-obsidian-800/50 border-obsidian-600/50 focus:border-electric-blue"
+                  className="pl-10 h-11 bg-card/50 border-border/50 focus:border-primary"
                 />
               </div>
             </div>
@@ -350,15 +350,15 @@ export default function SignupPage() {
                 type="checkbox"
                 checked={agreeTerms}
                 onChange={(e) => setAgreeTerms(e.target.checked)}
-                className="mt-1 w-4 h-4 rounded border-obsidian-600 bg-obsidian-800 text-electric-blue focus:ring-electric-blue/50 focus:ring-offset-0"
+                className="mt-1 w-4 h-4 rounded border-border bg-card text-primary focus:ring-primary/50 focus:ring-offset-0"
               />
               <span className="text-sm text-muted-foreground leading-relaxed">
                 I agree to the{' '}
-                <Link href="/legal/terms" className="text-electric-blue hover:underline">
+                <Link href="/legal/terms" className="text-primary hover:underline">
                   Terms of Service
                 </Link>{' '}
                 and{' '}
-                <Link href="/legal/privacy" className="text-electric-blue hover:underline">
+                <Link href="/legal/privacy" className="text-primary hover:underline">
                   Privacy Policy
                 </Link>
               </span>
@@ -384,7 +384,7 @@ export default function SignupPage() {
         {step < 2 ? (
           <Button
             type="button"
-            className="flex-1 h-11 bg-electric-blue hover:bg-electric-blue/90 text-white font-medium"
+            className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white font-medium"
             onClick={handleNext}
             disabled={!canContinue()}
           >
@@ -394,7 +394,7 @@ export default function SignupPage() {
         ) : (
           <Button
             type="button"
-            className="flex-1 h-11 bg-electric-blue hover:bg-electric-blue/90 text-white font-medium"
+            className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white font-medium"
             onClick={handleSubmit}
             disabled={!canContinue() || isLoading}
           >
@@ -410,7 +410,7 @@ export default function SignupPage() {
         Already have an account?{' '}
         <Link
           href="/login"
-          className="text-electric-blue hover:text-electric-blue/80 font-medium transition-colors"
+          className="text-primary hover:text-primary/80 font-medium transition-colors"
         >
           Sign in
         </Link>

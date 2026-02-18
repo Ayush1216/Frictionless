@@ -126,15 +126,15 @@ export function ImprovementChart({
       </div>
 
       {/* Current → Projected score bar */}
-      <div className="flex items-center gap-4 mb-5 p-3 rounded-lg bg-obsidian-800/50 border border-obsidian-600/30">
+      <div className="flex items-center gap-4 mb-5 p-3 rounded-lg bg-card/50 border border-border/30">
         <div className="text-center shrink-0">
           <p className="text-xs text-muted-foreground">Current</p>
           <p className="text-xl font-bold text-foreground tabular-nums">{currentScore}</p>
         </div>
         <div className="flex-1 flex items-center gap-2 min-w-0">
-          <div className="flex-1 h-2 rounded-full bg-obsidian-700 overflow-hidden">
+          <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-electric-blue to-score-excellent"
+              className="h-full rounded-full bg-gradient-to-r from-primary to-score-excellent"
               initial={{ width: `${currentScore}%` }}
               animate={{ width: `${projectedScore}%` }}
               transition={{ duration: 1.5, ease: 'easeOut' }}
@@ -153,15 +153,15 @@ export function ImprovementChart({
       {topItem && (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground">{topItem.item}</p>
-          <div className="h-2 rounded-full bg-obsidian-700 overflow-hidden">
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
             <motion.div
-              className="h-full rounded-full bg-electric-blue"
+              className="h-full rounded-full bg-primary"
               initial={{ width: 0 }}
               animate={{ width: `${barFillPercent}%` }}
               transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
             />
           </div>
-          <div className="flex justify-between text-[10px] font-mono text-obsidian-500">
+          <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
             <span>0</span>
             <span>0.25</span>
             <span>0.5</span>

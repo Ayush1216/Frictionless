@@ -31,10 +31,10 @@ const demoAccounts = [
     org: 'NeuralPay',
     icon: Rocket,
     accent: 'blue',
-    borderColor: 'border-electric-blue/30',
-    bgColor: 'bg-electric-blue/10',
-    hoverBg: 'hover:bg-electric-blue/20',
-    textColor: 'text-electric-blue',
+    borderColor: 'border-primary/30',
+    bgColor: 'bg-primary/10',
+    hoverBg: 'hover:bg-primary/20',
+    textColor: 'text-primary',
     shadowColor: 'hover:shadow-glow',
   },
   {
@@ -44,10 +44,10 @@ const demoAccounts = [
     org: 'General Catalyst',
     icon: TrendingUp,
     accent: 'purple',
-    borderColor: 'border-electric-purple/30',
-    bgColor: 'bg-electric-purple/10',
-    hoverBg: 'hover:bg-electric-purple/20',
-    textColor: 'text-electric-purple',
+    borderColor: 'border-accent/30',
+    bgColor: 'bg-accent/10',
+    hoverBg: 'hover:bg-accent/20',
+    textColor: 'text-accent',
     shadowColor: 'hover:shadow-glow-purple',
   },
   {
@@ -57,10 +57,10 @@ const demoAccounts = [
     org: 'SKU Accelerator',
     icon: GraduationCap,
     accent: 'cyan',
-    borderColor: 'border-electric-cyan/30',
-    bgColor: 'bg-electric-cyan/10',
-    hoverBg: 'hover:bg-electric-cyan/20',
-    textColor: 'text-electric-cyan',
+    borderColor: 'border-accent/30',
+    bgColor: 'bg-accent/10',
+    hoverBg: 'hover:bg-accent/20',
+    textColor: 'text-accent',
     shadowColor: 'hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]',
   },
 ];
@@ -179,7 +179,7 @@ export default function LoginPage() {
           <div className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-obsidian-900 px-2 text-muted-foreground">
+          <span className="bg-background px-2 text-muted-foreground">
             Or continue with email
           </span>
         </div>
@@ -197,7 +197,7 @@ export default function LoginPage() {
               placeholder="you@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-11 bg-obsidian-800/50 border-obsidian-600/50 focus:border-electric-blue"
+              className="pl-10 h-11 bg-card/50 border-border/50 focus:border-primary"
             />
           </div>
         </div>
@@ -212,7 +212,7 @@ export default function LoginPage() {
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 pr-10 h-11 bg-obsidian-800/50 border-obsidian-600/50 focus:border-electric-blue"
+              className="pl-10 pr-10 h-11 bg-card/50 border-border/50 focus:border-primary"
             />
             <button
               type="button"
@@ -234,13 +234,13 @@ export default function LoginPage() {
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="w-4 h-4 rounded border-obsidian-600 bg-obsidian-800 text-electric-blue focus:ring-electric-blue/50 focus:ring-offset-0"
+              className="w-4 h-4 rounded border-border bg-card text-primary focus:ring-primary/50 focus:ring-offset-0"
             />
             <span className="text-sm text-muted-foreground">Remember me</span>
           </label>
           <Link
             href="/forgot-password"
-            className="text-sm text-electric-blue hover:text-electric-blue/80 transition-colors"
+            className="text-sm text-primary hover:text-primary/80 transition-colors"
           >
             Forgot password?
           </Link>
@@ -248,7 +248,7 @@ export default function LoginPage() {
 
         <Button
           type="submit"
-          className="w-full h-11 bg-electric-blue hover:bg-electric-blue/90 text-white font-medium"
+          className="w-full h-11 bg-primary hover:bg-primary/90 text-white font-medium"
           disabled={isLoading}
         >
           {isLoading ? (
@@ -262,7 +262,7 @@ export default function LoginPage() {
         Don&apos;t have an account?{' '}
         <Link
           href="/signup"
-          className="text-electric-blue hover:text-electric-blue/80 font-medium transition-colors"
+          className="text-primary hover:text-primary/80 font-medium transition-colors"
         >
           Sign up
         </Link>
@@ -275,7 +275,7 @@ export default function LoginPage() {
             <div className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-obsidian-900 px-2 text-muted-foreground">
+            <span className="bg-background px-2 text-muted-foreground">
               Quick Demo Access
             </span>
           </div>

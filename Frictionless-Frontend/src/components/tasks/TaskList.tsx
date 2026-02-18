@@ -41,9 +41,13 @@ function sortByPriority<T>(items: T[], getPriority: (t: T) => string): T[] {
 interface TaskListProps {
   onTaskClick: (task: Task) => void;
   className?: string;
+  filterStatus?: string;
+  filterPriority?: string;
+  filterCategory?: string;
+  searchQuery?: string;
 }
 
-export function TaskList({ onTaskClick, className }: TaskListProps) {
+export function TaskList({ onTaskClick, className, filterStatus = 'all', filterPriority = 'all', filterCategory = 'all', searchQuery = '' }: TaskListProps) {
   const tasks = useTaskStore((s) => s.tasks);
   const taskGroups = useTaskStore((s) => s.taskGroups);
   const sync = useTasksSync();
@@ -52,19 +56,46 @@ export function TaskList({ onTaskClick, className }: TaskListProps) {
   const deleteTask = useTaskStore((s) => s.deleteTask);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  // Group tasks by taskGroup category; only show pending (exclude done). Progress uses backend counts when present.
+  // Apply filters
+  const filteredTasks = useMemo(() => {
+    let out = tasks;
+    if (filterStatus && filterStatus !== 'all') {
+      out = out.filter((t) => t.status === filterStatus);
+    }
+    if (filterPriority && filterPriority !== 'all') {
+      out = out.filter((t) => (t.priority ?? 'medium') === filterPriority);
+    }
+    if (filterCategory && filterCategory !== 'all') {
+      out = out.filter((t) => t.task_group_id === filterCategory);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      out = out.filter(
+        (t) =>
+          (t.title ?? '').toLowerCase().includes(q) ||
+          (t.description ?? '').toLowerCase().includes(q)
+      );
+    }
+    return out;
+  }, [tasks, filterStatus, filterPriority, filterCategory, searchQuery]);
+
+  // Group tasks by taskGroup category. When status filter is 'done', show done tasks; else show pending only.
   // Sorted by group impact (high first), then tasks within each group by priority (critical/high first).
+  const showDone = filterStatus === 'done';
   const groupedTasks = useMemo(() => {
     const groupMap = new Map<string, { group: TaskGroup; tasks: Task[]; doneCount: number; totalInGroup: number }>();
     taskGroups.forEach((g) => {
-      const allInGroup = tasks.filter(
+      const allInGroup = filteredTasks.filter(
         (t) => t.task_group_id === g.id && t.status !== 'trash'
       );
-      const groupTasks = allInGroup.filter((t) => t.status !== 'done');
+      // When filtering for done, show done tasks; otherwise exclude done
+      const groupTasks = showDone
+        ? allInGroup
+        : allInGroup.filter((t) => t.status !== 'done');
       const totalInGroup =
         g.total_in_category != null && g.total_in_category > 0
           ? g.total_in_category
-          : allInGroup.length;
+          : tasks.filter((t) => t.task_group_id === g.id && t.status !== 'trash').length;
       const doneCount =
         g.done_count != null
           ? g.done_count
@@ -80,7 +111,7 @@ export function TaskList({ onTaskClick, className }: TaskListProps) {
     });
     const list = Array.from(groupMap.values());
     return sortByImpact(list, ({ group }) => group.impact ?? 'medium');
-  }, [tasks, taskGroups]);
+  }, [filteredTasks, tasks, taskGroups, showDone]);
 
   const toggleCollapse = (groupId: string) => {
     setCollapsed((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
@@ -96,17 +127,17 @@ export function TaskList({ onTaskClick, className }: TaskListProps) {
             {/* Group header */}
             <button
               onClick={() => toggleCollapse(group.id)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-obsidian-800/40 transition-colors group/header"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/40 transition-colors group/header"
             >
               <motion.div animate={{ rotate: isCollapsed ? 0 : 90 }} transition={{ duration: 0.15 }}>
-                <ChevronRight className="w-4 h-4 text-obsidian-400" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </motion.div>
               <span className="text-sm font-semibold text-foreground">{group.category}</span>
               <span className="text-xs text-muted-foreground">
                 {doneCount}/{totalInGroup}
               </span>
               {/* Mini progress */}
-              <div className="flex-1 max-w-[120px] h-1.5 rounded-full bg-obsidian-700/50 overflow-hidden">
+              <div className="flex-1 max-w-[120px] h-1.5 rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-full bg-score-excellent transition-all duration-500"
                   style={{ width: `${totalInGroup ? (doneCount / totalInGroup) * 100 : 0}%` }}
@@ -124,7 +155,7 @@ export function TaskList({ onTaskClick, className }: TaskListProps) {
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <div className="ml-3 border-l border-obsidian-700/40 pl-4 space-y-1 py-1">
+                  <div className="ml-3 border-l border-border pl-4 space-y-1 py-1">
                     {groupTasks.map((task) => (
                       <TaskRow
                         key={task.id}
@@ -189,7 +220,7 @@ function TaskRow({
         onClick={() => onTaskClick(task)}
         className={cn(
           'relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors',
-          'hover:bg-obsidian-800/40 bg-obsidian-900/50'
+          'hover:bg-muted/40 bg-muted/50'
         )}
       >
         {/* Title */}
@@ -210,7 +241,7 @@ function TaskRow({
 
           {/* AI badge */}
           {isAI && (
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-electric-purple/15 text-electric-purple border border-electric-purple/30">
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-accent/15 text-accent border border-accent/30">
               <Sparkles className="w-2.5 h-2.5" />
               AI
             </span>
@@ -218,7 +249,7 @@ function TaskRow({
 
           {/* Rescore */}
           {task.requires_rescore && (
-            <RefreshCw className="w-3.5 h-3.5 text-electric-cyan" />
+            <RefreshCw className="w-3.5 h-3.5 text-chart-5" />
           )}
         </div>
 

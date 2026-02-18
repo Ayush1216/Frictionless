@@ -50,7 +50,7 @@ export function GapsCard({ missingData, className }: GapsCardProps) {
             <span className="text-lg">&#10003;</span>
           </div>
           <p className="text-sm text-muted-foreground">No missing data items!</p>
-          <p className="text-xs text-obsidian-400 mt-1">Your profile is complete.</p>
+          <p className="text-xs text-muted-foreground mt-1">Your profile is complete.</p>
         </div>
       </motion.div>
     );
@@ -87,7 +87,7 @@ export function GapsCard({ missingData, className }: GapsCardProps) {
                 initial={{ opacity: 0, x: -12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: 0.3 + i * 0.08 }}
-                className="flex items-center gap-3 p-3 rounded-lg bg-obsidian-700/30 border border-obsidian-600/30 hover:border-obsidian-500/50 transition-colors group cursor-pointer h-full"
+                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border hover:border-primary/30 transition-colors group cursor-pointer h-full"
               >
                 <span
                   className={cn(
@@ -101,7 +101,7 @@ export function GapsCard({ missingData, className }: GapsCardProps) {
                   <span className="text-sm text-foreground truncate block">{item.item}</span>
                 </div>
                 <div className="flex flex-col items-end shrink-0">
-                  <span className="flex items-center gap-1 text-xs font-medium text-electric-blue">
+                  <span className="flex items-center gap-1 text-xs font-medium text-primary">
                     Fix now
                     <ChevronRight className="w-3 h-3" />
                   </span>

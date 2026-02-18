@@ -1,16 +1,81 @@
 /**
- * Derive top N "biggest gaps" from scored_rubric: lowest-scoring categories,
- * each with its highest-impact incomplete rubric item.
+ * Readiness rubric parsing & gap analysis utilities.
  */
 export interface GapItem {
   item: string;
+  category?: string;
+  currentPoints?: number;
+  maxPoints?: number;
   severity: 'high' | 'medium' | 'low';
 }
 
+/** Rubric item from scored_rubric (startup_readiness_results) */
+export interface RubricItem {
+  Question?: string;
+  Answer?: string | null;
+  Points?: number;
+  Value?: string | null;
+  Reasoning?: string | null;
+  maximum_points?: number;
+  Subtopic_Name?: string;
+  [k: string]: unknown;
+}
+
+/** Parsed category from scored_rubric */
+export interface ParsedRubricCategory {
+  key: string;
+  name: string;
+  score: number;
+  weight: number;
+  maximumPoint: number;
+  items: RubricItem[];
+}
+
 const METADATA_KEYS = ['weight', 'Category_Name', 'maximum_point'];
+const SKIP_KEYS = ['totals', '_overall'];
+
+export function formatCategoryKey(k: string): string {
+  return k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Parse scored_rubric JSON into structured categories with rubric items.
+ */
+export function parseScoredRubric(rubric: Record<string, unknown>): ParsedRubricCategory[] {
+  const result: ParsedRubricCategory[] = [];
+
+  for (const [catKey, catVal] of Object.entries(rubric)) {
+    if (SKIP_KEYS.includes(catKey.toLowerCase())) continue;
+    if (!catVal || typeof catVal !== 'object' || Array.isArray(catVal)) continue;
+
+    const meta = catVal as Record<string, unknown>;
+    const categoryName = (meta.Category_Name as string) || formatCategoryKey(catKey);
+    const weight = (meta.weight as number) ?? 0;
+    const maximumPoint = (meta.maximum_point as number) ?? 100;
+
+    const items: RubricItem[] = [];
+    for (const [subKey, subVal] of Object.entries(meta)) {
+      if (METADATA_KEYS.includes(subKey)) continue;
+      if (!Array.isArray(subVal)) continue;
+      for (const item of subVal) {
+        if (item && typeof item === 'object' && 'options' in item) {
+          items.push(item as RubricItem);
+        }
+      }
+    }
+
+    const totalPoints = items.reduce((sum, i) => sum + ((i.Points as number) ?? 0), 0);
+    const totalMax = items.reduce((sum, i) => sum + ((i.maximum_points as number) ?? 0), 0);
+    const score = totalMax > 0 ? Math.round((totalPoints / totalMax) * 100) : 0;
+
+    result.push({ key: catKey, name: categoryName, score, weight, maximumPoint, items });
+  }
+
+  return result;
+}
 
 function formatKey(k: string): string {
-  return k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return formatCategoryKey(k);
 }
 
 export function getTopGapsFromRubric(

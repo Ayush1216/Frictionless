@@ -32,7 +32,7 @@ export function CategoryBreakdown({ categories, className }: CategoryBreakdownPr
         <h3 className="text-sm font-body font-medium text-muted-foreground">
           Category Breakdown
         </h3>
-        <span className="text-xs font-mono text-obsidian-400">
+        <span className="text-xs font-mono text-muted-foreground">
           {categories.length} categories
         </span>
       </div>
@@ -42,7 +42,7 @@ export function CategoryBreakdown({ categories, className }: CategoryBreakdownPr
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="mt-5 pt-4 border-t border-obsidian-700/50"
+          className="mt-5 pt-4 border-t border-border"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -51,7 +51,7 @@ export function CategoryBreakdown({ categories, className }: CategoryBreakdownPr
                 Focus area: <span className="text-foreground font-medium">{lowestCategory.name}</span>
               </span>
             </div>
-            <button className="text-xs font-medium text-electric-blue hover:text-electric-cyan transition-colors">
+            <button className="text-xs font-medium text-primary hover:text-chart-5 transition-colors">
               Improve
             </button>
           </div>

@@ -125,8 +125,8 @@ export function FileDropzone({
         className={cn(
           'relative flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-dashed cursor-pointer transition-colors',
           isDragging
-            ? 'border-electric-blue bg-electric-blue/10'
-            : 'border-obsidian-600 hover:border-obsidian-500 bg-obsidian-800/50'
+            ? 'border-primary bg-primary/10'
+            : 'border-border hover:border-muted-foreground bg-card/50'
         )}
       >
         <input
@@ -140,13 +140,13 @@ export function FileDropzone({
         <div
           className={cn(
             'w-12 h-12 rounded-xl flex items-center justify-center transition-colors',
-            isDragging ? 'bg-electric-blue/20' : 'bg-obsidian-700'
+            isDragging ? 'bg-primary/20' : 'bg-muted'
           )}
         >
           <Upload
             className={cn(
               'w-6 h-6 transition-colors',
-              isDragging ? 'text-electric-blue' : 'text-muted-foreground'
+              isDragging ? 'text-primary' : 'text-muted-foreground'
             )}
           />
         </div>
@@ -168,9 +168,9 @@ export function FileDropzone({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex items-center gap-3 p-3 rounded-lg bg-obsidian-800/60 border border-obsidian-600/50"
+            className="flex items-center gap-3 p-3 rounded-lg bg-card/60 border border-border/50"
           >
-            <div className="w-8 h-8 rounded-lg bg-obsidian-700 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
               {uf.complete ? (
                 <CheckCircle2 className="w-4 h-4 text-score-excellent" />
               ) : (
@@ -193,7 +193,7 @@ export function FileDropzone({
                 e.stopPropagation();
                 removeFile(idx);
               }}
-              className="shrink-0 p-1 rounded-md hover:bg-obsidian-700 text-muted-foreground hover:text-foreground transition-colors"
+              className="shrink-0 p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="w-4 h-4" />
             </button>

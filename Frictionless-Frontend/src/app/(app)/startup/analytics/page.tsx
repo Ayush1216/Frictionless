@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import {
   BarChart3,
@@ -26,12 +27,13 @@ import {
   Tooltip,
 } from 'recharts';
 import { AnimatedLineChart } from '@/components/charts/AnimatedLineChart';
-import { RadarChart } from '@/components/charts/RadarChart';
 import { DonutChart } from '@/components/charts/DonutChart';
 import { AnimatedGauge } from '@/components/charts/AnimatedGauge';
 import { ExtractionChart } from '@/components/analytics/ExtractionChart';
 import { dummyStartups } from '@/lib/dummy-data/startups';
 import { useAuthStore } from '@/stores/auth-store';
+import { useReadinessStore } from '@/stores/readiness-store';
+import { useTaskStore } from '@/stores/task-store';
 import { supabase } from '@/lib/supabase/client';
 
 // Use first startup (NeuralPay)
@@ -133,8 +135,8 @@ function ChartCard({
       className={`glass-card p-5 ${className ?? ''}`}
     >
       <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-electric-blue/10 flex items-center justify-center">
-          <Icon className="w-4 h-4 text-electric-blue" />
+        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+          <Icon className="w-4 h-4 text-primary" />
         </div>
         <h3 className="text-sm font-display font-semibold text-foreground">{title}</h3>
       </div>
@@ -151,7 +153,34 @@ function formatKpiValue(value: number, unit?: string): string {
 }
 
 export default function AnalyticsPage() {
+  const router = useRouter();
+  // Redirect to Company Profile insights section
+  useEffect(() => {
+    router.replace('/startup/company-profile#insights');
+  }, [router]);
+
   const user = useAuthStore((s) => s.user);
+  const { readiness, scoreHistory } = useReadinessStore();
+  const { tasks } = useTaskStore();
+
+  // Real KPI data from stores
+  const overallScore = readiness?.score_summary?._overall?.raw_percentage ?? startup.assessment.overall_score;
+  const doneTasks = tasks.filter((t) => t.status === 'done').length;
+  const totalTasks = tasks.length;
+  const overdueTasks = tasks.filter((t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done').length;
+
+  // Build real score trend from scoreHistory
+  const realScoreTrend = scoreHistory.length >= 2
+    ? scoreHistory.slice(-6).map((h) => ({ date: new Date(h.date).toLocaleDateString('en-US', { month: 'short' }), score: Math.round(h.score) }))
+    : scoreTrend;
+
+  // Real task donut
+  const realTaskDonut = [
+    { name: 'Completed', value: doneTasks, color: '#10B981' },
+    { name: 'Remaining', value: Math.max(totalTasks - doneTasks, 0), color: '#374151' },
+  ];
+  const taskCompletionPercent = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+
   const [extractionData, setExtractionData] = useState<{
     charts?: Array<{
       chart_type?: string;
@@ -246,7 +275,7 @@ export default function AnalyticsPage() {
         className="space-y-1"
       >
         <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground flex items-center gap-3">
-          <BarChart3 className="w-7 h-7 text-electric-blue" />
+          <BarChart3 className="w-7 h-7 text-primary" />
           Analytics & Insights
         </h1>
         <p className="text-muted-foreground text-sm">
@@ -258,7 +287,7 @@ export default function AnalyticsPage() {
       {(extractionCharts.length > 0 || !extractionLoaded) && (
         <div className="space-y-4">
           <h2 className="text-lg font-display font-semibold text-foreground flex items-center gap-2">
-            <PieChartIcon className="w-5 h-5 text-electric-blue" />
+            <PieChartIcon className="w-5 h-5 text-primary" />
             Pitch Deck Insights
             {extractionData?.startup_name && (
               <span className="text-sm font-normal text-muted-foreground">— {extractionData.startup_name}</span>
@@ -266,7 +295,7 @@ export default function AnalyticsPage() {
           </h2>
           {!extractionLoaded ? (
             <div className="glass-card p-12 flex flex-col items-center justify-center gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-electric-blue" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">Loading extraction data…</p>
             </div>
           ) : extractionCharts.length > 0 ? (
@@ -287,7 +316,7 @@ export default function AnalyticsPage() {
                         {formatKpiValue(kpi.value ?? 0, kpi.unit)}
                       </p>
                       {kpi.as_of && (
-                        <p className="text-[10px] text-obsidian-500 mt-0.5">as of {kpi.as_of}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">as of {kpi.as_of}</p>
                       )}
                     </motion.div>
                   ))}
@@ -308,22 +337,68 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* General metrics — hidden for now, will use next time */}
-      {false && (
-      <>
+      {/* Readiness & Execution KPIs — driven by real store data */}
+      <div className="space-y-4">
       <h2 className="text-lg font-display font-semibold text-foreground flex items-center gap-2">
-        <LayoutGrid className="w-5 h-5 text-electric-blue" />
-        General Metrics
+        <LayoutGrid className="w-5 h-5 text-primary" />
+        Readiness & Execution
       </h2>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card p-4"
+        >
+          <p className="text-xs text-muted-foreground">Readiness Score</p>
+          <p className="text-2xl font-mono font-bold text-primary">{Math.round(overallScore)}%</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="glass-card p-4"
+        >
+          <p className="text-xs text-muted-foreground">Tasks Completed</p>
+          <p className="text-2xl font-mono font-bold text-score-excellent">{doneTasks}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="glass-card p-4"
+        >
+          <p className="text-xs text-muted-foreground">Overdue</p>
+          <p className={`text-2xl font-mono font-bold ${overdueTasks > 0 ? 'text-score-fair' : 'text-foreground'}`}>{overdueTasks}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="glass-card p-4"
+        >
+          <p className="text-xs text-muted-foreground">Total Tasks</p>
+          <p className="text-2xl font-mono font-bold text-foreground">{totalTasks}</p>
+        </motion.div>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Score Trend */}
+        {/* Score Trend — from readiness store */}
         <ChartCard title="Readiness Score Trend" icon={TrendingUp} index={0}>
-          <AnimatedLineChart data={scoreTrend} color="#3B82F6" height={220} />
+          <AnimatedLineChart data={realScoreTrend} color="#3B82F6" height={220} />
         </ChartCard>
 
-        {/* Category Radar — readiness scores by category */}
-        <ChartCard title="Category Radar" icon={BarChart3} index={1}>
-          <RadarChart data={radarData} color="#8B5CF6" size={220} />
+        {/* Category scores — bar chart instead of radar (F2) */}
+        <ChartCard title="Category Scores" icon={BarChart3} index={1}>
+          <div className="w-full" style={{ height: 220 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={radarData} margin={{ top: 8, right: 8, bottom: 0, left: -10 }} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.2)" />
+                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: '#9CA3AF' }} tickFormatter={(v) => `${v}%`} />
+                <YAxis type="category" dataKey="dimension" width={80} tick={{ fontSize: 10, fill: '#9CA3AF' }} />
+                <Tooltip content={<ChartTooltip />} />
+                <Bar dataKey="score" name="Score" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </ChartCard>
 
         {/* MRR Growth */}
@@ -467,12 +542,12 @@ export default function AnalyticsPage() {
           </div>
         </ChartCard>
 
-        {/* Task Completion */}
+        {/* Task Completion — using real data */}
         <ChartCard title="Task Completion" icon={CheckCircle2} index={7}>
           <div className="flex items-center justify-center py-2">
             <DonutChart
-              data={taskDonut}
-              centerValue={`${Math.round((18 / 25) * 100)}%`}
+              data={realTaskDonut}
+              centerValue={`${taskCompletionPercent}%`}
               centerLabel="Done"
               size={180}
             />
@@ -480,17 +555,16 @@ export default function AnalyticsPage() {
           <div className="flex items-center justify-center gap-4 mt-2 text-xs">
             <div className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full bg-score-excellent" />
-              <span className="text-muted-foreground">Completed (18)</span>
+              <span className="text-muted-foreground">Completed ({doneTasks})</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-obsidian-600" />
-              <span className="text-muted-foreground">Remaining (7)</span>
+              <div className="w-2.5 h-2.5 rounded-full bg-muted" />
+              <span className="text-muted-foreground">Remaining ({Math.max(totalTasks - doneTasks, 0)})</span>
             </div>
           </div>
         </ChartCard>
       </div>
-      </>
-      )}
+      </div>
     </div>
   );
 }

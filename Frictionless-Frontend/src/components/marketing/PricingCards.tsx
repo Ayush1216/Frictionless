@@ -90,7 +90,7 @@ export function PricingCards({ showToggle = true }: PricingCardsProps) {
           <span
             className={cn(
               'text-sm font-body transition-colors',
-              !annual ? 'text-white' : 'text-obsidian-500'
+              !annual ? 'text-white' : 'text-muted-foreground'
             )}
           >
             Monthly
@@ -99,7 +99,7 @@ export function PricingCards({ showToggle = true }: PricingCardsProps) {
             onClick={() => setAnnual(!annual)}
             className={cn(
               'relative w-14 h-7 rounded-full transition-colors duration-300',
-              annual ? 'bg-electric-blue' : 'bg-obsidian-600'
+              annual ? 'bg-primary' : 'bg-border'
             )}
             aria-label="Toggle annual pricing"
           >
@@ -112,7 +112,7 @@ export function PricingCards({ showToggle = true }: PricingCardsProps) {
           <span
             className={cn(
               'text-sm font-body transition-colors',
-              annual ? 'text-white' : 'text-obsidian-500'
+              annual ? 'text-white' : 'text-muted-foreground'
             )}
           >
             Annual
@@ -143,7 +143,7 @@ export function PricingCards({ showToggle = true }: PricingCardsProps) {
             transition={{ duration: 0.5, delay: i * 0.1 }}
             className={cn(
               'relative flex flex-col glass-card p-6 md:p-8 overflow-hidden',
-              tier.popular && 'border-electric-blue/40 shadow-glow md:scale-[1.02]'
+              tier.popular && 'border-primary/40 shadow-glow md:scale-[1.02]'
             )}
           >
             {/* Popular badge with shimmer */}
@@ -163,7 +163,7 @@ export function PricingCards({ showToggle = true }: PricingCardsProps) {
               <h3 className="text-xl font-display font-bold text-white mb-2">
                 {tier.name}
               </h3>
-              <p className="text-sm text-obsidian-400 font-body">
+              <p className="text-sm text-muted-foreground font-body">
                 {tier.description}
               </p>
             </div>
@@ -175,7 +175,7 @@ export function PricingCards({ showToggle = true }: PricingCardsProps) {
                   <span className="text-4xl md:text-5xl font-display font-extrabold text-white">
                     ${annual ? tier.annualPrice : tier.monthlyPrice}
                   </span>
-                  <span className="text-obsidian-400 font-body text-sm">
+                  <span className="text-muted-foreground font-body text-sm">
                     {tier.priceLabel}
                   </span>
                 </div>
@@ -185,7 +185,7 @@ export function PricingCards({ showToggle = true }: PricingCardsProps) {
                 </div>
               )}
               {tier.annualPrice !== null && annual && tier.monthlyPrice !== 0 && (
-                <p className="text-xs text-obsidian-500 mt-2 font-body">
+                <p className="text-xs text-muted-foreground mt-2 font-body">
                   Billed annually (${tier.annualPrice! * 12}/year)
                 </p>
               )}
@@ -198,7 +198,7 @@ export function PricingCards({ showToggle = true }: PricingCardsProps) {
                 'flex items-center justify-center gap-2 w-full py-3 rounded-xl font-display font-semibold text-sm transition-all duration-300 mb-8',
                 tier.popular
                   ? 'bg-neon-gradient animated-gradient text-white shadow-glow hover:shadow-glow-lg'
-                  : 'glass text-obsidian-200 hover:bg-white/10'
+                  : 'glass text-foreground/80 hover:bg-white/10'
               )}
             >
               {tier.cta}
@@ -215,10 +215,10 @@ export function PricingCards({ showToggle = true }: PricingCardsProps) {
                   <Check
                     className={cn(
                       'w-4 h-4 mt-0.5 flex-shrink-0',
-                      tier.popular ? 'text-electric-blue' : 'text-obsidian-500'
+                      tier.popular ? 'text-primary' : 'text-muted-foreground'
                     )}
                   />
-                  <span className="text-obsidian-300">{feature}</span>
+                  <span className="text-muted-foreground">{feature}</span>
                 </li>
               ))}
             </ul>

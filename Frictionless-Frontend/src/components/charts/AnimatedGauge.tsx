@@ -58,7 +58,7 @@ export function AnimatedGauge({
           fill="none"
           stroke="currentColor"
           strokeWidth={strokeWidth}
-          className="text-obsidian-700/50"
+          className="text-muted/50"
         />
         {/* Gradient definition */}
         <defs>

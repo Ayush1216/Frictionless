@@ -17,8 +17,8 @@ interface Column {
 }
 
 const columns: Column[] = [
-  { id: 'todo', label: 'To Do', color: 'border-obsidian-600/60', dotColor: 'bg-obsidian-400' },
-  { id: 'in_progress', label: 'In Progress', color: 'border-electric-blue/30', dotColor: 'bg-electric-blue' },
+  { id: 'todo', label: 'To Do', color: 'border-border', dotColor: 'bg-muted-foreground' },
+  { id: 'in_progress', label: 'In Progress', color: 'border-primary/30', dotColor: 'bg-primary' },
   { id: 'done', label: 'Done', color: 'border-score-excellent/30', dotColor: 'bg-score-excellent' },
 ];
 
@@ -31,10 +31,25 @@ const nextStatus: Record<string, TaskStatus> = {
 interface TaskBoardProps {
   onTaskClick: (task: Task) => void;
   className?: string;
+  filterStatus?: string;
+  filterPriority?: string;
+  filterCategory?: string;
+  searchQuery?: string;
 }
 
-export function TaskBoard({ onTaskClick, className }: TaskBoardProps) {
-  const tasks = useTaskStore((s) => s.tasks);
+export function TaskBoard({ onTaskClick, className, filterStatus = 'all', filterPriority = 'all', filterCategory = 'all', searchQuery = '' }: TaskBoardProps) {
+  const tasksRaw = useTaskStore((s) => s.tasks);
+  const tasks = useMemo(() => {
+    let out = tasksRaw;
+    if (filterStatus && filterStatus !== 'all') out = out.filter((t) => t.status === filterStatus);
+    if (filterPriority && filterPriority !== 'all') out = out.filter((t) => (t.priority ?? 'medium') === filterPriority);
+    if (filterCategory && filterCategory !== 'all') out = out.filter((t) => t.task_group_id === filterCategory);
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      out = out.filter((t) => (t.title ?? '').toLowerCase().includes(q) || (t.description ?? '').toLowerCase().includes(q));
+    }
+    return out;
+  }, [tasksRaw, filterStatus, filterPriority, filterCategory, searchQuery]);
   const taskGroups = useTaskStore((s) => s.taskGroups);
   const storeUpdateTask = useTaskStore((s) => s.updateTask);
   const sync = useTasksSync();
@@ -43,11 +58,11 @@ export function TaskBoard({ onTaskClick, className }: TaskBoardProps) {
   // Priority order for sorting: critical, high, medium, low
   const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
-  // Group tasks by status; exclude trash and done. Sort by impact/priority within each column.
+  // Group tasks by status; exclude trash. Sort by impact/priority within each column.
   const grouped = useMemo(() => {
     const map: Record<string, Task[]> = { todo: [], in_progress: [], done: [] };
     tasks
-      .filter((t) => t.status !== 'trash' && t.status !== 'done')
+      .filter((t) => t.status !== 'trash')
       .forEach((t) => {
         if (map[t.status]) map[t.status].push(t);
       });
@@ -76,15 +91,15 @@ export function TaskBoard({ onTaskClick, className }: TaskBoardProps) {
       {columns.map((col) => (
         <div key={col.id} className="flex flex-col">
           {/* Column header */}
-          <div className={cn('flex items-center justify-between px-3 py-2.5 rounded-xl bg-obsidian-800/50 border mb-3', col.color)}>
+          <div className={cn('flex items-center justify-between px-3 py-2.5 rounded-xl bg-muted border mb-3', col.color)}>
             <div className="flex items-center gap-2">
               <div className={cn('w-2.5 h-2.5 rounded-full', col.dotColor)} />
               <h3 className="text-sm font-semibold text-foreground">{col.label}</h3>
-              <span className="text-xs text-muted-foreground bg-obsidian-700/50 px-1.5 py-0.5 rounded-full font-medium">
+              <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full font-medium">
                 {grouped[col.id]?.length ?? 0}
               </span>
             </div>
-            <button className="p-1 rounded-md hover:bg-obsidian-700 text-obsidian-400 hover:text-foreground transition-colors">
+            <button className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
               <Plus className="w-4 h-4" />
             </button>
           </div>
@@ -105,7 +120,7 @@ export function TaskBoard({ onTaskClick, className }: TaskBoardProps) {
                       initial={{ opacity: 0 }}
                       whileHover={{ scale: 1.05 }}
                       onClick={(e) => handleMoveTask(task, e)}
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-obsidian-700/90 border border-obsidian-600/50 text-xs font-medium text-muted-foreground hover:text-foreground transition-all"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-muted border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-all"
                       title="Move to In Progress"
                     >
                       &rarr;

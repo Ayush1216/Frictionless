@@ -12,6 +12,7 @@ interface UIStore {
   searchOpen: boolean;
   notificationsOpen: boolean;
   commandPaletteOpen: boolean;
+  aiHelperOpen: boolean;
   toggleSidebar: () => void;
   collapseSidebar: () => void;
   setTheme: (theme: Theme) => void;
@@ -22,19 +23,21 @@ interface UIStore {
   toggleSearch: () => void;
   toggleNotifications: () => void;
   toggleCommandPalette: () => void;
+  toggleAIHelper: () => void;
 }
 
 export const useUIStore = create<UIStore>()(
   persist(
     (set) => ({
   sidebarOpen: true,
-  sidebarCollapsed: true,
-  theme: 'dark',
+  sidebarCollapsed: false,
+  theme: 'light',
   activeModal: null,
   isMobile: false,
   searchOpen: false,
   notificationsOpen: false,
   commandPaletteOpen: false,
+  aiHelperOpen: false,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   collapseSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setTheme: (theme) => set({ theme }),
@@ -45,6 +48,7 @@ export const useUIStore = create<UIStore>()(
   toggleSearch: () => set((state) => ({ searchOpen: !state.searchOpen })),
   toggleNotifications: () => set((state) => ({ notificationsOpen: !state.notificationsOpen })),
   toggleCommandPalette: () => set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
+  toggleAIHelper: () => set((state) => ({ aiHelperOpen: !state.aiHelperOpen })),
 }),
     { name: 'ui-store', partialize: (state) => ({ theme: state.theme }) }
   )

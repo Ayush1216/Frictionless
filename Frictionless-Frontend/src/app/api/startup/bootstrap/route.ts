@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClientForRequest, getCurrentUserOrgId } from '@/lib/supabase/server';
 import type { Task, TaskGroup } from '@/types/database';
-import { toFrontendGroup } from '@/lib/api/startup-tasks-server';
+import { toFrontendGroup, toFrontendTask } from '@/lib/api/startup-tasks-server';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/startup/bootstrap
@@ -31,11 +33,17 @@ export async function GET(request: NextRequest) {
 
     const backendUrl = (process.env.FRICTIONLESS_BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '');
 
-    // Backend dashboard + score history + data room document count
+    // Backend dashboard + score history + data room document count — all in parallel
+    const controller = new AbortController();
+    const backendTimeout = setTimeout(() => controller.abort(), 15_000); // 15s timeout
     const [dashboardRes, scoreHistoryQuery, documentCountRes] = await Promise.all([
       fetch(`${backendUrl}/api/startup-dashboard?org_id=${encodeURIComponent(orgId)}`, {
         cache: 'no-store',
+        signal: controller.signal,
         headers: token ? { Authorization: `Bearer ${token}` } : {},
+      }).catch((err) => {
+        console.warn('[bootstrap] backend fetch failed:', err?.name === 'AbortError' ? 'timeout' : err);
+        return new Response(JSON.stringify({}), { status: 502 });
       }),
       supabase
         .from('readiness_score_history')
@@ -49,6 +57,7 @@ export async function GET(request: NextRequest) {
         .in('category', ['pitch_deck', 'data_room_doc']),
     ]);
 
+    clearTimeout(backendTimeout);
     const dashboardData = await dashboardRes.json().catch(() => ({}));
     const readiness =
       dashboardRes.ok && dashboardData?.readiness
@@ -68,11 +77,14 @@ export async function GET(request: NextRequest) {
 
     let taskGroups: TaskGroup[] = [];
     let tasks: Task[] = [];
+    let completedTasks: Task[] = [];
     let task_progress: { allotted_total: number; current_pending: number } | null = null;
 
     if (dashboardData?.task_groups) {
       taskGroups = (dashboardData.task_groups as Record<string, unknown>[]).map((g) => toFrontendGroup(g));
       tasks = taskGroups.flatMap((g) => g.tasks);
+      const rawCompleted = (dashboardData.completed_tasks ?? []) as Record<string, unknown>[];
+      completedTasks = rawCompleted.map((t) => toFrontendTask(t));
       const progress = dashboardData.task_progress;
       if (progress?.allotted_total != null && progress?.current_pending != null) {
         task_progress = {
@@ -99,6 +111,7 @@ export async function GET(request: NextRequest) {
         scoreHistory: { entries },
         task_groups: taskGroups,
         tasks,
+        completed_tasks: completedTasks,
         task_progress,
         document_count,
       },

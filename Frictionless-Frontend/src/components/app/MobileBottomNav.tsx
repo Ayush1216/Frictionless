@@ -40,9 +40,9 @@ interface NavItem {
 
 const startupBottomNav: NavItem[] = [
   { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Score', href: '/startup/readiness', icon: Gauge },
+  { label: 'Readiness', href: '/startup/readiness', icon: Gauge },
   { label: 'AI', href: '/startup/chat', icon: Bot },
-  { label: 'Tasks', href: '/startup/tasks', icon: CheckSquare },
+  { label: 'Matches', href: '/startup/matches', icon: Handshake },
 ];
 
 const startupMoreNav: NavItem[] = [
@@ -107,7 +107,7 @@ export function MobileBottomNav() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-obsidian-700/50 bg-obsidian-950/90 backdrop-blur-xl safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-border bg-background/95 backdrop-blur-xl safe-area-bottom">
         <div className="flex items-center justify-around h-16 px-2">
           {main.map((item) => {
             const Icon = item.icon;
@@ -121,21 +121,21 @@ export function MobileBottomNav() {
                 <motion.div
                   className={cn(
                     'flex items-center justify-center w-10 h-7 rounded-full transition-colors',
-                    active && 'bg-electric-blue/15'
+                    active && 'bg-primary/15'
                   )}
                   whileTap={{ scale: 0.9 }}
                 >
                   <Icon
                     className={cn(
                       'w-5 h-5 transition-colors',
-                      active ? 'text-electric-blue' : 'text-obsidian-400'
+                      active ? 'text-primary' : 'text-muted-foreground'
                     )}
                   />
                 </motion.div>
                 <span
                   className={cn(
                     'text-[10px] font-medium transition-colors',
-                    active ? 'text-electric-blue' : 'text-obsidian-400'
+                    active ? 'text-primary' : 'text-muted-foreground'
                   )}
                 >
                   {item.label}
@@ -143,7 +143,7 @@ export function MobileBottomNav() {
                 {active && (
                   <motion.div
                     layoutId="bottom-nav-active"
-                    className="absolute -top-px left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-electric-blue"
+                    className="absolute -top-px left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-primary"
                     transition={{ type: 'spring', bounce: 0.25, duration: 0.4 }}
                   />
                 )}
@@ -159,21 +159,21 @@ export function MobileBottomNav() {
             <motion.div
               className={cn(
                 'flex items-center justify-center w-10 h-7 rounded-full transition-colors',
-                moreIsActive && 'bg-electric-blue/15'
+                moreIsActive && 'bg-primary/15'
               )}
               whileTap={{ scale: 0.9 }}
             >
               <MoreHorizontal
                 className={cn(
                   'w-5 h-5 transition-colors',
-                  moreIsActive ? 'text-electric-blue' : 'text-obsidian-400'
+                  moreIsActive ? 'text-primary' : 'text-muted-foreground'
                 )}
               />
             </motion.div>
             <span
               className={cn(
                 'text-[10px] font-medium transition-colors',
-                moreIsActive ? 'text-electric-blue' : 'text-obsidian-400'
+                moreIsActive ? 'text-primary' : 'text-muted-foreground'
               )}
             >
               More
@@ -184,7 +184,7 @@ export function MobileBottomNav() {
 
       {/* More sheet */}
       <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="glass bg-obsidian-950/95 backdrop-blur-xl rounded-t-2xl px-4 pb-8 pt-4 safe-area-bottom">
+        <SheetContent side="bottom" className="glass bg-background/95 backdrop-blur-xl rounded-t-2xl px-4 pb-8 pt-4 safe-area-bottom">
           <SheetHeader className="mb-4">
             <SheetTitle className="text-foreground font-display">More</SheetTitle>
           </SheetHeader>
@@ -200,8 +200,8 @@ export function MobileBottomNav() {
                   className={cn(
                     'flex flex-col items-center gap-2 p-4 rounded-xl transition-colors touch-target',
                     active
-                      ? 'bg-electric-blue/15 text-electric-blue'
-                      : 'bg-obsidian-800/50 text-obsidian-300 hover:bg-obsidian-800'
+                      ? 'bg-primary/15 text-primary'
+                      : 'bg-muted text-muted-foreground hover:bg-muted'
                   )}
                 >
                   <Icon className="w-6 h-6" />

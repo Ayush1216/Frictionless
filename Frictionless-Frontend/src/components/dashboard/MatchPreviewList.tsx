@@ -23,11 +23,11 @@ function getScoreColor(score: number): string {
 }
 
 const statusConfig: Record<string, { label: string; style: string }> = {
-  new: { label: 'New', style: 'bg-electric-blue/15 text-electric-blue' },
-  viewed: { label: 'Viewed', style: 'bg-obsidian-500/20 text-obsidian-300' },
-  saved: { label: 'Saved', style: 'bg-electric-purple/15 text-electric-purple' },
+  new: { label: 'New', style: 'bg-primary/15 text-primary' },
+  viewed: { label: 'Viewed', style: 'bg-muted text-muted-foreground' },
+  saved: { label: 'Saved', style: 'bg-accent/15 text-accent' },
   contacted: { label: 'Contacted', style: 'bg-score-excellent/15 text-score-excellent' },
-  passed: { label: 'Passed', style: 'bg-obsidian-600/20 text-obsidian-400' },
+  passed: { label: 'Passed', style: 'bg-muted text-muted-foreground' },
 };
 
 export function MatchPreviewList({
@@ -54,7 +54,7 @@ export function MatchPreviewList({
         </h3>
         <Link
           href="/startup/matches"
-          className="text-xs font-medium text-electric-blue hover:text-electric-cyan transition-colors flex items-center gap-1"
+          className="text-xs font-medium text-primary hover:text-chart-5 transition-colors flex items-center gap-1"
         >
           View All
           <ChevronRight className="w-3 h-3" />
@@ -71,10 +71,10 @@ export function MatchPreviewList({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: 0.4 + i * 0.06 }}
-              className="flex-shrink-0 w-[260px] md:w-full p-3 rounded-lg bg-obsidian-700/30 border border-obsidian-600/30 hover:border-electric-blue/30 transition-colors cursor-pointer group"
+              className="flex-shrink-0 w-[260px] md:w-full p-3 rounded-lg bg-muted/50 border border-border hover:border-primary/30 transition-colors cursor-pointer group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-obsidian-600/50 flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
                   {investor?.org.logo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -83,7 +83,7 @@ export function MatchPreviewList({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <Building2 className="w-4 h-4 text-obsidian-400" />
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -101,7 +101,7 @@ export function MatchPreviewList({
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-obsidian-400 capitalize">
+                    <span className="text-xs text-muted-foreground capitalize">
                       {investor?.provider_type?.replace('_', ' ') ?? 'VC'}
                     </span>
                   </div>

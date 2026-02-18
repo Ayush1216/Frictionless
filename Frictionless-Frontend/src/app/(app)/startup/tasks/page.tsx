@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { featureFlags } from '@/lib/feature-flags';
 import {
   LayoutGrid,
   List,
@@ -18,6 +19,8 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { TaskBoard } from '@/components/tasks/TaskBoard';
 import { TaskList } from '@/components/tasks/TaskList';
 import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
+import { CompletedTasksSection } from '@/components/tasks/CompletedTasksSection';
+import { TaskSimulator } from '@/components/tasks/TaskSimulator';
 import { useTaskStore } from '@/stores/task-store';
 import { TasksSyncProvider } from '@/contexts/TasksSyncContext';
 import { fetchBootstrap } from '@/lib/api/bootstrap';
@@ -27,6 +30,14 @@ import type { Task, TaskGroup, TaskStatus, TaskPriority } from '@/types/database
 export default function TasksPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  // Redirect to Readiness tasks tab when enabled (backward compat)
+  useEffect(() => {
+    if (featureFlags.focusMode) {
+      const taskId = searchParams.get('task');
+      router.replace(`/startup/readiness?tab=tasks${taskId ? `&task=${taskId}` : ''}`);
+    }
+  }, [router, searchParams]);
   const {
     tasks,
     taskGroups,
@@ -38,17 +49,42 @@ export default function TasksPage() {
     selectTask,
   } = useTaskStore();
 
-  const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
-  const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>(() =>
+    (searchParams.get('status') as TaskStatus | null) || 'all'
+  );
+  const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>(() =>
+    (searchParams.get('priority') as TaskPriority | null) || 'all'
+  );
+  const [filterCategory, setFilterCategory] = useState<string>(() =>
+    searchParams.get('category') || 'all'
+  );
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Sync filters to URL for sharable views — merge current filter state with updates
+  const updateUrlFilters = (updates: { status?: string; priority?: string; category?: string; q?: string }) => {
+    const current = {
+      status: filterStatus,
+      priority: filterPriority,
+      category: filterCategory,
+      q: searchQuery,
+    };
+    const merged = { ...current, ...updates };
+    const params = new URLSearchParams();
+    (['status', 'priority', 'category', 'q'] as const).forEach((key) => {
+      const v = merged[key as keyof typeof merged];
+      if (v && v !== 'all' && v !== '') params.set(key, String(v));
+    });
+    const qs = params.toString();
+    router.replace(`/startup/tasks${qs ? `?${qs}` : ''}`, { scroll: false });
+  };
 
   // Tasks come from layout bootstrap. If store not populated yet (e.g. direct nav or refresh), fetch once.
   useEffect(() => {
     if (tasksLoaded) return;
     let cancelled = false;
     (async () => {
+      if (!supabase) return;
       const { data } = await supabase.auth.getSession();
       const token = data?.session?.access_token ?? null;
       if (!token || cancelled) return;
@@ -108,11 +144,12 @@ export default function TasksPage() {
 
   const handleRefresh = async () => {
     useTaskStore.getState().setTasksLoaded(false);
+    if (!supabase) return;
     const { data } = await supabase.auth.getSession();
     const token = data?.session?.access_token ?? null;
     if (token) {
       try {
-        await fetchBootstrap(token);
+        await fetchBootstrap(token, true); // force=true to bypass cooldown
       } catch {
         useTaskStore.getState().setTasksLoaded(true);
       }
@@ -129,7 +166,7 @@ export default function TasksPage() {
   if (loading) {
     return (
       <div className="p-4 sm:p-6 flex flex-col items-center justify-center min-h-[40vh] gap-4">
-        <Loader2 className="w-10 h-10 animate-spin text-electric-blue" />
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">Loading tasks…</p>
       </div>
     );
@@ -151,20 +188,20 @@ export default function TasksPage() {
             <button
               type="button"
               onClick={handleRefresh}
-              className="p-2 rounded-lg border border-obsidian-700/50 text-obsidian-400 hover:text-foreground hover:bg-obsidian-800/50 transition-colors"
+              className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               title="Refresh tasks"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
             {/* View toggle */}
-            <div className="flex items-center rounded-lg bg-obsidian-800/50 border border-obsidian-700/50 p-0.5">
+            <div className="flex items-center rounded-lg bg-muted border border-border p-0.5">
               <button
                 onClick={() => setViewMode('list')}
                 className={cn(
                   'p-2 rounded-md transition-colors',
                   viewMode === 'list'
-                    ? 'bg-electric-blue/15 text-electric-blue'
-                    : 'text-obsidian-400 hover:text-foreground'
+                    ? 'bg-primary/15 text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <List className="w-4 h-4" />
@@ -174,20 +211,23 @@ export default function TasksPage() {
                 className={cn(
                   'p-2 rounded-md transition-colors',
                   viewMode === 'kanban'
-                    ? 'bg-electric-blue/15 text-electric-blue'
-                    : 'text-obsidian-400 hover:text-foreground'
+                    ? 'bg-primary/15 text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
             </div>
-            <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-electric-blue text-white text-sm font-medium hover:bg-electric-blue/90 transition-colors shadow-glow">
+            <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors shadow-glow">
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Add Task</span>
             </button>
           </div>
         }
       />
+
+      {/* Simulator (E3) */}
+      <TaskSimulator />
 
       {/* Progress bar */}
       <motion.div
@@ -205,9 +245,9 @@ export default function TasksPage() {
           </div>
           <span className="text-sm font-bold text-foreground">{stats.pct}%</span>
         </div>
-        <div className="h-2 rounded-full bg-obsidian-700/50 overflow-hidden">
+        <div className="h-2 rounded-full bg-muted overflow-hidden">
           <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-electric-blue to-score-excellent"
+            className="h-full rounded-full bg-gradient-to-r from-primary to-score-excellent"
             initial={{ width: 0 }}
             animate={{ width: `${stats.pct}%` }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -224,12 +264,16 @@ export default function TasksPage() {
       >
         {/* Search */}
         <div className="relative flex-1 w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-obsidian-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => {
+              const v = e.target.value;
+              setSearchQuery(v);
+              updateUrlFilters({ q: v || undefined });
+            }}
             placeholder="Search tasks..."
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50 text-sm text-foreground placeholder:text-obsidian-500 focus:outline-none focus:border-electric-blue/50 transition-colors"
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors"
           />
         </div>
 
@@ -240,8 +284,8 @@ export default function TasksPage() {
             className={cn(
               'flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border flex-shrink-0',
               showFilters
-                ? 'bg-electric-blue/10 text-electric-blue border-electric-blue/20'
-                : 'bg-obsidian-800/50 text-muted-foreground border-obsidian-700/50 hover:text-foreground'
+                ? 'bg-primary/10 text-primary border-primary/20'
+                : 'bg-muted text-muted-foreground border-border hover:text-foreground'
             )}
           >
             <Filter className="w-3.5 h-3.5" />
@@ -252,12 +296,15 @@ export default function TasksPage() {
           {(['all', 'todo', 'in_progress', 'done'] as const).map((status) => (
             <button
               key={status}
-              onClick={() => setFilterStatus(status)}
+              onClick={() => {
+                setFilterStatus(status);
+                updateUrlFilters({ status: status === 'all' ? undefined : status });
+              }}
               className={cn(
                 'px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border flex-shrink-0',
                 filterStatus === status
-                  ? 'bg-electric-blue/15 text-electric-blue border-electric-blue/30'
-                  : 'bg-obsidian-800/30 text-muted-foreground border-obsidian-700/50 hover:text-foreground'
+                  ? 'bg-primary/15 text-primary border-primary/30'
+                  : 'bg-muted/30 text-muted-foreground border-border hover:text-foreground'
               )}
             >
               {status === 'all' ? 'All' : status === 'todo' ? 'To Do' : status === 'in_progress' ? 'In Progress' : 'Done'}
@@ -275,7 +322,7 @@ export default function TasksPage() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="flex flex-wrap gap-3 p-4 rounded-xl bg-obsidian-800/30 border border-obsidian-700/30">
+            <div className="flex flex-wrap gap-3 p-4 rounded-xl bg-muted/30 border border-border">
               {/* Priority filter */}
               <div>
                 <label className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 block">
@@ -285,12 +332,15 @@ export default function TasksPage() {
                   {(['all', 'critical', 'high', 'medium', 'low'] as const).map((p) => (
                     <button
                       key={p}
-                      onClick={() => setFilterPriority(p)}
+                      onClick={() => {
+                        setFilterPriority(p);
+                        updateUrlFilters({ priority: p === 'all' ? undefined : p });
+                      }}
                       className={cn(
                         'px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border',
                         filterPriority === p
-                          ? 'bg-electric-blue/15 text-electric-blue border-electric-blue/30'
-                          : 'bg-obsidian-800/50 text-muted-foreground border-obsidian-700/50 hover:text-foreground'
+                          ? 'bg-primary/15 text-primary border-primary/30'
+                          : 'bg-muted/50 text-muted-foreground border-border hover:text-foreground'
                       )}
                     >
                       {p === 'all' ? 'All' : p.charAt(0).toUpperCase() + p.slice(1)}
@@ -306,12 +356,15 @@ export default function TasksPage() {
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   <button
-                    onClick={() => setFilterCategory('all')}
+                    onClick={() => {
+                      setFilterCategory('all');
+                      updateUrlFilters({ category: undefined });
+                    }}
                     className={cn(
                       'px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border',
                       filterCategory === 'all'
-                        ? 'bg-electric-blue/15 text-electric-blue border-electric-blue/30'
-                        : 'bg-obsidian-800/50 text-muted-foreground border-obsidian-700/50 hover:text-foreground'
+? 'bg-primary/15 text-primary border-primary/30'
+                          : 'bg-muted/30 text-muted-foreground border-border hover:text-foreground'
                     )}
                   >
                     All
@@ -319,12 +372,15 @@ export default function TasksPage() {
                   {categories.map((cat) => (
                     <button
                       key={cat.id}
-                      onClick={() => setFilterCategory(cat.id)}
+                      onClick={() => {
+                        setFilterCategory(cat.id);
+                        updateUrlFilters({ category: cat.id });
+                      }}
                       className={cn(
                         'px-2 py-1 rounded-md text-[11px] font-semibold transition-colors border',
                         filterCategory === cat.id
-                          ? 'bg-electric-blue/15 text-electric-blue border-electric-blue/30'
-                          : 'bg-obsidian-800/50 text-muted-foreground border-obsidian-700/50 hover:text-foreground'
+                          ? 'bg-primary/15 text-primary border-primary/30'
+                          : 'bg-muted/50 text-muted-foreground border-border hover:text-foreground'
                       )}
                     >
                       {cat.label}
@@ -347,7 +403,13 @@ export default function TasksPage() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
           >
-            <TaskBoard onTaskClick={handleTaskClick} />
+            <TaskBoard
+              onTaskClick={handleTaskClick}
+              filterStatus={filterStatus}
+              filterPriority={filterPriority}
+              filterCategory={filterCategory}
+              searchQuery={searchQuery}
+            />
           </motion.div>
         ) : (
           <motion.div
@@ -357,10 +419,19 @@ export default function TasksPage() {
             exit={{ opacity: 0, x: 20 }}
             transition={{ duration: 0.2 }}
           >
-            <TaskList onTaskClick={handleTaskClick} />
+            <TaskList
+              onTaskClick={handleTaskClick}
+              filterStatus={filterStatus}
+              filterPriority={filterPriority}
+              filterCategory={filterCategory}
+              searchQuery={searchQuery}
+            />
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Completed tasks section (E5) */}
+      <CompletedTasksSection onTaskClick={handleTaskClick} />
 
       {/* Task detail panel */}
       <TaskDetailPanel

@@ -78,8 +78,8 @@ function ToggleChip({
       className={cn(
         'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
         active
-          ? 'bg-electric-blue/15 text-electric-blue border-electric-blue/30'
-          : 'bg-obsidian-800/50 text-muted-foreground border-obsidian-600/30 hover:border-obsidian-500'
+          ? 'bg-primary/15 text-primary border-primary/30'
+          : 'bg-card/50 text-muted-foreground border-border/30 hover:border-muted-foreground'
       )}
     >
       {label}
@@ -134,7 +134,7 @@ function FilterContent({
             onChange={(e) =>
               onChange({ ...filters, scoreMin: Number(e.target.value) })
             }
-            className="flex-1 accent-electric-blue"
+            className="flex-1 accent-primary"
           />
           <span className="text-sm text-foreground tabular-nums w-16 text-center">
             {filters.scoreMin}–{filters.scoreMax}
@@ -147,7 +147,7 @@ function FilterContent({
             onChange={(e) =>
               onChange({ ...filters, scoreMax: Number(e.target.value) })
             }
-            className="flex-1 accent-electric-blue"
+            className="flex-1 accent-primary"
           />
         </div>
       </div>
@@ -178,7 +178,7 @@ function FilterContent({
           value={filters.status}
           onValueChange={(v) => onChange({ ...filters, status: v })}
         >
-          <SelectTrigger className="bg-obsidian-800/60 border-obsidian-600/50">
+          <SelectTrigger className="bg-card/60 border-border/50">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -200,7 +200,7 @@ function FilterContent({
           value={filters.sortBy}
           onValueChange={(v) => onChange({ ...filters, sortBy: v })}
         >
-          <SelectTrigger className="bg-obsidian-800/60 border-obsidian-600/50">
+          <SelectTrigger className="bg-card/60 border-border/50">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -267,18 +267,18 @@ export function MatchFilters({
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 border-obsidian-600/50 bg-obsidian-800/60"
+              className="gap-2 border-border/50 bg-card/60"
             >
               <SlidersHorizontal className="w-4 h-4" />
               Filters
               {hasFilters && (
-                <Badge className="bg-electric-blue/20 text-electric-blue border-none text-[10px] px-1.5 h-4">
+                <Badge className="bg-primary/20 text-primary border-none text-[10px] px-1.5 h-4">
                   {filters.stages.length + (filters.status !== 'all' ? 1 : 0)}
                 </Badge>
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="bg-obsidian-900 border-obsidian-700 rounded-t-2xl max-h-[80vh] overflow-y-auto">
+          <SheetContent side="bottom" className="bg-background border-border rounded-t-2xl max-h-[80vh] overflow-y-auto">
             <SheetHeader className="mb-4">
               <SheetTitle>Filter Matches</SheetTitle>
               <SheetDescription>
@@ -294,7 +294,7 @@ export function MatchFilters({
           value={filters.sortBy}
           onValueChange={(v) => onChange({ ...filters, sortBy: v })}
         >
-          <SelectTrigger className="w-[140px] bg-obsidian-800/60 border-obsidian-600/50 h-9 text-xs">
+          <SelectTrigger className="w-[140px] bg-card/60 border-border/50 h-9 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

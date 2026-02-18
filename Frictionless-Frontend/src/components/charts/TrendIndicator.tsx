@@ -19,7 +19,7 @@ export function TrendIndicator({ value, suffix = '', className }: TrendIndicator
         'inline-flex items-center gap-1 text-sm font-mono font-medium',
         isPositive && 'text-score-excellent',
         isNegative && 'text-score-poor',
-        !isPositive && !isNegative && 'text-obsidian-400',
+        !isPositive && !isNegative && 'text-muted-foreground',
         className,
       )}
     >

@@ -274,6 +274,7 @@ export interface Task {
   ai_extractions?: AIExtraction[];
   created_at: string;
   updated_at: string;
+  completed_at?: string | null;
   comments: TaskComment[];
   events: TaskEvent[];
 }

@@ -57,7 +57,7 @@ export function AnimatedCounter({
         {count.toLocaleString()}
         {suffix}
       </div>
-      <div className="text-sm md:text-base text-obsidian-400 mt-1 font-body">
+      <div className="text-sm md:text-base text-muted-foreground mt-1 font-body">
         {label}
       </div>
     </motion.div>

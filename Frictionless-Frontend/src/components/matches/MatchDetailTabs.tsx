@@ -67,7 +67,7 @@ function TabMotionWrapper({ children }: { children: React.ReactNode }) {
 export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
   return (
     <Tabs defaultValue="overview" className="w-full">
-      <TabsList className="w-full justify-start bg-obsidian-800/60 border border-obsidian-600/30 overflow-x-auto no-scrollbar flex-nowrap">
+      <TabsList className="w-full justify-start bg-card/60 border border-border/30 overflow-x-auto no-scrollbar flex-nowrap">
         <TabsTrigger value="overview" className="gap-1.5 text-xs">
           <FileText className="w-3.5 h-3.5" />
           Overview
@@ -119,7 +119,7 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
                       <Badge
                         key={s}
                         variant="outline"
-                        className="text-xs capitalize border-obsidian-600/50"
+                        className="text-xs capitalize border-border/50"
                       >
                         {s.replace('_', ' ')}
                       </Badge>
@@ -135,7 +135,7 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
                       <Badge
                         key={s}
                         variant="outline"
-                        className="text-xs capitalize border-obsidian-600/50"
+                        className="text-xs capitalize border-border/50"
                       >
                         {s.replace('_', ' ')}
                       </Badge>
@@ -183,7 +183,7 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
                       'text-xs border',
                       fund.status === 'deploying'
                         ? 'border-score-excellent/30 text-score-excellent'
-                        : 'border-obsidian-600/50 text-muted-foreground'
+                        : 'border-border/50 text-muted-foreground'
                     )}
                   >
                     {fund.capital_remaining_pct}% remaining
@@ -196,9 +196,9 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
                     <span>Deployed: {formatCurrency(fund.capital_deployed)}</span>
                     <span>Target: {formatCurrency(fund.target_size)}</span>
                   </div>
-                  <div className="h-2 rounded-full bg-obsidian-700 overflow-hidden">
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-electric-blue transition-all"
+                      className="h-full rounded-full bg-primary transition-all"
                       style={{ width: `${100 - fund.capital_remaining_pct}%` }}
                     />
                   </div>
@@ -214,7 +214,7 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
                       {fund.investments.map((inv) => (
                         <div
                           key={inv.id}
-                          className="flex items-center justify-between p-2 rounded-lg bg-obsidian-800/40"
+                          className="flex items-center justify-between p-2 rounded-lg bg-card/40"
                         >
                           <div className="flex items-center gap-3">
                             <Building2 className="w-4 h-4 text-muted-foreground" />
@@ -237,7 +237,7 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
                                 inv.status === 'active'
                                   ? 'bg-score-excellent/15 text-score-excellent border-score-excellent/30'
                                   : inv.status === 'exited'
-                                  ? 'bg-electric-purple/15 text-electric-purple border-electric-purple/30'
+                                  ? 'bg-accent/15 text-accent border-accent/30'
                                   : 'bg-score-poor/15 text-score-poor border-score-poor/30'
                               )}
                             >
@@ -262,7 +262,7 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
             {investor.team_members.map((member) => (
               <div key={member.id} className="glass-card p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-obsidian-700 border border-obsidian-600/50 overflow-hidden">
+                  <div className="w-10 h-10 rounded-full bg-muted border border-border/50 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={member.photo_url}
@@ -279,7 +279,7 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
                 </div>
                 <Badge
                   variant="outline"
-                  className="mt-3 text-xs capitalize border-obsidian-600/50"
+                  className="mt-3 text-xs capitalize border-border/50"
                 >
                   {member.role}
                 </Badge>
@@ -301,7 +301,7 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-obsidian-600/30">
+                  <tr className="border-b border-border/30">
                     <th className="text-left p-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Company
                     </th>
@@ -322,12 +322,12 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-obsidian-600/20">
+                <tbody className="divide-y divide-border/20">
                   {investor.funds.flatMap((f) =>
                     f.investments.map((inv) => (
                       <tr
                         key={inv.id}
-                        className="hover:bg-obsidian-700/20 transition-colors"
+                        className="hover:bg-muted/20 transition-colors"
                       >
                         <td className="p-3 font-medium text-foreground">
                           {inv.startup_name}
@@ -354,7 +354,7 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
                               inv.status === 'active'
                                 ? 'bg-score-excellent/15 text-score-excellent border-score-excellent/30'
                                 : inv.status === 'exited'
-                                ? 'bg-electric-purple/15 text-electric-purple border-electric-purple/30'
+                                ? 'bg-accent/15 text-accent border-accent/30'
                                 : 'bg-score-poor/15 text-score-poor border-score-poor/30'
                             )}
                           >
@@ -393,7 +393,7 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
                     {dim.score}/100
                   </span>
                 </div>
-                <div className="h-2 rounded-full bg-obsidian-700 overflow-hidden mb-2">
+                <div className="h-2 rounded-full bg-muted overflow-hidden mb-2">
                   <motion.div
                     className={cn('h-full rounded-full', getScoreBarColor(dim.score))}
                     initial={{ width: 0 }}
@@ -402,7 +402,7 @@ export function MatchDetailTabs({ investor, match }: MatchDetailTabsProps) {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">{dim.detail}</p>
-                <p className="text-[10px] text-obsidian-400 mt-1">
+                <p className="text-[10px] text-muted-foreground mt-1">
                   Weight: {(dim.weight * 100).toFixed(0)}%
                 </p>
               </div>

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClientForRequest, getCurrentUserOrgId } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 /** Categories to show in Data Room: pitch deck (already uploaded) + docs added via task chat / upload */
 const DATA_ROOM_CATEGORIES = ['pitch_deck', 'data_room_doc'] as const;
 

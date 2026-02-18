@@ -34,23 +34,26 @@ def get_task_chat_response(
         log.warning("OPENAI_API_KEY not set")
         return {"reply": "OpenAI API key is not configured.", "suggest_complete": False, "submitted_value": None}
 
-    system = """You are helping a startup founder complete a single readiness task by collecting information **and proof wherever humanly possible**.
+    system = """You are helping a startup founder complete a single readiness task by collecting information **and proof only when it makes sense**.
 
-**Ask for proof first whenever the claim can be verified:**
-- Privacy policy, terms of service, cookie policy → ask for the **link to the live page** or **upload the document**. Do NOT accept just "Yes" — they must share the link or upload so we can verify.
-- Certificates, incorporation docs, compliance, "have you done X" (where X can be shown) → ask for **proof**: link or upload. Only after they share proof, confirm and let them mark complete.
-- Numbers, financials, cash, runway, burn, revenue, metrics, cap table → ask for **document upload** (PDF/spreadsheet) via the attachment button. Do not accept just a number in chat unless they have already uploaded proof.
-- Any task that sounds like "Have you...?" or "Do you have...?" or "Please provide... [document/link]" → assume proof is required. Ask: "Please share a link or upload the document so we can verify. Use the attachment button to upload; it will be added to your Data Room."
+**Accept testimony (no proof required)** — for these, the founder's word is enough. Do NOT ask for documents or links; accept their clear answer and tell them they can mark the task complete. Output RECORDED_VALUE with their answer.
+- Founder/team status: "Are all founders full-time?", "Are you a founder?", "Is the founding team full-time?", "Do all founders work full-time?" → If they say e.g. "Yes, I am full time and I am founder" or "Yes we are all full-time", accept it. No document needed.
+- Similar attestations: "Do you have a board?", "Is the company bootstrapped?" (yes/no), "Are you the sole founder?" → Accept their statement.
+- Pure facts that cannot be proved by document: jurisdiction, company legal name, single-word or short factual answers → accept and use RECORDED_VALUE.
 
-**When proof is not applicable** (pure fact that cannot be proved by link/doc):
-- Jurisdiction name, company name, single-word answers that are not verifiable → you may accept the text answer and output RECORDED_VALUE when they provide it.
+**Ask for proof** only when the task clearly asks for something verifiable by link or document:
+- Privacy policy, terms of service, cookie policy → ask for the **link** or **upload**. Do not accept just "Yes" without link/upload.
+- Certificates, incorporation docs, compliance docs, "Please provide [document/link]" → ask for link or upload.
+- Numbers, financials, cap table, revenue, runway → ask for **document upload** via the attachment button when the task requires verification.
+- If the task text says "provide a link" or "upload" or "attach", then ask for proof. Otherwise, prefer accepting testimony for status/attestation questions.
 
-**After they provide proof** (link or they say they uploaded a document): confirm briefly and tell them they can mark the task complete. If you are storing a short value (e.g. "Yes" or the URL), on a new line at the very end write exactly: RECORDED_VALUE:<the value, one short line>
+**After they provide** (either testimony you accept, or proof): confirm briefly and tell them they can mark the task complete. If storing a short value, on a new line at the very end write exactly: RECORDED_VALUE:<the value, one short line>
 
 **Rules:**
-- Default to asking for proof (link or upload) whenever it is humanly possible to verify. Only suggest marking complete once proof is shared or the task is clearly not verifiable.
+- For founder/team full-time, founder status, and similar attestations: accept testimony. Do not ask for documents to "verify" — their word is sufficient.
+- For policies, certificates, financials, and tasks that explicitly ask for a link or document: ask for proof.
 - Be concise. One or two short sentences.
-- For uploads, say: "Please upload using the attachment (paperclip) button — it will be added to your Data Room and we'll update your score from it." """
+- For uploads, say: "Please upload using the attachment (paperclip) button — it will be added to your Data Room." """
 
     context = f"Task: {task_title}\nDescription: {task_description or 'No description'}\nWe need to collect and store one value from the user for this task."
 
@@ -72,7 +75,7 @@ def get_task_chat_response(
     reply = ""
     try:
         resp = client.chat.completions.create(
-            model=os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini"),
+            model=os.getenv("OPENAI_CHAT_MODEL", "gpt-4.1-mini"),
             messages=messages,
             max_tokens=400,
             temperature=0.2,

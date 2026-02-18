@@ -4,31 +4,34 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useSwipeable } from 'react-swipeable';
 import { useState } from 'react';
-import { Bookmark, X, DollarSign, Target } from 'lucide-react';
+import { Bookmark, X, DollarSign, Target, MapPin, Zap, Gauge } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { DeltaArrow } from './DeltaArrow';
 import { cn } from '@/lib/utils';
+import { getFallbackScore } from '@/lib/investor-score-fallback';
+import { getInvestorLogoUrl, getInvestorFallbackAvatar } from '@/lib/investor-logo';
 import type { DummyMatch } from '@/lib/dummy-data/matches';
 import type { DummyInvestor } from '@/lib/dummy-data/investors';
 
 interface MatchCardProps {
   match: DummyMatch;
-  investor: DummyInvestor;
+  investor: DummyInvestor & { raw_profile_json?: Record<string, unknown>; metadata_json?: Record<string, unknown> };
   index?: number;
+  showFitPillars?: boolean;
 }
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   new: {
     label: 'New',
-    className: 'bg-electric-blue/15 text-electric-blue border-electric-blue/30',
+    className: 'bg-primary/15 text-primary border-primary/30',
   },
   viewed: {
     label: 'Viewed',
-    className: 'bg-obsidian-600/50 text-obsidian-300 border-obsidian-500/30',
+    className: 'bg-muted text-muted-foreground border-border',
   },
   saved: {
     label: 'Saved',
-    className: 'bg-electric-purple/15 text-electric-purple border-electric-purple/30',
+    className: 'bg-accent/15 text-accent border-accent/30',
   },
   contacted: {
     label: 'Contacted',
@@ -36,7 +39,7 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   },
   passed: {
     label: 'Passed',
-    className: 'bg-obsidian-700/50 text-obsidian-400 border-obsidian-600/30',
+    className: 'bg-muted text-muted-foreground border-border',
   },
 };
 
@@ -57,6 +60,15 @@ function formatCheckSize(min: number, max: number) {
   return `${fmt(min)}–${fmt(max)}`;
 }
 
+const FIT_PILLAR_MAP: Record<string, { label: string; icon: React.ElementType }> = {
+  stage_fit: { label: 'Stage', icon: Target },
+  sector_fit: { label: 'Sector', icon: Zap },
+  check_size_fit: { label: 'Check', icon: DollarSign },
+  traction_match: { label: 'Traction', icon: Gauge },
+  geo_fit: { label: 'Geo', icon: MapPin },
+  thesis_alignment: { label: 'Readiness', icon: Gauge },
+};
+
 function MiniGauge({ score, size = 44 }: { score: number; size?: number }) {
   const color = getScoreColor(score);
   const radius = (size - 6) / 2;
@@ -73,7 +85,7 @@ function MiniGauge({ score, size = 44 }: { score: number; size?: number }) {
           fill="none"
           stroke="currentColor"
           strokeWidth={3}
-          className="text-obsidian-700"
+          className="text-muted"
         />
         <motion.circle
           cx={size / 2}
@@ -96,9 +108,10 @@ function MiniGauge({ score, size = 44 }: { score: number; size?: number }) {
   );
 }
 
-export function MatchCard({ match, investor, index = 0 }: MatchCardProps) {
+export function MatchCard({ match, investor, index = 0, showFitPillars = true }: MatchCardProps) {
   const router = useRouter();
   const [swipeState, setSwipeState] = useState<'idle' | 'save' | 'pass'>('idle');
+  const logoUrl = getInvestorLogoUrl(investor) ?? getInvestorFallbackAvatar(investor.org?.name ?? '');
 
   const handlers = useSwipeable({
     onSwipedRight: () => setSwipeState('save'),
@@ -114,6 +127,12 @@ export function MatchCard({ match, investor, index = 0 }: MatchCardProps) {
   });
 
   const status = statusConfig[match.status] ?? statusConfig.new;
+
+  // I3: Use fallback score 60–90 when real score missing
+  const displayScore =
+    match.overall_score != null && !Number.isNaN(match.overall_score)
+      ? match.overall_score
+      : getFallbackScore(match.capital_provider_org_id, investor.org?.website);
 
   const preferredStages = investor.preferred_stages
     .slice(0, 2)
@@ -149,16 +168,16 @@ export function MatchCard({ match, investor, index = 0 }: MatchCardProps) {
 
       <button
         onClick={() => router.push(`/startup/matches/${match.id}`)}
-        className="w-full text-left glass-card p-4 lg:p-5 hover:border-electric-blue/20 transition-all duration-200 cursor-pointer"
+        className="w-full text-left glass-card p-4 lg:p-5 hover:border-primary/20 transition-all duration-200 cursor-pointer"
       >
         <div className="flex items-start gap-4">
-          {/* Investor logo */}
-          <div className="w-11 h-11 rounded-xl bg-obsidian-700 border border-obsidian-600/50 flex items-center justify-center overflow-hidden shrink-0">
+          {/* Investor logo — priority: raw_profile_json > metadata_json > org.logo_url > fallback avatar */}
+          <div className="w-11 h-11 rounded-xl bg-muted border border-border flex items-center justify-center overflow-hidden shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={investor.org.logo_url}
-              alt={investor.org.name}
-              className="w-8 h-8"
+              src={logoUrl}
+              alt={investor.org?.name ?? 'Investor'}
+              className="w-8 h-8 object-cover"
             />
           </div>
 
@@ -173,7 +192,7 @@ export function MatchCard({ match, investor, index = 0 }: MatchCardProps) {
                   {investor.provider_type === 'vc' ? 'Venture Capital' : investor.provider_type}
                 </p>
               </div>
-              <MiniGauge score={match.overall_score} />
+              <MiniGauge score={displayScore} />
             </div>
 
             {/* Delta */}
@@ -200,6 +219,50 @@ export function MatchCard({ match, investor, index = 0 }: MatchCardProps) {
                 <span className="capitalize truncate">{preferredStages}</span>
               </span>
             </div>
+
+            {/* Fit pillars — stage, sector, geo, check-size, traction, readiness */}
+            {showFitPillars && match.breakdown?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-3">
+                {match.breakdown
+                  .filter((b) => FIT_PILLAR_MAP[b.dimension])
+                  .slice(0, 6)
+                  .map((b) => {
+                    const config = FIT_PILLAR_MAP[b.dimension];
+                    const Icon = config.icon;
+                    const isStrong = b.score >= 80;
+                    return (
+                      <Badge
+                        key={b.dimension}
+                        variant="outline"
+                        className={cn(
+                          'text-[10px] px-2 py-0 h-5 gap-0.5',
+                          isStrong ? 'border-score-excellent/40 text-score-excellent/90' : 'border-border text-muted-foreground'
+                        )}
+                      >
+                        <Icon className="w-2.5 h-2.5" />
+                        {config.label} {b.score}
+                      </Badge>
+                    );
+                  })}
+              </div>
+            )}
+
+            {/* AI Match Explanation — "Why this investor" / "Why not a fit" */}
+            {match.ai_explanation && (
+              <div className={cn(
+                'mt-3 p-2.5 rounded-lg border text-[11px] leading-relaxed',
+                displayScore >= 70
+                  ? 'bg-score-excellent/5 border-score-excellent/20 text-score-excellent/90'
+                  : displayScore >= 50
+                    ? 'bg-primary/5 border-primary/20 text-muted-foreground'
+                    : 'bg-score-fair/5 border-score-fair/20 text-muted-foreground'
+              )}>
+                <span className="font-semibold text-foreground text-[10px] uppercase tracking-wider block mb-1">
+                  {displayScore >= 70 ? 'Why this investor' : displayScore >= 50 ? 'Match insight' : 'Why not a fit yet'}
+                </span>
+                <p className="line-clamp-2">{match.ai_explanation}</p>
+              </div>
+            )}
           </div>
         </div>
       </button>

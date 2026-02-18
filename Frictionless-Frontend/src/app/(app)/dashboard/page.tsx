@@ -6,7 +6,6 @@ import {
   Gauge,
   Users,
   ListChecks,
-  FileText,
   Sun,
   Moon,
   Sunrise,
@@ -17,16 +16,18 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuthStore } from '@/stores/auth-store';
 import { useReadinessStore } from '@/stores/readiness-store';
 import { useTaskStore } from '@/stores/task-store';
-import { supabase } from '@/lib/supabase/client';
+import { getAuthHeaders } from '@/lib/api/tasks';
 import type { ActivityEvent } from '@/components/dashboard/ActivityTimeline';
 import { ScoreGauge } from '@/components/dashboard/ScoreGauge';
+import { ScoreSparkline } from '@/components/dashboard/ScoreSparkline';
 import { CategoryBreakdown } from '@/components/dashboard/CategoryBreakdown';
-import { GapsCard } from '@/components/dashboard/GapsCard';
-import { MatchPreviewList } from '@/components/dashboard/MatchPreviewList';
 import { TaskQuickList } from '@/components/dashboard/TaskQuickList';
 import { ActivityTimeline } from '@/components/dashboard/ActivityTimeline';
 import { QuickActions } from '@/components/dashboard/QuickActions';
+import { MomentumStrip } from '@/components/dashboard/MomentumStrip';
+import { AIInsightsCard } from '@/components/dashboard/AIInsightsCard';
 import { getTopGapsFromRubric } from '@/lib/readiness-rubric';
+import { dummyStartups } from '@/lib/dummy-data/startups';
 
 function getGreeting(): { text: string; icon: React.ReactNode } {
   const hour = new Date().getHours();
@@ -35,37 +36,8 @@ function getGreeting(): { text: string; icon: React.ReactNode } {
   if (hour >= 12 && hour < 17)
     return { text: 'Good afternoon', icon: <Sun className="w-5 h-5 text-score-fair" /> };
   if (hour >= 17 && hour < 21)
-    return { text: 'Good evening', icon: <Sunset className="w-5 h-5 text-electric-purple" /> };
-  return { text: 'Good evening', icon: <Moon className="w-5 h-5 text-electric-blue" /> };
-}
-
-interface QuickStatProps {
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  color: string;
-  delay: number;
-}
-
-function QuickStat({ icon, label, value, color, delay }: QuickStatProps) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay }}
-      className="glass-card p-4 flex items-center gap-3"
-    >
-      <div
-        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}
-      >
-        {icon}
-      </div>
-      <div>
-        <p className="text-xl font-mono font-bold text-foreground">{value}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
-      </div>
-    </motion.div>
-  );
+    return { text: 'Good evening', icon: <Sunset className="w-5 h-5 text-accent" /> };
+  return { text: 'Good evening', icon: <Moon className="w-5 h-5 text-primary" /> };
 }
 
 export default function DashboardPage() {
@@ -77,22 +49,23 @@ export default function DashboardPage() {
   const greeting = getGreeting();
   const firstName = user?.full_name?.split(' ')[0] ?? 'there';
 
+  // Fetch activity timeline
+  const [activityLoading, setActivityLoading] = useState(false);
   useEffect(() => {
     if (!isStartup || !bootstrapLoaded) return;
     let cancelled = false;
+    setActivityLoading(true);
     (async () => {
-      if (!supabase) return;
-      const { data } = await supabase.auth.getSession();
-      const token = data?.session?.access_token ?? null;
-      if (!token || cancelled) return;
       try {
-        const res = await fetch('/api/startup/activity?limit=30', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const headers = await getAuthHeaders();
+        if (cancelled || !Object.keys(headers).length) return;
+        const res = await fetch('/api/startup/activity?limit=20', { headers });
         const json = await res.json().catch(() => ({ activities: [] }));
         if (!cancelled) setActivities(json.activities ?? []);
       } catch {
         if (!cancelled) setActivities([]);
+      } finally {
+        if (!cancelled) setActivityLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -103,38 +76,11 @@ export default function DashboardPage() {
     [tasks]
   );
 
-  const biggestGaps = useMemo(() => {
-    const categories =
-      readiness?.score_summary && typeof readiness.score_summary === 'object'
-        ? Object.entries(readiness.score_summary)
-            .filter(([k]) => k !== '_overall' && k !== 'totals')
-            .map(([, v]) => {
-              const cat = v as { category_name?: string; percentage?: number };
-              return { name: cat.category_name ?? '', score: cat.percentage ?? 0 };
-            })
-            .filter((c) => c.name)
-        : [];
-    const gaps = getTopGapsFromRubric(
-      categories,
-      readiness?.scored_rubric as Record<string, unknown> | undefined,
-      3
-    );
-    return gaps.map((g) => {
-      const taskId = tasks.find(
-        (t) =>
-          t.title.trim().toLowerCase() === g.item.trim().toLowerCase() ||
-          g.item.toLowerCase().includes(t.title.trim().toLowerCase()) ||
-          t.title.toLowerCase().includes(g.item.trim().toLowerCase())
-      )?.id;
-      return { ...g, taskId };
-    });
-  }, [readiness?.score_summary, readiness?.scored_rubric, tasks]);
-
   // Data comes from layout prefetch (bootstrap). Show loading until bootstrap has run for startups.
   if (!user || (isStartup && !bootstrapLoaded)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-electric-blue" />
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">Loading dashboard…</p>
       </div>
     );
@@ -145,8 +91,8 @@ export default function DashboardPage() {
       ? formatDistanceToNow(new Date(readiness.updated_at), { addSuffix: true })
       : undefined;
 
+  const startup = dummyStartups[0];
   const readinessScore = readiness?.score_summary?._overall?.raw_percentage ?? startup.assessment.overall_score;
-  // Delta = current score vs previous (from score history)
   const readinessDelta =
     readiness && scoreHistory.length >= 2
       ? Math.round((readinessScore - scoreHistory[scoreHistory.length - 2].score) * 10) / 10
@@ -169,99 +115,129 @@ export default function DashboardPage() {
           .filter((c) => c.name)
       : startup.assessment.categories;
 
+  const overdueCount = useMemo(
+    () => tasks.filter((t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done').length,
+    [tasks],
+  );
+  const tasksClosedRecently = useMemo(
+    () => tasks.filter((t) => t.status === 'done').length,
+    [tasks],
+  );
+
+  // Score projection from top tasks with potential_points
+  const scoreProjection = useMemo(() => {
+    const topTaskPts = [...tasks]
+      .filter((t) => t.status !== 'done' && t.potential_points)
+      .sort((a, b) => (b.potential_points ?? 0) - (a.potential_points ?? 0))
+      .slice(0, 5)
+      .reduce((sum, t) => sum + (t.potential_points ?? 0), 0);
+    return readinessScore + topTaskPts;
+  }, [tasks, readinessScore]);
+
+  const hasAssessment = !!readiness;
+
   return (
-    <div className="p-4 lg:p-8 space-y-6 max-w-[1400px] mx-auto">
-      {/* ────────── Greeting ────────── */}
+    <div className="p-4 lg:p-6 xl:p-8 2xl:p-10 space-y-6 w-full max-w-[1600px] xl:max-w-[1920px] mx-auto">
+      {/* ════════ HERO SECTION ════════ */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="flex items-center gap-3"
+        transition={{ duration: 0.5 }}
+        className="dashboard-hero-gradient rounded-2xl border border-border/50 p-6 lg:p-8"
       >
-        {greeting.icon}
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground">
-            {greeting.text}, {firstName}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Here&apos;s what&apos;s happening with {user?.org_name ?? 'your organization'} today.
-          </p>
+        <div className="flex flex-col lg:flex-row lg:items-center gap-6">
+          {/* Greeting */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-1">
+              {greeting.icon}
+              <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground">
+                {greeting.text}, {firstName}
+              </h1>
+            </div>
+            <p className="text-sm text-muted-foreground ml-8 lg:ml-8">
+              Here&apos;s what&apos;s happening with {user?.org_name ?? 'your organization'} today.
+            </p>
+          </div>
+
+          {/* Inline Score Gauge + Sparkline */}
+          <div className="flex items-center gap-4 lg:gap-6 shrink-0">
+            <ScoreGauge
+              score={readinessScore}
+              delta={readinessDelta}
+              badge={readiness ? 'assessed' : startup.assessment.badge}
+              lastAssessed={lastAssessedText}
+              variant="inline"
+            />
+            {scoreHistory.length > 0 && (
+              <ScoreSparkline
+                history={scoreHistory}
+                width={160}
+                height={40}
+                className="hidden md:block"
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Metric Chips */}
+        <div className="flex flex-wrap gap-2 mt-5">
+          <MomentumStrip
+            title="Readiness"
+            icon={Gauge}
+            value={readinessScore}
+            trend={readinessDelta > 0 ? 'up' : readinessDelta < 0 ? 'down' : 'flat'}
+            trendLabel={readinessDelta !== 0 ? `${readinessDelta > 0 ? '+' : ''}${readinessDelta}` : undefined}
+            variant="chip"
+          />
+          <MomentumStrip
+            title="Investor"
+            icon={Users}
+            value="0 new"
+            trendLabel="matches"
+            variant="chip"
+          />
+          <MomentumStrip
+            title="Execution"
+            icon={ListChecks}
+            value={tasksClosedRecently}
+            trendLabel="closed"
+            variant="chip"
+          />
         </div>
       </motion.div>
 
-      {/* ────────── Quick Stats Row ────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <QuickStat
-          icon={<Gauge className="w-5 h-5 text-electric-blue" />}
-          label="Readiness Score"
-          value={readinessScore}
-          color="bg-electric-blue/10"
-          delay={0.1}
-        />
-        <QuickStat
-          icon={<Users className="w-5 h-5 text-electric-purple" />}
-          label="Matches"
-          value={0}
-          color="bg-electric-purple/10"
-          delay={0.15}
-        />
-        <QuickStat
-          icon={<ListChecks className="w-5 h-5 text-score-fair" />}
-          label="Pending Tasks"
-          value={incompleteTasks.length}
-          color="bg-score-fair/10"
-          delay={0.2}
-        />
-        <QuickStat
-          icon={<FileText className="w-5 h-5 text-electric-cyan" />}
-          label="Documents"
-          value={documentCount}
-          color="bg-electric-cyan/10"
-          delay={0.25}
-        />
-      </div>
-
-      {/* ────────── Main Grid ────────── */}
+      {/* ════════ MAIN 2-COLUMN GRID ════════ */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-        {/* Row 1: Score Gauge + Category Breakdown */}
-        <ScoreGauge
-          score={readinessScore}
-          delta={readinessDelta}
-          badge={readiness ? 'assessed' : startup.assessment.badge}
-          lastAssessed={lastAssessedText}
-          className="lg:col-span-4"
-        />
-        <CategoryBreakdown
-          categories={readinessCategories}
-          className="lg:col-span-8"
-        />
+        {/* ── LEFT COLUMN (8 cols) ── */}
+        <div className="lg:col-span-8 space-y-4 lg:space-y-6">
+          {/* AI Insights Card */}
+          <AIInsightsCard
+            hasAssessment={hasAssessment}
+            currentScore={readinessScore}
+            scoreProjection={scoreProjection}
+          />
 
-        {/* Row 2: Gaps + Matches + Tasks */}
-        <GapsCard
-          missingData={biggestGaps}
-          className="lg:col-span-4"
-        />
-        <MatchPreviewList
-          matches={[]}
-          investors={[]}
-          maxItems={4}
-          className="lg:col-span-4"
-        />
-        <TaskQuickList
-          taskGroups={taskGroups}
-          maxItems={5}
-          className="lg:col-span-4"
-        />
+          {/* Category Breakdown */}
+          <CategoryBreakdown categories={readinessCategories} />
 
-        {/* Row 3: Quick Actions */}
-        <QuickActions className="lg:col-span-12" />
+          {/* Activity Timeline — compact */}
+          <ActivityTimeline
+            activities={activities}
+            maxItems={5}
+          />
+        </div>
 
-        {/* Row 4: Activity Timeline */}
-        <ActivityTimeline
-          activities={activities}
-          maxItems={10}
-          className="lg:col-span-12"
-        />
+        {/* ── RIGHT COLUMN (4 cols) ── */}
+        <div className="lg:col-span-4 space-y-4 lg:space-y-6">
+          {/* Smart Next Steps */}
+          <TaskQuickList
+            taskGroups={taskGroups}
+            maxItems={5}
+          />
+
+          {/* Quick Actions — compact 2x2 */}
+          <QuickActions />
+        </div>
       </div>
     </div>
   );

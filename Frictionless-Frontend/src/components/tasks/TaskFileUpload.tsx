@@ -96,15 +96,15 @@ export function TaskFileUpload({ onFileSelect, className }: TaskFileUploadProps)
             className={cn(
               'relative flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-dashed cursor-pointer transition-all',
               isDragOver
-                ? 'border-electric-blue bg-electric-blue/5'
-                : 'border-obsidian-600 hover:border-obsidian-500 bg-obsidian-800/30'
+                ? 'border-primary bg-primary/5'
+                : 'border-border hover:border-primary/50 bg-muted'
             )}
           >
             <div className={cn(
               'w-12 h-12 rounded-xl flex items-center justify-center transition-colors',
-              isDragOver ? 'bg-electric-blue/20' : 'bg-obsidian-700/50'
+              isDragOver ? 'bg-primary/20' : 'bg-muted/50'
             )}>
-              <Upload className={cn('w-6 h-6', isDragOver ? 'text-electric-blue' : 'text-obsidian-400')} />
+              <Upload className={cn('w-6 h-6', isDragOver ? 'text-primary' : 'text-muted-foreground')} />
             </div>
             <div className="text-center">
               <p className="text-sm font-medium text-foreground">
@@ -127,11 +127,11 @@ export function TaskFileUpload({ onFileSelect, className }: TaskFileUploadProps)
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="p-4 rounded-xl bg-obsidian-800/60 border border-obsidian-700/50"
+            className="p-4 rounded-xl bg-muted/60 border border-border"
           >
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-lg bg-obsidian-700/50 flex items-center justify-center flex-shrink-0">
-                <FileIcon className="w-5 h-5 text-electric-blue" />
+              <div className="w-10 h-10 rounded-lg bg-muted/50 flex items-center justify-center flex-shrink-0">
+                <FileIcon className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
@@ -140,7 +140,7 @@ export function TaskFileUpload({ onFileSelect, className }: TaskFileUploadProps)
                   </p>
                   <button
                     onClick={removeFile}
-                    className="p-1 rounded-md hover:bg-obsidian-700 text-obsidian-400 hover:text-foreground transition-colors flex-shrink-0 ml-2"
+                    className="p-1 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 ml-2"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -149,11 +149,11 @@ export function TaskFileUpload({ onFileSelect, className }: TaskFileUploadProps)
                   {formatFileSize(uploadedFile.file.size)}
                 </p>
                 {/* Progress bar */}
-                <div className="mt-2 h-1.5 rounded-full bg-obsidian-700/50 overflow-hidden">
+                <div className="mt-2 h-1.5 rounded-full bg-muted/50 overflow-hidden">
                   <motion.div
                     className={cn(
                       'h-full rounded-full',
-                      uploadedFile.done ? 'bg-score-excellent' : 'bg-electric-blue'
+                      uploadedFile.done ? 'bg-score-excellent' : 'bg-primary'
                     )}
                     initial={{ width: 0 }}
                     animate={{ width: `${uploadedFile.progress}%` }}

@@ -52,9 +52,9 @@ function CustomTooltip({
   const data = payload[0].payload;
 
   return (
-    <div className="glass-card px-3 py-2 text-xs border border-obsidian-600/50 max-w-[200px]">
+    <div className="glass-card px-3 py-2 text-xs border border-border/50 max-w-[200px]">
       <p className="text-foreground font-semibold">{data.label}</p>
-      <p className="text-electric-blue font-bold text-sm mt-0.5">{data.score}/100</p>
+      <p className="text-primary font-bold text-sm mt-0.5">{data.score}/100</p>
       <p className="text-muted-foreground mt-1">{data.detail}</p>
     </div>
   );

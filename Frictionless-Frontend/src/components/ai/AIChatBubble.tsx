@@ -33,8 +33,8 @@ export function AIChatBubble({ role, content, timestamp, isStreaming = false, on
         <AvatarFallback className={cn(
           'text-xs font-bold',
           isUser
-            ? 'bg-obsidian-600 text-obsidian-200'
-            : 'bg-electric-blue/20 text-electric-blue'
+            ? 'bg-border text-muted-foreground'
+            : 'bg-primary/20 text-primary'
         )}>
           {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
         </AvatarFallback>
@@ -46,7 +46,7 @@ export function AIChatBubble({ role, content, timestamp, isStreaming = false, on
           className={cn(
             'px-4 py-3 rounded-2xl text-sm leading-relaxed',
             isUser
-              ? 'bg-obsidian-700/80 text-foreground rounded-tr-md'
+              ? 'bg-muted/80 text-foreground rounded-tr-md'
               : 'glass-card rounded-tl-md'
           )}
         >
@@ -65,7 +65,7 @@ export function AIChatBubble({ role, content, timestamp, isStreaming = false, on
         </div>
         {/* Timestamp */}
         <p className={cn(
-          'text-[10px] text-obsidian-500 mt-1 px-1',
+          'text-[10px] text-muted-foreground mt-1 px-1',
           isUser ? 'text-right' : 'text-left'
         )}>
           {format(parseISO(timestamp), 'h:mm a')}
@@ -85,7 +85,7 @@ export function AITypingIndicator() {
       className="flex gap-3"
     >
       <Avatar className="h-8 w-8 flex-shrink-0 mt-1">
-        <AvatarFallback className="bg-electric-blue/20 text-electric-blue text-xs font-bold">
+        <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
           <Bot className="w-4 h-4" />
         </AvatarFallback>
       </Avatar>
@@ -94,7 +94,7 @@ export function AITypingIndicator() {
           {[0, 1, 2].map((i) => (
             <motion.div
               key={i}
-              className="w-2 h-2 rounded-full bg-electric-blue/60"
+              className="w-2 h-2 rounded-full bg-primary/60"
               animate={{ y: [0, -4, 0] }}
               transition={{
                 repeat: Infinity,

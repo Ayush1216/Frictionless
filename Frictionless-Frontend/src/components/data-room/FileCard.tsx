@@ -42,7 +42,7 @@ function getFileIcon(fileType: string) {
     return { icon: FileImage, color: 'text-purple-400', bg: 'bg-purple-400/10' };
   if (fileType.includes('zip') || fileType.includes('archive'))
     return { icon: Archive, color: 'text-amber-400', bg: 'bg-amber-400/10' };
-  return { icon: File, color: 'text-obsidian-400', bg: 'bg-obsidian-400/10' };
+  return { icon: File, color: 'text-muted-foreground', bg: 'bg-muted' };
 }
 
 function getCategoryLabel(category: DummyDocumentCategory): string {
@@ -67,7 +67,7 @@ function getValidationStyle(status: DummyValidationStatus) {
     case 'invalid':
       return 'bg-red-500/10 text-red-400 border-red-500/20';
     case 'expired':
-      return 'bg-obsidian-500/10 text-obsidian-400 border-obsidian-500/20';
+      return 'bg-muted text-muted-foreground border-border';
   }
 }
 
@@ -102,7 +102,7 @@ export function FileCard({
       transition={{ duration: 0.3, delay: index * 0.05 }}
       whileHover={{ y: -2, boxShadow: '0 0 20px rgba(59,130,246,0.15)' }}
       onClick={onClick}
-      className="glass-card p-4 cursor-pointer group hover:border-electric-blue/30 transition-all duration-200"
+      className="glass-card p-4 cursor-pointer group hover:border-primary/30 transition-all duration-200"
     >
       {/* Top row: icon + actions */}
       <div className="flex items-start justify-between mb-3">
@@ -112,11 +112,11 @@ export function FileCard({
         <DropdownMenu>
           <DropdownMenuTrigger
             onClick={(e) => e.stopPropagation()}
-            className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-obsidian-700 transition-all"
+            className="p-1 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
           >
             <MoreVertical className="w-4 h-4 text-muted-foreground" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-obsidian-800 border-obsidian-600">
+          <DropdownMenuContent align="end" className="bg-card border-border">
             <DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation();
@@ -155,7 +155,7 @@ export function FileCard({
 
       {/* Badges row */}
       <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-obsidian-700 text-muted-foreground">
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-muted text-muted-foreground">
           {getCategoryLabel(doc.category)}
         </Badge>
         <Badge

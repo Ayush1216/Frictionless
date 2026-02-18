@@ -38,8 +38,8 @@ export function AIExtractionCard({ extractions, onAcceptAll, onEdit, onReject, c
     >
       {/* Header */}
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-electric-purple/20 flex items-center justify-center">
-          <Sparkles className="w-4 h-4 text-electric-purple" />
+        <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+          <Sparkles className="w-4 h-4 text-accent" />
         </div>
         <div>
           <h4 className="text-sm font-semibold text-foreground">Extracted Data</h4>
@@ -69,7 +69,7 @@ export function AIExtractionCard({ extractions, onAcceptAll, onEdit, onReject, c
               {String(extraction.value ?? '—')}
             </div>
             {/* Confidence bar */}
-            <div className="h-1 rounded-full bg-obsidian-700/50 overflow-hidden">
+            <div className="h-1 rounded-full bg-muted/50 overflow-hidden">
               <motion.div
                 className={cn('h-full rounded-full', confidenceColor(extraction.confidence))}
                 initial={{ width: 0 }}
@@ -92,7 +92,7 @@ export function AIExtractionCard({ extractions, onAcceptAll, onEdit, onReject, c
         </button>
         <button
           onClick={onEdit}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-obsidian-700/50 text-foreground border border-obsidian-600/50 text-sm font-medium hover:bg-obsidian-700 transition-colors"
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-muted/50 text-foreground border border-border/50 text-sm font-medium hover:bg-muted transition-colors"
         >
           <Pencil className="w-3.5 h-3.5" />
           Edit

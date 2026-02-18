@@ -47,8 +47,8 @@ export default function SettingsLayout({
                     className={cn(
                       'flex items-center gap-3 px-4 py-3 rounded-xl transition-colors',
                       active
-                        ? 'bg-electric-blue/15 text-electric-blue'
-                        : 'text-obsidian-300 hover:bg-obsidian-800/50 hover:text-foreground'
+                        ? 'bg-primary/15 text-primary'
+                        : 'text-muted-foreground hover:bg-card/50 hover:text-foreground'
                     )}
                     whileHover={{ x: 2 }}
                     whileTap={{ scale: 0.99 }}
@@ -58,7 +58,7 @@ export default function SettingsLayout({
                     {active && (
                       <motion.div
                         layoutId="settings-nav-active"
-                        className="ml-auto w-1.5 h-1.5 rounded-full bg-electric-blue"
+                        className="ml-auto w-1.5 h-1.5 rounded-full bg-primary"
                         transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
                       />
                     )}
@@ -86,8 +86,8 @@ export default function SettingsLayout({
                       className={cn(
                         'flex items-center gap-2 px-4 py-2.5 rounded-xl whitespace-nowrap transition-colors',
                         active
-                          ? 'bg-electric-blue/15 text-electric-blue'
-                          : 'bg-obsidian-800/80 text-obsidian-300'
+                          ? 'bg-primary/15 text-primary'
+                          : 'bg-card/80 text-muted-foreground'
                       )}
                       whileTap={{ scale: 0.98 }}
                     >

@@ -22,7 +22,7 @@ export interface SectionCardProps {
 export function SectionCard({
   title,
   icon: Icon,
-  iconClassName = 'text-electric-blue',
+  iconClassName = 'text-primary',
   children,
   minHeightRem,
   className,
@@ -34,13 +34,13 @@ export function SectionCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        'rounded-2xl border border-obsidian-700/50 bg-obsidian-900/40 overflow-hidden flex flex-col',
+        'rounded-2xl border border-border/50 bg-background/40 overflow-hidden flex flex-col',
         'transition-shadow hover:shadow-lg hover:shadow-black/10',
         className
       )}
       style={minHeightRem != null ? { minHeight: `${minHeightRem}rem` } : undefined}
     >
-      <div className="flex items-center justify-between gap-2 px-6 py-4 border-b border-obsidian-700/30">
+      <div className="flex items-center justify-between gap-2 px-6 py-4 border-b border-border/30">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 truncate">
           {Icon && <Icon className={cn('w-5 h-5 shrink-0', iconClassName)} />}
           {title}

@@ -12,7 +12,8 @@ const getOpenAIClient = () => {
 };
 
 export async function* streamChat(
-  messages: { role: 'system' | 'user' | 'assistant'; content: string }[]
+  messages: { role: 'system' | 'user' | 'assistant'; content: string }[],
+  options?: { model?: string; temperature?: number; max_tokens?: number }
 ): AsyncGenerator<string> {
   const client = getOpenAIClient();
   if (!client) {
@@ -27,11 +28,11 @@ export async function* streamChat(
   }
 
   const stream = await client.chat.completions.create({
-    model: 'gpt-4o',
+    model: options?.model ?? 'gpt-4.1-mini',
     messages,
     stream: true,
-    temperature: 0.7,
-    max_tokens: 4096,
+    temperature: options?.temperature ?? 0.7,
+    max_tokens: options?.max_tokens ?? 4096,
   });
 
   for await (const chunk of stream) {

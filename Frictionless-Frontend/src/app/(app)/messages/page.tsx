@@ -152,9 +152,9 @@ export default function MessagesPage() {
               : { width: 320, opacity: 1, flex: 0 }
           }
           transition={{ duration: 0.2 }}
-          className="flex flex-col border-r border-obsidian-600/50 shrink-0 overflow-hidden"
+          className="flex flex-col border-r border-border/50 shrink-0 overflow-hidden"
         >
-          <div className="p-3 border-b border-obsidian-600/50">
+          <div className="p-3 border-b border-border/50">
             <h2 className="text-lg font-display font-semibold text-foreground lg:hidden">
               Conversations
             </h2>
@@ -168,8 +168,8 @@ export default function MessagesPage() {
                 key={conv.id}
                 onClick={() => handleSelectConversation(conv.id)}
                 className={cn(
-                  'w-full flex items-center gap-3 p-3 text-left transition-colors hover:bg-obsidian-700/50',
-                  selectedId === conv.id && 'bg-electric-blue/10 border-l-2 border-l-electric-blue'
+                  'w-full flex items-center gap-3 p-3 text-left transition-colors hover:bg-muted/50',
+                  selectedId === conv.id && 'bg-primary/10 border-l-2 border-l-primary'
                 )}
                 whileTap={{ scale: 0.99 }}
               >
@@ -178,9 +178,9 @@ export default function MessagesPage() {
                   <AvatarFallback
                     className={cn(
                       'text-sm font-bold',
-                      conv.type === 'ai' && 'bg-electric-cyan/20 text-electric-cyan',
-                      conv.type === 'investor' && 'bg-electric-purple/20 text-electric-purple',
-                      conv.type === 'team' && 'bg-electric-blue/20 text-electric-blue'
+                      conv.type === 'ai' && 'bg-accent/20 text-accent',
+                      conv.type === 'investor' && 'bg-accent/20 text-accent',
+                      conv.type === 'team' && 'bg-primary/20 text-primary'
                     )}
                   >
                     {conv.type === 'ai' ? <Bot className="w-5 h-5" /> : getInitials(conv.name)}
@@ -189,12 +189,12 @@ export default function MessagesPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-foreground truncate">{conv.name}</span>
-                    <span className="text-[10px] text-obsidian-500 shrink-0">{conv.timestamp}</span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">{conv.timestamp}</span>
                   </div>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">{conv.lastMessage}</p>
                 </div>
                 {conv.unreadCount > 0 && (
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-electric-blue text-white text-[10px] font-bold flex items-center justify-center">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
                     {conv.unreadCount}
                   </span>
                 )}
@@ -218,10 +218,10 @@ export default function MessagesPage() {
                 className="flex flex-col h-full"
               >
                 {/* Chat header */}
-                <div className="flex items-center gap-3 p-3 border-b border-obsidian-600/50">
+                <div className="flex items-center gap-3 p-3 border-b border-border/50">
                   <button
                     onClick={() => setIsMobileChatOpen(false)}
-                    className="lg:hidden p-1 -ml-1 rounded-lg hover:bg-obsidian-700/50"
+                    className="lg:hidden p-1 -ml-1 rounded-lg hover:bg-muted/50"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
@@ -230,9 +230,9 @@ export default function MessagesPage() {
                     <AvatarFallback
                       className={cn(
                         'text-xs font-bold',
-                        selected.type === 'ai' && 'bg-electric-cyan/20 text-electric-cyan',
-                        selected.type === 'investor' && 'bg-electric-purple/20 text-electric-purple',
-                        selected.type === 'team' && 'bg-electric-blue/20 text-electric-blue'
+                        selected.type === 'ai' && 'bg-accent/20 text-accent',
+                        selected.type === 'investor' && 'bg-accent/20 text-accent',
+                        selected.type === 'team' && 'bg-primary/20 text-primary'
                       )}
                     >
                       {selected.type === 'ai' ? <Bot className="w-4 h-4" /> : getInitials(selected.name)}
@@ -259,7 +259,7 @@ export default function MessagesPage() {
                     >
                       {msg.role === 'other' && (
                         <Avatar className="h-8 w-8 shrink-0 mt-1">
-                          <AvatarFallback className="bg-obsidian-700 text-obsidian-300 text-xs">
+                          <AvatarFallback className="bg-muted text-muted-foreground text-xs">
                             {selected.type === 'ai' ? <Bot className="w-4 h-4" /> : getInitials(selected.name)}
                           </AvatarFallback>
                         </Avatar>
@@ -268,8 +268,8 @@ export default function MessagesPage() {
                         className={cn(
                           'max-w-[80%] rounded-2xl px-4 py-2.5',
                           msg.role === 'user'
-                            ? 'bg-electric-blue text-white rounded-br-md'
-                            : 'bg-obsidian-700/80 text-foreground rounded-bl-md'
+                            ? 'bg-primary text-white rounded-br-md'
+                            : 'bg-muted/80 text-foreground rounded-bl-md'
                         )}
                       >
                         <p className="text-sm">{msg.content}</p>
@@ -280,7 +280,7 @@ export default function MessagesPage() {
                       </div>
                       {msg.role === 'user' && (
                         <Avatar className="h-8 w-8 shrink-0 mt-1">
-                          <AvatarFallback className="bg-electric-blue/20 text-electric-blue text-xs">
+                          <AvatarFallback className="bg-primary/20 text-primary text-xs">
                             <User className="w-4 h-4" />
                           </AvatarFallback>
                         </Avatar>
@@ -290,7 +290,7 @@ export default function MessagesPage() {
                 </div>
 
                 {/* Input */}
-                <div className="p-3 border-t border-obsidian-600/50">
+                <div className="p-3 border-t border-border/50">
                   <div className="flex gap-2">
                     <Button variant="ghost" size="icon" className="shrink-0">
                       <Paperclip className="w-4 h-4" />
@@ -302,7 +302,7 @@ export default function MessagesPage() {
                       onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
                       className="flex-1"
                     />
-                    <Button size="icon" onClick={handleSend} className="shrink-0 bg-electric-blue hover:bg-electric-blue/90">
+                    <Button size="icon" onClick={handleSend} className="shrink-0 bg-primary hover:bg-primary/90">
                       <Send className="w-4 h-4" />
                     </Button>
                   </div>
@@ -316,8 +316,8 @@ export default function MessagesPage() {
                 exit={{ opacity: 0 }}
                 className="flex-1 flex flex-col items-center justify-center p-8 text-center"
               >
-                <div className="w-16 h-16 rounded-2xl bg-obsidian-700/50 flex items-center justify-center mb-4">
-                  <MessageSquare className="w-8 h-8 text-obsidian-400" />
+                <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+                  <MessageSquare className="w-8 h-8 text-muted-foreground" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">Select a conversation</h3>
                 <p className="text-sm text-muted-foreground max-w-sm">

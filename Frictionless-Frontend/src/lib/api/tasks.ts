@@ -1,10 +1,28 @@
 import type { Task, TaskComment, TaskGroup } from '@/types/database';
 import { supabase } from '@/lib/supabase/client';
 
+/**
+ * Cache the auth token for 30s to avoid calling getSession() on every API call.
+ * The token itself lasts ~1hr so a 30s cache is safe.
+ */
+let _cachedToken: string | null = null;
+let _cachedTokenExpiry = 0;
+const TOKEN_CACHE_MS = 30_000; // 30 seconds
+
 export const getAuthHeaders = async (): Promise<HeadersInit> => {
   if (!supabase) return {};
+
+  const now = Date.now();
+  if (_cachedToken && _cachedTokenExpiry > now) {
+    return { Authorization: `Bearer ${_cachedToken}` };
+  }
+
   const { data } = await supabase.auth.getSession();
   const token = data?.session?.access_token ?? null;
+  if (token) {
+    _cachedToken = token;
+    _cachedTokenExpiry = now + TOKEN_CACHE_MS;
+  }
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 

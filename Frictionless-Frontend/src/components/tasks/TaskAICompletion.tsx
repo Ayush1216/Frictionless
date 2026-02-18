@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, MessageSquare, Loader2, PartyPopper, Send, X, Paperclip } from 'lucide-react';
+import { Sparkles, MessageSquare, Loader2, PartyPopper, Send, X, Paperclip, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TaskFileUpload } from './TaskFileUpload';
 import { AIExtractionCard } from '@/components/ai/AIExtractionCard';
@@ -19,11 +19,16 @@ const demoExtractions: AIExtraction[] = [
   { field: 'Share Classes', value: 'Common + Series Seed Preferred', confidence: 0.78 },
 ];
 
+/** First message from the AI when chat has no history — so the AI starts the conversation. */
+const INITIAL_AI_MESSAGE =
+  "Hi! I'm here to help you complete this task. You can describe what you've done so far, ask how to complete it, or attach a document (e.g. proof or supporting file) using the paperclip. What would you like to do?";
+
 type CompletionStep = 'idle' | 'file-selected' | 'analyzing' | 'results' | 'accepted' | 'chat';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  created_at?: string;
 }
 
 interface TaskAICompletionProps {
@@ -79,18 +84,25 @@ export function TaskAICompletion({
     setLoadingHistory(true);
     try {
       const { messages } = await fetchTaskChatMessages(taskId);
-      setChatMessages(
-        (messages ?? []).map((m) => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-        }))
-      );
+      const list = (messages ?? []).map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+        created_at: (m as { created_at?: string }).created_at,
+      }));
+      setChatMessages(list.length > 0 ? list : [{ role: 'assistant', content: INITIAL_AI_MESSAGE }]);
     } catch {
-      setChatMessages([]);
+      setChatMessages([{ role: 'assistant', content: INITIAL_AI_MESSAGE }]);
     } finally {
       setLoadingHistory(false);
     }
   }, [taskId]);
+
+  // Load history when opening inline chat (step === 'chat') so persisted messages show
+  useEffect(() => {
+    if (step === 'chat' && !chatFullPanel && chatMessages.length === 0) {
+      loadChatMessages();
+    }
+  }, [step, chatFullPanel, chatMessages.length, loadChatMessages]);
 
   useEffect(() => {
     if (chatFullPanel) {
@@ -208,32 +220,48 @@ export function TaskAICompletion({
     }
   }, [chatLoading, taskId]);
 
+  const handleNewChat = useCallback(() => {
+    setChatMessages([{ role: 'assistant', content: INITIAL_AI_MESSAGE }]);
+    setSuggestComplete(false);
+  }, []);
+
   if (chatFullPanel) {
     return (
       <div className={cn('flex flex-col flex-1 min-h-0', className)}>
-        <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-obsidian-700/50 p-3 space-y-2 flex flex-col">
+        <div className="flex justify-end shrink-0 mb-2">
+          <button
+            type="button"
+            onClick={handleNewChat}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border transition-colors"
+            title="Start a new chat"
+          >
+            <MessageCircle className="w-3.5 h-3.5" />
+            New chat
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-border p-3 space-y-2 flex flex-col">
           {loadingHistory ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-electric-blue" />
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : (
             <>
-              {chatMessages.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Ask how to complete this task. Describe what you&apos;ve done or what you need help with.
-                </p>
-              )}
               {chatMessages.map((m, i) => (
                 <div
                   key={i}
                   className={cn(
                     'text-sm rounded-lg px-3 py-2 flex-shrink-0',
                     m.role === 'user'
-                      ? 'bg-electric-blue/15 ml-4 text-foreground'
-                      : 'bg-obsidian-700/50 mr-4 text-foreground'
+                      ? 'bg-primary/15 ml-4 text-foreground'
+                      : 'bg-muted mr-4 text-foreground'
                   )}
                 >
-                  {m.content}
+                  <div>{m.content}</div>
+                  {m.created_at && (
+                    <div className="text-[10px] text-muted-foreground mt-1 opacity-70">
+                      {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
                 </div>
               ))}
             </>
@@ -251,7 +279,7 @@ export function TaskAICompletion({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={chatLoading}
-            className="p-2 rounded-lg border border-obsidian-700/50 text-obsidian-400 hover:text-foreground hover:bg-obsidian-800/50 disabled:opacity-50"
+            className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50"
             title="Upload proof document (adds to Data Room and updates score)"
           >
             <Paperclip className="w-4 h-4" />
@@ -261,12 +289,12 @@ export function TaskAICompletion({
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChatSend()}
             placeholder="Type your message or attach a document..."
-            className="flex-1 px-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50 text-sm text-foreground placeholder:text-obsidian-500 focus:outline-none focus:border-electric-blue/50"
+            className="flex-1 px-3 py-2 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
           />
           <button
             onClick={handleChatSend}
             disabled={chatLoading || !chatInput.trim()}
-            className="p-2 rounded-lg bg-electric-blue text-white hover:bg-electric-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {chatLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -291,7 +319,7 @@ export function TaskAICompletion({
   return (
     <div className={cn('space-y-4', className)}>
       <div className="flex items-center gap-2 mb-2">
-        <Sparkles className="w-4 h-4 text-electric-purple" />
+        <Sparkles className="w-4 h-4 text-accent" />
         <h4 className="text-sm font-semibold text-foreground">Complete with AI</h4>
       </div>
 
@@ -308,7 +336,7 @@ export function TaskAICompletion({
               initial={{ scale: 0 }}
               animate={{ scale: [0, 1.2, 1] }}
               transition={{ duration: 0.5 }}
-              className="flex flex-col items-center gap-3 bg-obsidian-800/90 backdrop-blur-xl border border-score-excellent/30 rounded-2xl p-8 shadow-xl"
+              className="flex flex-col items-center gap-3 bg-card/90 backdrop-blur-xl border border-score-excellent/30 rounded-2xl p-8 shadow-xl"
             >
               <PartyPopper className="w-12 h-12 text-score-excellent" />
               <p className="text-lg font-display font-bold text-foreground">Task Complete!</p>
@@ -322,15 +350,15 @@ export function TaskAICompletion({
           <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
             <TaskFileUpload onFileSelect={handleFileSelect} />
             <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-obsidian-700/50" />
-              <span className="text-xs text-obsidian-500 font-medium">or</span>
-              <div className="flex-1 h-px bg-obsidian-700/50" />
+              <div className="flex-1 h-px bg-muted" />
+              <span className="text-xs text-muted-foreground font-medium">or</span>
+              <div className="flex-1 h-px bg-muted" />
             </div>
             <button
               onClick={handleChatClick}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-obsidian-800/50 border border-obsidian-700/50 text-sm font-medium text-foreground hover:bg-obsidian-700/50 hover:border-electric-blue/20 transition-all"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-muted border border-border text-sm font-medium text-foreground hover:bg-muted hover:border-primary/20 transition-all"
             >
-              <MessageSquare className="w-4 h-4 text-electric-blue" />
+              <MessageSquare className="w-4 h-4 text-primary" />
               Chat with AI
             </button>
           </motion.div>
@@ -349,29 +377,29 @@ export function TaskAICompletion({
               <span className="text-sm font-medium text-foreground">Chat with AI</span>
               <button
                 onClick={() => setStep('idle')}
-                className="p-1.5 rounded-lg hover:bg-obsidian-700/50 text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                 title="Close chat"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex-1 min-h-[240px] overflow-y-auto rounded-lg bg-obsidian-900/50 border border-obsidian-700/50 p-3 space-y-2">
-              {chatMessages.length === 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Ask how to complete this task. Describe what you&apos;ve done or what you need help with.
-                </p>
-              )}
+            <div className="flex-1 min-h-[240px] overflow-y-auto rounded-lg bg-muted/50 border border-border p-3 space-y-2">
               {chatMessages.map((m, i) => (
                 <div
                   key={i}
                   className={cn(
                     'text-sm rounded-lg px-3 py-2',
                     m.role === 'user'
-                      ? 'bg-electric-blue/15 ml-4 text-foreground'
-                      : 'bg-obsidian-700/50 mr-4 text-foreground'
+                      ? 'bg-primary/15 ml-4 text-foreground'
+                      : 'bg-muted mr-4 text-foreground'
                   )}
                 >
-                  {m.content}
+                  <div>{m.content}</div>
+                  {m.created_at && (
+                    <div className="text-[10px] text-muted-foreground mt-1 opacity-70">
+                      {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -381,12 +409,12 @@ export function TaskAICompletion({
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChatSend()}
                 placeholder="Type your message..."
-                className="flex-1 px-3 py-2 rounded-lg bg-obsidian-800/50 border border-obsidian-700/50 text-sm text-foreground placeholder:text-obsidian-500 focus:outline-none focus:border-electric-blue/50"
+                className="flex-1 px-3 py-2 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
               />
               <button
                 onClick={handleChatSend}
                 disabled={chatLoading || !chatInput.trim()}
-                className="p-2 rounded-lg bg-electric-blue text-white hover:bg-electric-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {chatLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -420,7 +448,7 @@ export function TaskAICompletion({
               animate={{ rotate: 360 }}
               transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
             >
-              <Loader2 className="w-8 h-8 text-electric-blue" />
+              <Loader2 className="w-8 h-8 text-primary" />
             </motion.div>
             <div className="text-center">
               <p className="text-sm font-semibold text-foreground">AI is analyzing your document...</p>
@@ -437,7 +465,7 @@ export function TaskAICompletion({
                   className="flex items-center gap-2 text-xs"
                 >
                   <motion.div
-                    className="w-4 h-4 rounded-full border-2 border-electric-blue flex items-center justify-center"
+                    className="w-4 h-4 rounded-full border-2 border-primary flex items-center justify-center"
                     animate={step === 'analyzing' && i <= 1 ? { borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,0.2)' } : {}}
                     transition={{ delay: i * 0.6 }}
                   >

@@ -9,6 +9,8 @@ import { TopBar } from './TopBar';
 import { SpotlightSearch } from './SpotlightSearch';
 import { NotificationCenter } from './NotificationCenter';
 import { BreadcrumbNav } from './BreadcrumbNav';
+import { AIFloatingButton } from '@/components/ai/AIFloatingButton';
+import { AIHelperPanel } from '@/components/ai/AIHelperPanel';
 import { useUIStore } from '@/stores/ui-store';
 import { useIsMobile } from '@/lib/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
@@ -16,6 +18,9 @@ import { cn } from '@/lib/utils';
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isMobile = useIsMobile();
+  const toggleSearch = useUIStore((s) => s.toggleSearch);
+  const aiHelperOpen = useUIStore((s) => s.aiHelperOpen);
+  const toggleAIHelper = useUIStore((s) => s.toggleAIHelper);
   const setMobile = useUIStore((s) => s.setMobile);
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const isOnboardingChat = pathname === '/onboarding/chat';
@@ -68,6 +73,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <>
           <SpotlightSearch />
           <NotificationCenter />
+          <AIHelperPanel open={aiHelperOpen} onClose={() => aiHelperOpen && toggleAIHelper()} />
+          <AIFloatingButton onClick={toggleAIHelper} />
         </>
       )}
     </div>

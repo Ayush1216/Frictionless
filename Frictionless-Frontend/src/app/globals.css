@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* Fonts loaded via next/font/google in layout.tsx — no @import needed */
 
 @layer utilities {
   .text-balance {
@@ -12,62 +12,117 @@
 
 @layer base {
   :root {
-    --font-display: 'Plus Jakarta Sans', sans-serif;
-    --font-body: 'Inter', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+    /* Font variables set by next/font classes on <body> — these are fallbacks only */
+    --font-display: var(--font-display, 'Plus Jakarta Sans', sans-serif);
+    --font-body: var(--font-body, 'Inter', sans-serif);
+    --font-mono: var(--font-mono, 'JetBrains Mono', monospace);
 
-    --background: 222 47% 6%;
-    --foreground: 210 20% 95%;
-    --card: 220 30% 8%;
-    --card-foreground: 210 20% 95%;
-    --popover: 220 30% 8%;
-    --popover-foreground: 210 20% 95%;
+    /* Semantic tokens — dark (default) */
+    --bg-app: 222 47% 6%;
+    --bg-surface: 220 30% 8%;
+    --bg-elevated: 220 25% 11%;
+    --text-primary: 210 20% 95%;
+    --text-secondary: 215 16% 75%;
+    --text-muted: 215 14% 65%;
+    --text-inverse: 222 47% 6%;
+    --border-default: 220 13% 26%;
+    --border-strong: 220 13% 36%;
+    --focus-ring: 217 91% 60%;
+    --hover-overlay: 0 0% 100% / 0.05;
+    --active-overlay: 0 0% 100% / 0.08;
+    --disabled-opacity: 0.5;
+
+    --background: var(--bg-app);
+    --foreground: var(--text-primary);
+    --card: var(--bg-surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--bg-elevated);
+    --popover-foreground: var(--text-primary);
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 15% 16%;
-    --secondary-foreground: 210 20% 95%;
+    --secondary-foreground: var(--text-primary);
     --muted: 220 15% 16%;
-    --muted-foreground: 215 14% 65%;
+    --muted-foreground: var(--text-muted);
     --accent: 263 70% 58%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 26%;
-    --input: 220 13% 26%;
-    --ring: 217 91% 60%;
+    --border: var(--border-default);
+    --input: var(--border-default);
+    --ring: var(--focus-ring);
     --radius: 0.75rem;
     --chart-1: 217 91% 60%;
     --chart-2: 160 84% 39%;
     --chart-3: 263 70% 58%;
     --chart-4: 38 92% 50%;
     --chart-5: 187 85% 43%;
+    --chart-axis: 215 14% 65%;
+    --chart-grid: 220 13% 20%;
+    --chart-tooltip-bg: 220 30% 12%;
+    --chart-tooltip-fg: 210 20% 95%;
+
+    /* Additional semantic tokens — dark */
+    --bg-sunken: 222 47% 4%;
+    --border-subtle: 220 13% 18%;
+    --status-success: 160 84% 39%;
+    --status-warning: 38 92% 50%;
+    --status-error: 0 84% 60%;
+    --status-info: 217 91% 60%;
   }
 
   .light {
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-    --primary: 217 91% 55%;
+    /* Semantic tokens — light mode (complete, no dark leakage) */
+    --bg-app: 210 20% 98%;
+    --bg-surface: 0 0% 100%;
+    --bg-elevated: 0 0% 100%;
+    --bg-sunken: 220 14% 96%;
+    --text-primary: 222 47% 11%;
+    --text-secondary: 220 13% 32%;
+    --text-muted: 220 9% 46%;
+    --text-inverse: 0 0% 100%;
+    --border-default: 220 13% 88%;
+    --border-strong: 220 13% 72%;
+    --border-subtle: 220 13% 93%;
+    --focus-ring: 217 91% 50%;
+    --hover-overlay: 0 0% 0% / 0.04;
+    --active-overlay: 0 0% 0% / 0.08;
+    --disabled-opacity: 0.4;
+
+    --background: var(--bg-app);
+    --foreground: var(--text-primary);
+    --card: var(--bg-surface);
+    --card-foreground: var(--text-primary);
+    --popover: var(--bg-elevated);
+    --popover-foreground: var(--text-primary);
+    --primary: 217 91% 45%;
     --primary-foreground: 0 0% 100%;
     --secondary: 220 14% 94%;
     --secondary-foreground: 222 47% 11%;
     --muted: 220 14% 96%;
     --muted-foreground: 220 9% 46%;
-    --accent: 263 70% 55%;
+    --accent: 263 70% 50%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 220 13% 90%;
-    --input: 220 13% 91%;
-    --ring: 217 91% 55%;
-    --chart-1: 217 91% 55%;
-    --chart-2: 160 84% 39%;
-    --chart-3: 263 70% 55%;
-    --chart-4: 38 92% 50%;
-    --chart-5: 187 85% 43%;
+    --border: var(--border-default);
+    --input: 220 13% 88%;
+    --ring: var(--focus-ring);
+    --chart-1: 217 91% 50%;
+    --chart-2: 160 84% 35%;
+    --chart-3: 263 70% 50%;
+    --chart-4: 38 92% 45%;
+    --chart-5: 187 85% 38%;
+    --chart-axis: 220 9% 40%;
+    --chart-grid: 220 13% 92%;
+    --chart-tooltip-bg: 222 47% 11%;
+    --chart-tooltip-fg: 210 20% 98%;
+
+    /* Status colors — WCAG AA on white */
+    --status-success: 160 84% 30%;
+    --status-warning: 38 92% 40%;
+    --status-error: 0 84% 50%;
+    --status-info: 217 91% 45%;
   }
 }
 
@@ -107,13 +162,15 @@
   }
 
   .glass-card {
-    @apply backdrop-blur-xl shadow-xl rounded-xl;
+    @apply backdrop-blur-xl rounded-xl;
+    background-color: hsl(var(--bg-surface));
+    border: 1px solid hsl(var(--border-default));
   }
   :root:not(.light) .glass-card {
-    @apply bg-obsidian-800/80 border border-obsidian-600/50;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
   }
   .light .glass-card {
-    @apply bg-white/90 border border-black/10;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
   }
 
   .gradient-text {
@@ -189,6 +246,36 @@
   animation: gradient-shift 8s ease infinite;
 }
 
+/* Dashboard hero gradient */
+.dashboard-hero-gradient {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 40%, hsl(217 91% 60% / 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 30%, hsl(263 70% 58% / 0.06) 0%, transparent 70%),
+    hsl(var(--bg-surface));
+}
+.light .dashboard-hero-gradient {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 40%, hsl(217 91% 50% / 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 30%, hsl(263 70% 50% / 0.04) 0%, transparent 70%),
+    hsl(var(--bg-surface));
+}
+
+/* AI insight card glow */
+.ai-insight-glow {
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    0 0 20px hsl(263 70% 58% / 0.08),
+    0 0 40px hsl(217 91% 60% / 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+.light .ai-insight-glow {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 0 20px hsl(263 70% 50% / 0.06),
+    0 0 40px hsl(217 91% 50% / 0.03),
+    0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
 /* Skeleton shimmer */
 .skeleton-shimmer {
   position: relative;
@@ -209,4 +296,47 @@
     transparent
   );
   animation: shimmer 2s infinite;
+}
+.light .skeleton-shimmer::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 0, 0, 0.04),
+    transparent
+  );
+}
+
+/* Readiness rubric card evidence styling */
+.readiness-rubric-card {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.readiness-rubric-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+.light .readiness-rubric-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Readiness score gauge glow */
+.score-gauge-glow {
+  filter: drop-shadow(0 0 8px var(--score-color, rgba(59, 130, 246, 0.3)));
+}
+
+/* Readiness category panel - equal height layout */
+.readiness-category-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Recharts tooltip override for glass effect */
+.recharts-tooltip-wrapper {
+  z-index: 100 !important;
+}
+
+/* Ask Frictionless side panel */
+.ask-panel-shadow {
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.15);
+}
+.light .ask-panel-shadow {
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
 }

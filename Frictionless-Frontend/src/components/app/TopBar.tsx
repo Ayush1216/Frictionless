@@ -72,7 +72,7 @@ export function TopBar() {
       className={cn(
         'sticky top-0 z-40 flex items-center justify-between h-14 px-4 transition-all duration-200 lg:hidden',
         scrolled
-          ? 'bg-obsidian-950/90 backdrop-blur-xl border-b border-obsidian-700/50'
+          ? 'bg-background/95 backdrop-blur-xl border-b border-border'
           : 'bg-transparent'
       )}
     >
@@ -81,7 +81,7 @@ export function TopBar() {
         {isDeepPage && (
           <button
             onClick={() => router.back()}
-            className="flex items-center justify-center w-10 h-10 rounded-lg text-obsidian-300 hover:text-foreground hover:bg-obsidian-800/50 transition-colors touch-target"
+            className="flex items-center justify-center w-10 h-10 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors touch-target"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -98,18 +98,18 @@ export function TopBar() {
         <ThemeToggle size="sm" />
         <button
           onClick={toggleSearch}
-          className="flex items-center justify-center w-10 h-10 rounded-lg text-obsidian-300 hover:text-foreground hover:bg-obsidian-800/50 transition-colors touch-target"
+          className="flex items-center justify-center w-10 h-10 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors touch-target"
         >
           <Search className="w-5 h-5" />
         </button>
 
         <button
           onClick={toggleNotifications}
-          className="relative flex items-center justify-center w-10 h-10 rounded-lg text-obsidian-300 hover:text-foreground hover:bg-obsidian-800/50 transition-colors touch-target"
+          className="relative flex items-center justify-center w-10 h-10 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors touch-target"
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-electric-blue text-white text-[9px] font-bold flex items-center justify-center">
+            <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -120,7 +120,7 @@ export function TopBar() {
             <button className="touch-target">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user?.avatar_url ?? undefined} alt={user?.full_name} />
-                <AvatarFallback className="bg-electric-blue/20 text-electric-blue text-xs font-bold">
+                <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
                   {initials}
                 </AvatarFallback>
               </Avatar>

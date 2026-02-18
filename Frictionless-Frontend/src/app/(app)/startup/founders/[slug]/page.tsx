@@ -44,14 +44,14 @@ type FounderInsights = {
 };
 
 function SkeletonLine({ className = '' }: { className?: string }) {
-  return <div className={`h-4 rounded bg-obsidian-700/50 animate-pulse ${className}`} />;
+  return <div className={`h-4 rounded bg-muted/50 animate-pulse ${className}`} />;
 }
 
 function FounderProfileSkeleton() {
   return (
     <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
       <div className="flex items-center gap-4">
-        <div className="w-24 h-24 rounded-full bg-obsidian-700/50 animate-pulse" />
+        <div className="w-24 h-24 rounded-full bg-muted/50 animate-pulse" />
         <div className="space-y-2 flex-1">
           <SkeletonLine className="w-48 h-7" />
           <SkeletonLine className="w-36 h-5" />
@@ -65,8 +65,8 @@ function FounderProfileSkeleton() {
         <SkeletonLine className="w-3/4" />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="h-48 rounded-2xl bg-obsidian-700/30 animate-pulse" />
-        <div className="h-48 rounded-2xl bg-obsidian-700/30 animate-pulse" />
+        <div className="h-48 rounded-2xl bg-muted/30 animate-pulse" />
+        <div className="h-48 rounded-2xl bg-muted/30 animate-pulse" />
       </div>
     </div>
   );
@@ -166,7 +166,7 @@ export default function FounderProfilePage() {
   if (loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center py-12">
-        <Loader2 className="w-10 h-10 animate-spin text-electric-blue mb-4" />
+        <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
         <p className="text-sm text-muted-foreground">Loading profile…</p>
         <div className="mt-8 w-full max-w-4xl">
           <FounderProfileSkeleton />
@@ -211,7 +211,7 @@ export default function FounderProfilePage() {
     <div className="w-full min-w-0 px-4 sm:px-6 lg:px-8 xl:px-10 max-w-[1200px] mx-auto pb-16">
       <Link
         href="/startup/company-profile"
-        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-electric-blue transition-colors mb-8"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors mb-8"
       >
         <ArrowLeft className="w-4 h-4" />
         Back to Company Profile
@@ -222,18 +222,18 @@ export default function FounderProfilePage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-electric-blue/15 via-obsidian-900/80 to-obsidian-950 border border-electric-blue/20 p-8 sm:p-10 md:p-12"
+        className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-primary/15 via-muted/80 to-background border border-primary/20 p-8 sm:p-10 md:p-12"
       >
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(59,130,246,0.15),transparent)]" />
         <div className="relative flex flex-col sm:flex-row sm:items-center gap-8">
-          <div className="shrink-0 w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-gradient-to-br from-electric-blue/30 to-electric-blue/10 border-2 border-electric-blue/40 flex items-center justify-center text-electric-blue font-bold text-4xl sm:text-5xl shadow-lg">
+          <div className="shrink-0 w-28 h-28 sm:w-32 sm:h-32 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 border-2 border-primary/40 flex items-center justify-center text-primary font-bold text-4xl sm:text-5xl shadow-lg">
             {initialsTwo}
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-foreground tracking-tight">
               {displayName}
             </h1>
-            <p className="text-lg text-electric-blue font-medium mt-1">
+            <p className="text-lg text-primary font-medium mt-1">
               {person.title || 'Leadership'}
               {companyName ? ` · ${companyName}` : ''}
             </p>
@@ -248,7 +248,7 @@ export default function FounderProfilePage() {
                 href={person.linkedin_url}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-obsidian-800/80 hover:bg-electric-blue/20 border border-obsidian-600 hover:border-electric-blue/40 text-sm font-medium text-foreground transition-colors mt-4"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/80 hover:bg-primary/20 border border-border hover:border-primary/40 text-sm font-medium text-foreground transition-colors mt-4"
               >
                 <Linkedin className="w-5 h-5 text-[#0A66C2]" />
                 View LinkedIn profile
@@ -269,7 +269,7 @@ export default function FounderProfilePage() {
               className="glass-card rounded-2xl p-6 sm:p-8"
             >
               <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
-                <Sparkles className="w-5 h-5 text-electric-blue" />
+                <Sparkles className="w-5 h-5 text-primary" />
                 About
               </h2>
               {person.summary && (
@@ -278,8 +278,8 @@ export default function FounderProfilePage() {
                 </p>
               )}
               {insights?.executiveSnapshot && (
-                <div className="mt-6 pt-6 border-t border-obsidian-700/60">
-                  <p className="text-xs font-semibold text-electric-blue/90 uppercase tracking-wider mb-2">
+                <div className="mt-6 pt-6 border-t border-border/60">
+                  <p className="text-xs font-semibold text-primary/90 uppercase tracking-wider mb-2">
                     Executive snapshot
                   </p>
                   <p className="text-sm text-muted-foreground leading-relaxed italic">
@@ -303,18 +303,18 @@ export default function FounderProfilePage() {
                 Career journey
               </h2>
               <div className="relative">
-                <div className="absolute left-[11px] top-2 bottom-2 w-px bg-gradient-to-b from-electric-blue/40 via-obsidian-600 to-transparent" />
+                <div className="absolute left-[11px] top-2 bottom-2 w-px bg-gradient-to-b from-primary/40 via-border to-transparent" />
                 <ul className="space-y-0 list-none p-0 m-0">
                   {work.map((entry: WorkExperienceEntry, i: number) => (
                     <li key={i} className="relative flex gap-6 pb-8 last:pb-0">
-                      <div className="relative z-10 shrink-0 w-6 h-6 rounded-full bg-obsidian-800 border-2 border-electric-blue/50 flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-electric-blue" />
+                      <div className="relative z-10 shrink-0 w-6 h-6 rounded-full bg-muted border-2 border-primary/50 flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full bg-primary" />
                       </div>
                       <div className="min-w-0 flex-1 pt-0.5">
                         <p className="text-sm font-semibold text-foreground">
                           {entry.position || 'Role'}
                         </p>
-                        <p className="text-sm text-electric-blue/90 font-medium">
+                        <p className="text-sm text-primary/90 font-medium">
                           {entry.company || 'Company'}
                         </p>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
@@ -330,7 +330,7 @@ export default function FounderProfilePage() {
                 </ul>
               </div>
               {insights?.careerArc && (
-                <div className="mt-8 pt-6 border-t border-obsidian-700/60">
+                <div className="mt-8 pt-6 border-t border-border/60">
                   <p className="text-xs font-semibold text-amber-500/90 uppercase tracking-wider mb-2">
                     Career arc
                   </p>
@@ -358,13 +358,13 @@ export default function FounderProfilePage() {
                 {education.map((edu: EducationEntry, i: number) => (
                   <div
                     key={i}
-                    className="p-4 rounded-xl bg-obsidian-800/40 border border-obsidian-700/50 hover:border-obsidian-600 transition-colors"
+                    className="p-4 rounded-xl bg-muted/40 border border-border/50 hover:border-border transition-colors"
                   >
                     <p className="text-sm font-semibold text-foreground">
                       {edu.degree || 'Degree'}
                       {edu.field_of_study ? `, ${edu.field_of_study}` : ''}
                     </p>
-                    <p className="text-sm text-electric-blue/90 mt-1">{edu.university || '—'}</p>
+                    <p className="text-sm text-primary/90 mt-1">{edu.university || '—'}</p>
                     <div className="flex gap-2 mt-2 text-xs text-muted-foreground">
                       {edu.start_year && <span>{edu.start_year}</span>}
                       {edu.end_year && <span>– {edu.end_year}</span>}
@@ -404,16 +404,16 @@ export default function FounderProfilePage() {
               {pastRoles.length > 0 && (
                 <div className="glass-card rounded-2xl p-6">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
-                    <Building2 className="w-4 h-4 text-obsidian-400" />
+                    <Building2 className="w-4 h-4 text-muted-foreground" />
                     Past roles
                   </h3>
                   <ul className="space-y-3 list-none p-0 m-0">
                     {pastRoles.slice(0, 6).map((e: WorkExperienceEntry, i: number) => (
-                      <li key={i} className="flex flex-col gap-0.5 p-3 rounded-lg bg-obsidian-800/40 border border-obsidian-700/50">
+                      <li key={i} className="flex flex-col gap-0.5 p-3 rounded-lg bg-muted/40 border border-border/50">
                         <span className="text-sm font-medium text-foreground">{e.position || '—'}</span>
                         <span className="text-xs text-muted-foreground">{e.company || '—'}</span>
                         {(e.start_year || e.end_year) && (
-                          <span className="text-[10px] text-obsidian-500">
+                          <span className="text-[10px] text-muted-foreground">
                             {[e.start_year, e.end_year].filter(Boolean).join(' – ')}
                           </span>
                         )}
@@ -436,19 +436,19 @@ export default function FounderProfilePage() {
               {insights?.whatTheyBuilt && (
                 <div>
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
-                    <Award className="w-4 h-4 text-electric-blue" />
+                    <Award className="w-4 h-4 text-primary" />
                     At a glance
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
                     {typeof insights.whatTheyBuilt.venturesCount === 'number' && (
-                      <div className="p-3 rounded-xl bg-obsidian-800/50 border border-obsidian-700/50">
-                        <p className="text-2xl font-bold text-electric-blue">{insights.whatTheyBuilt.venturesCount}</p>
+                      <div className="p-3 rounded-xl bg-muted/50 border border-border/50">
+                        <p className="text-2xl font-bold text-primary">{insights.whatTheyBuilt.venturesCount}</p>
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Ventures</p>
                       </div>
                     )}
                     {typeof insights.whatTheyBuilt.yearsExperience === 'number' && (
-                      <div className="p-3 rounded-xl bg-obsidian-800/50 border border-obsidian-700/50">
-                        <p className="text-2xl font-bold text-electric-blue">{insights.whatTheyBuilt.yearsExperience}</p>
+                      <div className="p-3 rounded-xl bg-muted/50 border border-border/50">
+                        <p className="text-2xl font-bold text-primary">{insights.whatTheyBuilt.yearsExperience}</p>
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Years exp.</p>
                       </div>
                     )}
@@ -489,7 +489,7 @@ export default function FounderProfilePage() {
           )}
 
           {!hasStructuredData && !insightsLoading && (
-            <div className="rounded-2xl border border-dashed border-obsidian-600 bg-obsidian-900/30 p-6 text-center">
+            <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-6 text-center">
               <p className="text-xs text-muted-foreground">
                 More profile details will appear here as they’re available from LinkedIn or your company data.
               </p>

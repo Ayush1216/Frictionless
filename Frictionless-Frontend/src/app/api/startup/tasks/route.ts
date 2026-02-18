@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClientForRequest, getCurrentUserOrgId } from '@/lib/supabase/server';
 import type { Task, TaskGroup } from '@/types/database';
-import { toFrontendGroup } from '@/lib/api/startup-tasks-server';
+import { toFrontendGroup, toFrontendTask } from '@/lib/api/startup-tasks-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,19 +23,26 @@ export async function GET(request: NextRequest) {
     }
 
     const backendUrl = process.env.FRICTIONLESS_BACKEND_URL || 'http://localhost:8000';
-    let result = { taskGroups: [] as TaskGroup[], tasks: [] as Task[] };
+    let result = { taskGroups: [] as TaskGroup[], tasks: [] as Task[], completedTasks: [] as Task[] };
 
     try {
       const url = `${backendUrl.replace(/\/$/, '')}/api/startup-tasks?org_id=${encodeURIComponent(orgId)}`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15_000); // 15s timeout
       const res = await fetch(url, {
         cache: 'no-store',
+        signal: controller.signal,
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
+      clearTimeout(timeout);
       const data = await res.json().catch(() => ({}));
       const groups = (data.task_groups ?? []).map((g: Record<string, unknown>) => toFrontendGroup(g));
+      const rawCompleted = (data.completed_tasks ?? []) as Record<string, unknown>[];
+      const completedTasks = rawCompleted.map((t) => toFrontendTask(t));
       result = {
         taskGroups: groups,
         tasks: groups.flatMap((g: TaskGroup) => g.tasks),
+        completedTasks,
       };
       const progress = data.task_progress;
       const pendingCount = result.tasks.length;
@@ -49,6 +56,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         task_groups: result.taskGroups,
         tasks: result.tasks,
+        completed_tasks: result.completedTasks,
         task_progress: taskProgress,
       });
     } catch (e) {

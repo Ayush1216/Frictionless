@@ -35,6 +35,7 @@ export function toFrontendTask(raw: Record<string, unknown>): Task {
     ai_extractions: [],
     created_at: (raw.created_at as string) ?? new Date().toISOString(),
     updated_at: (raw.updated_at as string) ?? new Date().toISOString(),
+    completed_at: (raw.completed_at as string | null) ?? null,
     comments: [],
     events: [],
   };

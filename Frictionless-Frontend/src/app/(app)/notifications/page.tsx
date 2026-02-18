@@ -31,10 +31,10 @@ const typeIcons: Record<string, React.ElementType> = {
 
 const typeColors: Record<string, string> = {
   score_change: 'text-score-excellent bg-score-excellent/10',
-  new_match: 'text-electric-blue bg-electric-blue/10',
+  new_match: 'text-primary bg-primary/10',
   task_due: 'text-score-fair bg-score-fair/10',
-  message: 'text-electric-purple bg-electric-purple/10',
-  system: 'text-obsidian-400 bg-obsidian-700/50',
+  message: 'text-accent bg-accent/10',
+  system: 'text-muted-foreground bg-muted/50',
 };
 
 type FilterType = 'all' | 'unread' | 'score_change' | 'new_match' | 'task_due';
@@ -110,7 +110,7 @@ export default function NotificationsPage() {
               variant="outline"
               size="sm"
               onClick={markAllRead}
-              className="border-obsidian-600 text-muted-foreground hover:text-foreground"
+              className="border-border text-muted-foreground hover:text-foreground"
             >
               <CheckCheck className="w-4 h-4 mr-2" />
               Mark All Read
@@ -133,8 +133,8 @@ export default function NotificationsPage() {
             className={cn(
               'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
               filter === value
-                ? 'bg-electric-blue text-white'
-                : 'bg-obsidian-800/80 text-obsidian-300 hover:bg-obsidian-700 hover:text-foreground border border-obsidian-600/50'
+                ? 'bg-primary text-white'
+                : 'bg-card/80 text-muted-foreground hover:bg-muted hover:text-foreground border border-border/50'
             )}
           >
             {label}
@@ -152,17 +152,17 @@ export default function NotificationsPage() {
         <ScrollArea className="h-[calc(100vh-20rem)]">
           {groups.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <Bell className="w-12 h-12 text-obsidian-600 mb-4" />
+              <Bell className="w-12 h-12 text-border mb-4" />
               <p className="text-sm text-muted-foreground">No notifications</p>
-              <p className="text-xs text-obsidian-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {filter !== 'all' ? 'Try changing the filter' : 'You\'re all caught up!'}
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-obsidian-600/50">
+            <div className="divide-y divide-border/50">
               {groups.map((group) => (
                 <div key={group.label}>
-                  <p className="text-[10px] uppercase tracking-widest text-obsidian-500 font-semibold px-4 py-3 bg-obsidian-900/50">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold px-4 py-3 bg-background/50">
                     {group.label}
                   </p>
                   {group.items.map((notification) => {
@@ -173,8 +173,8 @@ export default function NotificationsPage() {
                         key={notification.id}
                         onClick={() => handleNotificationClick(notification)}
                         className={cn(
-                          'w-full flex items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-obsidian-800/50',
-                          !notification.read && 'bg-obsidian-800/30'
+                          'w-full flex items-start gap-3 px-4 py-4 text-left transition-colors hover:bg-card/50',
+                          !notification.read && 'bg-card/30'
                         )}
                         whileHover={{ backgroundColor: 'rgba(55, 65, 81, 0.5)' }}
                       >
@@ -193,22 +193,22 @@ export default function NotificationsPage() {
                                 'text-sm',
                                 !notification.read
                                   ? 'font-semibold text-foreground'
-                                  : 'font-medium text-obsidian-300'
+                                  : 'font-medium text-muted-foreground'
                               )}
                             >
                               {notification.title}
                             </p>
                             {!notification.read && (
-                              <div className="w-2 h-2 rounded-full bg-electric-blue flex-shrink-0" />
+                              <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">{notification.description}</p>
-                          <p className="text-[10px] text-obsidian-500 mt-2">
+                          <p className="text-[10px] text-muted-foreground mt-2">
                             {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                           </p>
                         </div>
                         {notification.link && (
-                          <span className="text-[10px] text-electric-blue shrink-0">View →</span>
+                          <span className="text-[10px] text-primary shrink-0">View →</span>
                         )}
                       </motion.button>
                     );

@@ -76,7 +76,7 @@ export function InsightPanel({
 
   if (!hasAny && !hasDeduped) {
     return (
-      <div className={cn('rounded-2xl border border-obsidian-700/50 bg-obsidian-900/40 p-6', className)}>
+      <div className={cn('rounded-2xl border border-border/50 bg-background/40 p-6', className)}>
         <p className="text-xs text-muted-foreground">No insights yet. Refresh to generate.</p>
       </div>
     );
@@ -88,13 +88,13 @@ export function InsightPanel({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
       className={cn(
-        'rounded-2xl border border-electric-blue/20 bg-gradient-to-br from-electric-blue/5 to-transparent overflow-hidden flex flex-col',
+        'rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent overflow-hidden flex flex-col',
         className
       )}
     >
-      <div className="flex items-center justify-between gap-2 px-6 py-4 border-b border-electric-blue/10">
+      <div className="flex items-center justify-between gap-2 px-6 py-4 border-b border-primary/10">
         <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-electric-blue" />
+          <Sparkles className="w-5 h-5 text-primary" />
           AI Insights
         </h3>
         {headerAction}
@@ -108,13 +108,13 @@ export function InsightPanel({
         )}
         {finalStrengths.length > 0 && (
           <div>
-            <p className="text-xs font-semibold text-electric-blue uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5" /> Key strengths
             </p>
             <ul className="space-y-1.5">
               {finalStrengths.map((s, i) => (
                 <li key={i} className="text-sm text-foreground/90 flex gap-2">
-                  <span className="text-electric-blue shrink-0">•</span>
+                  <span className="text-primary shrink-0">•</span>
                   <span>{s}</span>
                 </li>
               ))}
@@ -155,7 +155,7 @@ export function InsightPanel({
           <ul className="space-y-2 text-sm text-foreground/90">
             {rawBullets.slice(0, 5).map((line, i) => (
               <li key={i} className="flex gap-2">
-                <span className="text-electric-blue shrink-0 font-bold">•</span>
+                <span className="text-primary shrink-0 font-bold">•</span>
                 <span>{line}</span>
               </li>
             ))}
