@@ -28,7 +28,7 @@ export default function InvestorOutreachPage() {
             Build a prioritized outreach list, track touchpoints, and manage your investor conversations in one place.
           </p>
           <Link
-            href="/startup/matches"
+            href="/startup/investors"
             className="inline-flex items-center gap-2 text-primary hover:text-chart-5 transition-colors text-sm font-medium"
           >
             <Target className="w-4 h-4" />

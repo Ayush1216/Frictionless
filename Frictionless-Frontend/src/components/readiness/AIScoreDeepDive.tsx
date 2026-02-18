@@ -54,8 +54,8 @@ export function AIScoreDeepDive({
   const scoreHash = buildScoreHash(overallScore, categories);
 
   // Quick stats from categories
-  const strengths = categories.filter((c) => c.score >= 80).length;
-  const gaps = categories.filter((c) => c.score < 50).length;
+  const strengths = categories.filter((c) => c.score >= 86).length;
+  const gaps = categories.filter((c) => c.score < 80).length;
   const topCategory = [...categories].sort((a, b) => b.score - a.score)[0];
   const weakCategory = [...categories].sort((a, b) => a.score - b.score)[0];
 

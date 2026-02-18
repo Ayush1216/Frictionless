@@ -177,16 +177,16 @@ export default function DataRoomPage() {
       >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <ShieldCheck className={cn('w-5 h-5', diligencePercent >= 80 ? 'text-score-excellent' : diligencePercent >= 50 ? 'text-score-good' : 'text-score-fair')} />
+            <ShieldCheck className={cn('w-5 h-5', diligencePercent >= 86 ? 'text-score-excellent' : diligencePercent >= 80 ? 'text-score-good' : 'text-score-poor')} />
             <h3 className="text-sm font-semibold text-foreground">Diligence Completeness</h3>
           </div>
-          <span className={cn('text-lg font-mono font-bold', diligencePercent >= 80 ? 'text-score-excellent' : diligencePercent >= 50 ? 'text-score-good' : 'text-score-fair')}>
+          <span className={cn('text-lg font-mono font-bold', diligencePercent >= 86 ? 'text-score-excellent' : diligencePercent >= 80 ? 'text-score-good' : 'text-score-poor')}>
             {diligencePercent}%
           </span>
         </div>
         <div className="h-2 rounded-full bg-muted overflow-hidden mb-3">
           <motion.div
-            className={cn('h-full rounded-full', diligencePercent >= 80 ? 'bg-score-excellent' : diligencePercent >= 50 ? 'bg-score-good' : 'bg-score-fair')}
+            className={cn('h-full rounded-full', diligencePercent >= 86 ? 'bg-score-excellent' : diligencePercent >= 80 ? 'bg-score-good' : 'bg-score-poor')}
             initial={{ width: 0 }}
             animate={{ width: `${diligencePercent}%` }}
             transition={{ duration: 0.8, ease: 'easeOut', delay: 0.4 }}

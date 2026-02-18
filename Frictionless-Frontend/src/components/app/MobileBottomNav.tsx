@@ -42,12 +42,12 @@ const startupBottomNav: NavItem[] = [
   { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Readiness', href: '/startup/readiness', icon: Gauge },
   { label: 'AI', href: '/startup/chat', icon: Bot },
-  { label: 'Matches', href: '/startup/matches', icon: Handshake },
+  { label: 'Investors', href: '/startup/investors', icon: Handshake },
 ];
 
 const startupMoreNav: NavItem[] = [
   { label: 'Company Profile', href: '/startup/company-profile', icon: Building2 },
-  { label: 'Matches', href: '/startup/matches', icon: Handshake },
+  { label: 'Investors', href: '/startup/investors', icon: Handshake },
   { label: 'Data Room', href: '/startup/data-room', icon: FolderOpen },
   { label: 'Analytics', href: '/startup/analytics', icon: BarChart3 },
   { label: 'Messages', href: '/messages', icon: MessageSquare },

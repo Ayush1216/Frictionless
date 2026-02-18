@@ -10,11 +10,16 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
  * Use for: share link validation, public data room views.
  */
 let _serverClient: SupabaseClient | null = null;
+let _serverClientUsesServiceKey = false;
 export function getSupabaseServer(): SupabaseClient | null {
   if (!supabaseUrl || !supabaseAnonKey) return null;
-  // Reuse singleton for service-role client (stateless, no per-request auth)
+  // If we created a client with anon key but service key is now available, recreate
+  if (_serverClient && !_serverClientUsesServiceKey && supabaseServiceKey) {
+    _serverClient = null;
+  }
   if (!_serverClient) {
     const key = supabaseServiceKey || supabaseAnonKey;
+    _serverClientUsesServiceKey = !!supabaseServiceKey;
     _serverClient = createClient(supabaseUrl, key);
   }
   return _serverClient;

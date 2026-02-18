@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -11,14 +11,13 @@ import {
   Sparkles,
   Pin,
   Trash2,
-  Download,
   Copy,
   Zap,
   BookOpen,
 } from 'lucide-react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { AIChatInterface } from '@/components/ai/AIChatInterface';
-import { dummyChatThreads, dummyChatMessages } from '@/lib/dummy-data/chat-messages';
 import type { ChatThread, ChatMessage } from '@/types/database';
 import { format, parseISO } from 'date-fns';
 import { toast } from 'sonner';
@@ -30,38 +29,103 @@ const RESPONSE_MODES: { value: ResponseMode; label: string; icon: React.ElementT
   { value: 'deep_dive', label: 'Deep Dive', icon: BookOpen, description: 'Thorough analysis with evidence' },
 ];
 
+const STORAGE_KEY = 'frictionless_chat_threads';
+const MESSAGES_KEY = 'frictionless_chat_messages';
+
+interface StoredThread extends ChatThread {
+  pinned?: boolean;
+}
+
+function loadThreads(): StoredThread[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveThreads(threads: StoredThread[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(threads));
+  } catch { /* quota exceeded */ }
+}
+
+function loadMessages(threadId: string): ChatMessage[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(`${MESSAGES_KEY}_${threadId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveMessages(threadId: string, messages: ChatMessage[]) {
+  try {
+    localStorage.setItem(`${MESSAGES_KEY}_${threadId}`, JSON.stringify(messages));
+  } catch { /* quota exceeded */ }
+}
+
+function deleteMessages(threadId: string) {
+  try {
+    localStorage.removeItem(`${MESSAGES_KEY}_${threadId}`);
+  } catch { /* ignore */ }
+}
+
 export default function AIChatPage() {
-  const [threads, setThreads] = useState<ChatThread[]>(
-    dummyChatThreads.map((t) => ({ ...t }))
-  );
-  const [activeThreadId, setActiveThreadId] = useState<string | null>('thread-1');
+  const [threads, setThreads] = useState<StoredThread[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [responseMode, setResponseMode] = useState<ResponseMode>('concise');
+  const [mounted, setMounted] = useState(false);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const saved = loadThreads();
+    setThreads(saved);
+    if (saved.length > 0) {
+      setActiveThreadId(saved[0].id);
+    }
+    setMounted(true);
+  }, []);
+
+  // Persist threads on change
+  useEffect(() => {
+    if (mounted) saveThreads(threads);
+  }, [threads, mounted]);
 
   // Messages for active thread
   const activeMessages = useMemo<ChatMessage[]>(() => {
-    if (!activeThreadId) return [];
-    return dummyChatMessages
-      .filter((m) => m.thread_id === activeThreadId)
-      .map((m) => ({ ...m }));
-  }, [activeThreadId]);
+    if (!activeThreadId || !mounted) return [];
+    return loadMessages(activeThreadId);
+  }, [activeThreadId, mounted]);
 
   const activeThread = threads.find((t) => t.id === activeThreadId);
 
   // Separate pinned and unpinned threads
-  const pinnedThreads = useMemo(() => threads.filter((t) => (t as ChatThread & { pinned?: boolean }).pinned), [threads]);
-  const unpinnedThreads = useMemo(() => threads.filter((t) => !(t as ChatThread & { pinned?: boolean }).pinned), [threads]);
+  const pinnedThreads = useMemo(() => threads.filter((t) => t.pinned), [threads]);
+  const unpinnedThreads = useMemo(() => threads.filter((t) => !t.pinned), [threads]);
 
   const handleNewChat = useCallback(() => {
-    setActiveThreadId(null);
+    const id = `thread-${Date.now()}`;
+    const newThread: StoredThread = {
+      id,
+      title: 'New Chat',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      message_count: 0,
+      pinned: false,
+    };
+    setThreads((prev) => [newThread, ...prev]);
+    setActiveThreadId(id);
   }, []);
 
   const handlePinThread = useCallback((threadId: string) => {
     setThreads((prev) =>
       prev.map((t) =>
-        t.id === threadId
-          ? { ...t, pinned: !(t as ChatThread & { pinned?: boolean }).pinned } as ChatThread
-          : t
+        t.id === threadId ? { ...t, pinned: !t.pinned } : t
       )
     );
     toast.success('Thread pin toggled');
@@ -69,70 +133,96 @@ export default function AIChatPage() {
 
   const handleDeleteThread = useCallback((threadId: string) => {
     setThreads((prev) => prev.filter((t) => t.id !== threadId));
+    deleteMessages(threadId);
     if (activeThreadId === threadId) setActiveThreadId(null);
     toast.success('Thread deleted');
   }, [activeThreadId]);
 
   const handleExportChat = useCallback(() => {
-    if (!activeThread) return;
-    const msgs = dummyChatMessages.filter((m) => m.thread_id === activeThreadId);
+    if (!activeThreadId) return;
+    const msgs = loadMessages(activeThreadId);
+    if (msgs.length === 0) {
+      toast.error('No messages to copy');
+      return;
+    }
     const text = msgs.map((m) => `[${m.role}]: ${m.content}`).join('\n\n');
     navigator.clipboard.writeText(text);
     toast.success('Chat copied to clipboard');
-  }, [activeThread, activeThreadId]);
+  }, [activeThreadId]);
 
-  const renderThreadItem = (thread: ChatThread, closeSidebar = false) => {
-    const isPinned = (thread as ChatThread & { pinned?: boolean }).pinned;
-    return (
-      <div
-        key={thread.id}
-        className={cn(
-          'group w-full flex items-start gap-3 px-3 py-3 rounded-lg text-left transition-colors',
-          activeThreadId === thread.id
-            ? 'bg-primary/10 border border-primary/20'
-            : 'hover:bg-muted/50 border border-transparent'
-        )}
-      >
-        <button
-          className="flex items-start gap-3 flex-1 min-w-0 text-left"
-          onClick={() => {
-            setActiveThreadId(thread.id);
-            if (closeSidebar) setShowSidebar(false);
-          }}
-        >
-          {isPinned ? (
-            <Pin className={cn('w-4 h-4 mt-0.5 flex-shrink-0', activeThreadId === thread.id ? 'text-primary' : 'text-accent')} />
-          ) : (
-            <MessageSquare className={cn('w-4 h-4 mt-0.5 flex-shrink-0', activeThreadId === thread.id ? 'text-primary' : 'text-muted-foreground')} />
-          )}
-          <div className="flex-1 min-w-0">
-            <p className={cn('text-sm font-medium truncate', activeThreadId === thread.id ? 'text-foreground' : 'text-muted-foreground')}>
-              {thread.title}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              {thread.message_count} messages &middot; {format(parseISO(thread.updated_at), 'MMM d')}
-            </p>
-          </div>
-        </button>
-        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <button
-            onClick={(e) => { e.stopPropagation(); handlePinThread(thread.id); }}
-            className={cn('p-1 rounded hover:bg-muted', isPinned ? 'text-accent' : 'text-muted-foreground')}
-            title={isPinned ? 'Unpin' : 'Pin'}
-          >
-            <Pin className="w-3 h-3" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); handleDeleteThread(thread.id); }}
-            className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-muted"
-            title="Delete"
-          >
-            <Trash2 className="w-3 h-3" />
-          </button>
-        </div>
-      </div>
+  // Called by AIChatInterface when messages change — update thread metadata
+  const handleMessagesUpdate = useCallback((threadId: string, messages: ChatMessage[]) => {
+    saveMessages(threadId, messages);
+    setThreads((prev) =>
+      prev.map((t) => {
+        if (t.id !== threadId) return t;
+        // Auto-title from first user message
+        const firstUser = messages.find((m) => m.role === 'user');
+        const title = firstUser
+          ? firstUser.content.slice(0, 50) + (firstUser.content.length > 50 ? '...' : '')
+          : t.title;
+        return {
+          ...t,
+          title: t.title === 'New Chat' && firstUser ? title : t.title,
+          message_count: messages.length,
+          updated_at: new Date().toISOString(),
+        };
+      })
     );
-  };
+  }, []);
+
+  const renderThreadItem = (thread: StoredThread, closeSidebar = false) => (
+    <div
+      key={thread.id}
+      className={cn(
+        'group w-full flex items-start gap-3 px-3 py-3 rounded-lg text-left transition-colors',
+        activeThreadId === thread.id
+          ? 'bg-primary/10 border border-primary/20'
+          : 'hover:bg-muted/50 border border-transparent'
+      )}
+    >
+      <button
+        className="flex items-start gap-3 flex-1 min-w-0 text-left"
+        onClick={() => {
+          setActiveThreadId(thread.id);
+          if (closeSidebar) setShowSidebar(false);
+        }}
+      >
+        {thread.pinned ? (
+          <Pin className={cn('w-4 h-4 mt-0.5 flex-shrink-0', activeThreadId === thread.id ? 'text-primary' : 'text-accent')} />
+        ) : (
+          <MessageSquare className={cn('w-4 h-4 mt-0.5 flex-shrink-0', activeThreadId === thread.id ? 'text-primary' : 'text-muted-foreground')} />
+        )}
+        <div className="flex-1 min-w-0">
+          <p className={cn('text-sm font-medium truncate', activeThreadId === thread.id ? 'text-foreground' : 'text-muted-foreground')}>
+            {thread.title}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            {thread.message_count} messages &middot; {format(parseISO(thread.updated_at), 'MMM d')}
+          </p>
+        </div>
+      </button>
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <button
+          onClick={(e) => { e.stopPropagation(); handlePinThread(thread.id); }}
+          className={cn('p-1 rounded hover:bg-muted', thread.pinned ? 'text-accent' : 'text-muted-foreground')}
+          title={thread.pinned ? 'Unpin' : 'Pin'}
+        >
+          <Pin className="w-3 h-3" />
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); handleDeleteThread(thread.id); }}
+          className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-muted"
+          title="Delete"
+        >
+          <Trash2 className="w-3 h-3" />
+        </button>
+      </div>
+    </div>
+  );
+
+  // If no thread exists and user lands on page, start a new chat
+  const effectiveThreadId = activeThreadId;
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
@@ -149,7 +239,9 @@ export default function AIChatPage() {
             <div className="p-4 border-b border-border">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-primary" />
+                  <div className="w-5 h-5 rounded overflow-hidden">
+                    <Image src="/ai-logo.png" alt="Frictionless" width={20} height={20} className="object-contain" />
+                  </div>
                   <h2 className="text-sm font-display font-bold text-foreground">Ask Frictionless</h2>
                 </div>
                 <button
@@ -169,6 +261,13 @@ export default function AIChatPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {threads.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                  <MessageSquare className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                  <p className="text-xs text-muted-foreground">No conversations yet</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-0.5">Start a new chat to get started</p>
+                </div>
+              )}
               {pinnedThreads.length > 0 && (
                 <>
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 pt-2 pb-1">Pinned</p>
@@ -202,8 +301,8 @@ export default function AIChatPage() {
           </button>
 
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-4 h-4 text-primary" />
+            <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              <Image src="/ai-logo.png" alt="Frictionless AI" width={20} height={20} className="object-contain" />
             </div>
             <div className="min-w-0">
               <h3 className="text-sm font-semibold text-foreground truncate">
@@ -256,9 +355,10 @@ export default function AIChatPage() {
 
         {/* Chat interface */}
         <AIChatInterface
-          key={activeThreadId ?? 'new'}
+          key={effectiveThreadId ?? 'new'}
           initialMessages={activeMessages}
           className="flex-1 min-h-0"
+          onMessagesChange={effectiveThreadId ? (msgs: ChatMessage[]) => handleMessagesUpdate(effectiveThreadId, msgs) : undefined}
         />
       </div>
 
@@ -288,7 +388,9 @@ export default function AIChatPage() {
             <div className="p-4 border-b border-border">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-primary" />
+                  <div className="w-5 h-5 rounded overflow-hidden">
+                    <Image src="/ai-logo.png" alt="Frictionless" width={20} height={20} className="object-contain" />
+                  </div>
                   <h2 className="text-sm font-display font-bold text-foreground">Ask Frictionless</h2>
                 </div>
                 <button
@@ -307,6 +409,12 @@ export default function AIChatPage() {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {threads.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                  <MessageSquare className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                  <p className="text-xs text-muted-foreground">No conversations yet</p>
+                </div>
+              )}
               {pinnedThreads.length > 0 && (
                 <>
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-3 pt-2 pb-1">Pinned</p>

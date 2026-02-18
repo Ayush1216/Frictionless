@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, Loader2, AlertTriangle, CheckCircle2, ShieldCheck, TrendingUp, TrendingDown } from 'lucide-react';
+import { Eye, Loader2, AlertTriangle, CheckCircle2, ShieldCheck, TrendingUp, TrendingDown, Info, X } from 'lucide-react';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
@@ -15,11 +15,13 @@ import type { ParsedRubricCategory } from '@/lib/readiness-rubric';
 interface InvestorLensPreviewProps {
   overallScore: number;
   categories: ParsedRubricCategory[];
+  companyName?: string;
   className?: string;
 }
 
-const DEMO_MEMO = `## First Impression
-The team composition looks promising, but the data room has significant gaps that would slow down any diligence process.
+function getDemoMemo(companyName: string): string {
+  return `## First Impression
+${companyName} presents an intriguing profile. The team composition looks promising, but the data room has significant gaps that would slow down any diligence process.
 
 ## Strengths Worth Highlighting
 - **Founding team** has relevant domain experience and complementary skill sets
@@ -32,26 +34,30 @@ The team composition looks promising, but the data room has significant gaps tha
 - **Limited third-party validation** — need more customer testimonials
 
 ## Verdict
-Would I take a meeting? **Yes, conditionally.** The team is compelling enough for a conversation, but I'd want financial projections and a clearer GTM strategy before advancing to full diligence.`;
+Would I take a meeting with ${companyName}? **Yes, conditionally.** The team is compelling enough for a conversation, but I'd want financial projections and a clearer GTM strategy before advancing to full diligence.`;
+}
 
 export function InvestorLensPreview({
   overallScore,
   categories,
+  companyName,
   className,
 }: InvestorLensPreviewProps) {
   const [memo, setMemo] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const theme = useUIStore((s) => s.theme);
+  const name = companyName || 'your startup';
 
   const scoreHash = buildScoreHash(overallScore, categories);
 
   const investorMetrics = useMemo(() => {
     const sorted = [...categories].sort((a, b) => b.score - a.score);
-    const strengths = sorted.filter((c) => c.score >= 70);
-    const concerns = sorted.filter((c) => c.score < 50);
-    const meetingReady = overallScore >= 70;
-    const diligenceReady = overallScore >= 85;
+    const strengths = sorted.filter((c) => c.score >= 86);
+    const concerns = sorted.filter((c) => c.score < 80);
+    const meetingReady = overallScore >= 80;
+    const diligenceReady = overallScore >= 86;
 
     return { strengths, concerns, meetingReady, diligenceReady };
   }, [categories, overallScore]);
@@ -72,7 +78,7 @@ export function InvestorLensPreview({
       })
       .join('\n');
 
-    const userMessage = `Overall readiness: ${overallScore}%\nStage: Seed\n\nCategories:\n${categoryData}`;
+    const userMessage = `Company: ${name}\nOverall readiness: ${overallScore}%\nStage: Seed\n\nCategories:\n${categoryData}`;
 
     let fullContent = '';
     try {
@@ -82,14 +88,15 @@ export function InvestorLensPreview({
           setMemo(fullContent);
         }
       } else {
-        for (const char of DEMO_MEMO) {
+        const demoContent = getDemoMemo(name);
+        for (const char of demoContent) {
           fullContent += char;
           if (fullContent.length % 8 === 0) {
             setMemo(fullContent);
             await new Promise((r) => setTimeout(r, 2));
           }
         }
-        fullContent = DEMO_MEMO;
+        fullContent = demoContent;
         setMemo(fullContent);
       }
       setCachedAnalysis('investor-lens', scoreHash, fullContent);
@@ -123,9 +130,22 @@ export function InvestorLensPreview({
         <div className="flex items-center gap-2 mb-1">
           <Eye className="w-5 h-5 text-amber-500" />
           <h3 className="text-sm font-display font-semibold text-foreground">Investor Lens</h3>
+          <button
+            onClick={() => setShowInfo(!showInfo)}
+            className="p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            aria-label="What is Investor Lens?"
+          >
+            {showInfo ? <X className="w-3.5 h-3.5" /> : <Info className="w-3.5 h-3.5" />}
+          </button>
           <span className="text-[10px] text-muted-foreground ml-auto">VC Analyst View</span>
         </div>
-        <p className="text-[10px] text-muted-foreground mb-2">Your profile through investor eyes</p>
+        {showInfo ? (
+          <div className="text-[11px] text-muted-foreground mb-2 p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/10 leading-relaxed">
+            <strong className="text-foreground">How this helps you:</strong> Investor Lens shows how a VC analyst would evaluate {name} based on your readiness data. It highlights what excites investors, what concerns them, and whether they&apos;d take a meeting — so you can fix gaps <em>before</em> pitching.
+          </div>
+        ) : (
+          <p className="text-[10px] text-muted-foreground mb-2">{name}&apos;s profile through investor eyes</p>
+        )}
 
         {/* Readiness gates + quick stats in one row */}
         <div className="flex items-center gap-2 flex-wrap">

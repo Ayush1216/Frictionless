@@ -17,9 +17,8 @@ interface ScoreHeroProps {
 }
 
 function getScoreColor(score: number) {
-  if (score >= 80) return { ring: '#10B981', bg: 'from-score-excellent/20 to-score-excellent/5' };
-  if (score >= 60) return { ring: '#3B82F6', bg: 'from-score-good/20 to-score-good/5' };
-  if (score >= 40) return { ring: '#F59E0B', bg: 'from-score-fair/20 to-score-fair/5' };
+  if (score >= 86) return { ring: '#10B981', bg: 'from-score-excellent/20 to-score-excellent/5' };
+  if (score >= 80) return { ring: '#EAB308', bg: 'from-score-good/20 to-score-good/5' };
   return { ring: '#EF4444', bg: 'from-score-poor/20 to-score-poor/5' };
 }
 

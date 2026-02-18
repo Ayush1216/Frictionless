@@ -76,12 +76,80 @@ export default function DashboardPage() {
     [tasks]
   );
 
-  // Data comes from layout prefetch (bootstrap). Show loading until bootstrap has run for startups.
+  const overdueCount = useMemo(
+    () => tasks.filter((t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done').length,
+    [tasks],
+  );
+  const tasksClosedRecently = useMemo(
+    () => tasks.filter((t) => t.status === 'done').length,
+    [tasks],
+  );
+
+  // Score projection from top tasks with potential_points
+  const scoreProjection = useMemo(() => {
+    const readinessScoreVal = readiness?.score_summary?._overall?.raw_percentage ?? 0;
+    const topTaskPts = [...tasks]
+      .filter((t) => t.status !== 'done' && t.potential_points)
+      .sort((a, b) => (b.potential_points ?? 0) - (a.potential_points ?? 0))
+      .slice(0, 5)
+      .reduce((sum, t) => sum + (t.potential_points ?? 0), 0);
+    return readinessScoreVal + topTaskPts;
+  }, [tasks, readiness]);
+
+  // Data comes from layout prefetch (bootstrap). Show skeleton while loading for better perceived perf.
   if (!user || (isStartup && !bootstrapLoaded)) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">Loading dashboard…</p>
+      <div className="p-4 lg:p-8 space-y-6 animate-pulse">
+        {/* Greeting skeleton */}
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 rounded-full bg-muted/30" />
+          <div className="h-7 w-48 bg-muted/30 rounded" />
+        </div>
+        {/* Score + stats row */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="glass-card p-6 space-y-3">
+            <div className="w-32 h-32 rounded-full bg-muted/20 mx-auto" />
+            <div className="h-4 w-24 bg-muted/20 rounded mx-auto" />
+          </div>
+          <div className="lg:col-span-2 glass-card p-6 space-y-3">
+            <div className="h-4 w-32 bg-muted/20 rounded" />
+            <div className="h-24 bg-muted/10 rounded-lg" />
+          </div>
+        </div>
+        {/* Categories */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="glass-card p-4 space-y-2">
+              <div className="h-3 w-20 bg-muted/20 rounded" />
+              <div className="h-2 w-full bg-muted/15 rounded-full" />
+              <div className="h-3 w-10 bg-muted/20 rounded" />
+            </div>
+          ))}
+        </div>
+        {/* Tasks + Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="glass-card p-5 space-y-3">
+            <div className="h-4 w-24 bg-muted/20 rounded" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded bg-muted/20" />
+                <div className="flex-1 h-3 bg-muted/15 rounded" />
+              </div>
+            ))}
+          </div>
+          <div className="glass-card p-5 space-y-3">
+            <div className="h-4 w-28 bg-muted/20 rounded" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-muted/20" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3 w-32 bg-muted/15 rounded" />
+                  <div className="h-2 w-20 bg-muted/10 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -114,25 +182,6 @@ export default function DashboardPage() {
           })
           .filter((c) => c.name)
       : startup.assessment.categories;
-
-  const overdueCount = useMemo(
-    () => tasks.filter((t) => t.due_date && new Date(t.due_date) < new Date() && t.status !== 'done').length,
-    [tasks],
-  );
-  const tasksClosedRecently = useMemo(
-    () => tasks.filter((t) => t.status === 'done').length,
-    [tasks],
-  );
-
-  // Score projection from top tasks with potential_points
-  const scoreProjection = useMemo(() => {
-    const topTaskPts = [...tasks]
-      .filter((t) => t.status !== 'done' && t.potential_points)
-      .sort((a, b) => (b.potential_points ?? 0) - (a.potential_points ?? 0))
-      .slice(0, 5)
-      .reduce((sum, t) => sum + (t.potential_points ?? 0), 0);
-    return readinessScore + topTaskPts;
-  }, [tasks, readinessScore]);
 
   const hasAssessment = !!readiness;
 

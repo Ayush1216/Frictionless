@@ -43,6 +43,8 @@ import { ExpandableText } from '@/components/company-profile/ExpandableText';
 import { InsightPanel } from '@/components/company-profile/InsightPanel';
 import { AddPersonModal } from '@/components/company-profile/AddPersonModal';
 import { TeamMemberCard } from '@/components/company-profile/TeamMemberCard';
+import { ExtractionChart } from '@/components/analytics/ExtractionChart';
+import { BarChart3 } from 'lucide-react';
 import {
   buildCanonicalCompanyProfile,
   getCachedCanonicalProfile,
@@ -748,140 +750,128 @@ export default function CompanyProfilePage() {
 
   return (
     <div className="w-full min-w-0 px-4 sm:px-6 lg:px-8 xl:px-10 max-w-[1600px] mx-auto pb-20">
-      {/* Hero: strong top spacing, title visible */}
+      {/* Compact header with actions */}
       <motion.header
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="pt-12 sm:pt-16 pb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6"
+        className="pt-6 sm:pt-8 pb-4 flex items-center justify-between gap-4 flex-wrap"
       >
-        <div className="space-y-2">
-          <h1 className="text-3xl sm:text-4xl font-display font-bold text-foreground tracking-tight">
-            Company Profile
-          </h1>
-          <p className="text-base text-muted-foreground max-w-xl">
-            Your startup&apos;s unified view across all data sources.
-          </p>
-          {/* Profile Completeness */}
-          <div className="flex items-center gap-3 pt-1">
-            <div className="flex items-center gap-2">
-              <div className="w-32 h-2 rounded-full bg-muted overflow-hidden">
+        <div className="flex items-center gap-3">
+          <Building2 className="w-6 h-6 text-primary shrink-0" />
+          <div>
+            <h1 className="text-xl sm:text-2xl font-display font-bold text-foreground">Company Profile</h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-700 ${completenessPercent >= 80 ? 'bg-score-excellent' : completenessPercent >= 50 ? 'bg-score-good' : 'bg-score-fair'}`}
+                  className={`h-full rounded-full transition-all duration-700 ${completenessPercent >= 86 ? 'bg-score-excellent' : completenessPercent >= 80 ? 'bg-score-good' : 'bg-score-poor'}`}
                   style={{ width: `${completenessPercent}%` }}
                 />
               </div>
-              <span className={`text-sm font-mono font-bold ${completenessPercent >= 80 ? 'text-score-excellent' : completenessPercent >= 50 ? 'text-score-good' : 'text-score-fair'}`}>
+              <span className={`text-xs font-mono font-semibold ${completenessPercent >= 86 ? 'text-score-excellent' : completenessPercent >= 80 ? 'text-score-good' : 'text-score-poor'}`}>
                 {completenessPercent}%
               </span>
+              <span className="text-[10px] text-muted-foreground">{completenessFilledCount}/{completenessFields.length} complete</span>
             </div>
-            <span className="text-xs text-muted-foreground">
-              {completenessFilledCount}/{completenessFields.length} fields complete
-            </span>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 sm:shrink-0">
-          <Button variant="outline" size="sm" onClick={regenerateReadiness} disabled={regenerating || saving} className="border-border text-muted-foreground hover:bg-muted">
-            {regenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            <span className="ml-2">Regenerate readiness</span>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={regenerateReadiness} disabled={regenerating || saving} className="border-border text-muted-foreground hover:bg-muted h-8 text-xs">
+            {regenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            <span className="ml-1.5 hidden sm:inline">Regenerate</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={triggerRegenerateWithSave} disabled={regenerating || saving} className="border-primary/40 text-primary hover:bg-primary/10">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span className="ml-2">Save & recalculate</span>
+          <Button variant="outline" size="sm" onClick={triggerRegenerateWithSave} disabled={regenerating || saving} className="border-primary/40 text-primary hover:bg-primary/10 h-8 text-xs">
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            <span className="ml-1.5">Save & recalculate</span>
           </Button>
         </div>
       </motion.header>
 
-      {/* Hero card: company name, logo, badges, KPI strip */}
+      {/* Hero card: company identity + KPIs */}
       <motion.section
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="rounded-2xl border border-border/50 bg-gradient-to-br from-muted/90 via-muted/60 to-background/80 p-6 sm:p-8 mb-8 shadow-xl"
+        className="rounded-2xl border border-border/50 bg-gradient-to-br from-muted/90 via-muted/60 to-background/80 overflow-hidden mb-6"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center gap-6 mb-6">
-          {logoUrl ? (
-            <img src={logoUrl} alt="" className="w-24 h-24 rounded-2xl border-2 border-primary/30 object-cover shrink-0 shadow-lg" />
-          ) : (
-            <div className="w-24 h-24 rounded-2xl bg-muted border-2 border-primary/20 flex items-center justify-center shrink-0">
-              <Building2 className="w-12 h-12 text-primary/80" />
-            </div>
-          )}
-          <div className="min-w-0 flex-1 space-y-3">
-            <h2 className="text-2xl sm:text-3xl font-display font-bold text-foreground truncate">{companyName}</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              {questionnaire?.funding_stage && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/15 text-primary border border-primary/30">
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  {(QUESTIONNAIRE.funding_stage.options.find((o) => o.value === questionnaire.funding_stage)?.label) ?? questionnaire.funding_stage}
-                </span>
-              )}
-              {locationDisplay && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/80 text-muted-foreground border border-border/50">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {locationDisplay}
-                </span>
-              )}
-              {primarySectorDisplay && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/80 text-muted-foreground border border-border/50">
-                  <Briefcase className="w-3.5 h-3.5" />
-                  {primarySectorDisplay}
-                </span>
-              )}
-              {foundedYearDisplay && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-muted/80 text-muted-foreground border border-border/50">
-                  Founded {foundedYearDisplay}
-                </span>
-              )}
+        {/* Top accent */}
+        <div className="h-0.5 w-full bg-gradient-to-r from-primary/60 via-primary/20 to-transparent" />
+        <div className="p-5 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-5">
+            {logoUrl ? (
+              <img src={logoUrl} alt="" className="w-20 h-20 rounded-2xl border border-primary/20 object-cover shrink-0 shadow-md" />
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-muted border border-primary/15 flex items-center justify-center shrink-0">
+                <Building2 className="w-10 h-10 text-primary/70" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h2 className="text-2xl font-display font-bold text-foreground truncate mb-2">{companyName}</h2>
+              <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                {questionnaire?.funding_stage && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-primary/12 text-primary border border-primary/20">
+                    <TrendingUp className="w-3 h-3" />
+                    {(QUESTIONNAIRE.funding_stage.options.find((o) => o.value === questionnaire.funding_stage)?.label) ?? questionnaire.funding_stage}
+                  </span>
+                )}
+                {locationDisplay && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-muted/60 text-muted-foreground border border-border/40">
+                    <MapPin className="w-3 h-3" />
+                    {locationDisplay}
+                  </span>
+                )}
+                {primarySectorDisplay && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-muted/60 text-muted-foreground border border-border/40">
+                    <Briefcase className="w-3 h-3" />
+                    {primarySectorDisplay}
+                  </span>
+                )}
+                {foundedYearDisplay && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-muted/60 text-muted-foreground border border-border/40">
+                    Founded {foundedYearDisplay}
+                  </span>
+                )}
+              </div>
+              {/* KPI strip inline */}
+              <div className="flex flex-wrap gap-3">
+                {employeesDisplay && employeesDisplay !== '—' && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/40 border border-border/40">
+                    <Users className="w-4 h-4 text-primary/70" />
+                    <div>
+                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Team</p>
+                      <p className="text-sm font-bold text-foreground leading-tight">{employeesDisplay}</p>
+                    </div>
+                  </div>
+                )}
+                {totalFundingDisplay && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/40 border border-border/40">
+                    <DollarSign className="w-4 h-4 text-emerald-500/70" />
+                    <div>
+                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Funding</p>
+                      <p className="text-sm font-bold text-foreground leading-tight truncate max-w-[120px]">{totalFundingDisplay}</p>
+                    </div>
+                  </div>
+                )}
+                {readinessScore != null && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/40 border border-border/40">
+                    <Target className="w-4 h-4 text-amber-500/70" />
+                    <div>
+                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Readiness</p>
+                      <p className="text-sm font-bold text-foreground leading-tight">{Math.round(readinessScore)}%</p>
+                    </div>
+                  </div>
+                )}
+                {hasMeaningfulRevenue && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/40 border border-border/40">
+                    <TrendingUp className="w-4 h-4 text-emerald-500/70" />
+                    <div>
+                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Revenue</p>
+                      <p className="text-sm font-bold text-foreground leading-tight truncate max-w-[120px]">{organizationRevenueDisplay}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        {/* KPI strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-border/50">
-          {employeesDisplay && employeesDisplay !== '—' && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
-              <Users className="w-5 h-5 text-primary/80" />
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Employees</p>
-                <p className="text-sm font-bold text-foreground">{employeesDisplay}</p>
-              </div>
-            </div>
-          )}
-          {totalFundingDisplay && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
-              <DollarSign className="w-5 h-5 text-emerald-500/80" />
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Funding</p>
-                <p className="text-sm font-bold text-foreground truncate">{totalFundingDisplay || '—'}</p>
-              </div>
-            </div>
-          )}
-          {readinessScore != null && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
-              <Target className="w-5 h-5 text-amber-500/80" />
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Readiness</p>
-                <p className="text-sm font-bold text-foreground">{Math.round(readinessScore)}%</p>
-              </div>
-            </div>
-          )}
-          {hasMeaningfulRevenue && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
-              <TrendingUp className="w-5 h-5 text-emerald-500/80" />
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Revenue</p>
-                <p className="text-sm font-bold text-foreground truncate">{organizationRevenueDisplay}</p>
-              </div>
-            </div>
-          )}
-          {(canonical?.traction ?? initDetails.traction ?? initDetails.milestones) && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50 border border-border">
-              <TrendingUp className="w-5 h-5 text-amber-500/80" />
-              <div>
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Momentum</p>
-                <p className="text-sm font-bold text-foreground">Tracked</p>
-              </div>
-            </div>
-          )}
         </div>
       </motion.section>
 
@@ -969,6 +959,45 @@ export default function CompanyProfilePage() {
             </motion.section>
           )}
 
+          {/* Charts & KPI Cards from extraction data */}
+          {extraction?.charts?.kpi_cards && extraction.charts.kpi_cards.length > 0 && (
+            <motion.section
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border border-border/50 bg-muted/40 overflow-hidden"
+            >
+              <div className="flex items-center gap-2 p-5 pb-3 border-b border-border">
+                <BarChart3 className="w-5 h-5 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Key Metrics</h3>
+              </div>
+              <div className="p-5 pt-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+                  {(extraction.charts.kpi_cards as Array<{ label: string; value: number | string; unit?: string; kpi_id?: string }>).map((kpi) => (
+                    <div key={kpi.kpi_id || kpi.label} className="p-3 rounded-xl bg-gradient-to-br from-primary/5 to-muted/30 border border-primary/10">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 line-clamp-2">{kpi.label}</p>
+                      <p className="text-lg font-bold text-foreground font-mono">
+                        {kpi.unit === 'USD' || kpi.unit === 'Billion USD'
+                          ? kpi.unit === 'Billion USD'
+                            ? `$${kpi.value}B`
+                            : typeof kpi.value === 'number' && kpi.value >= 1e6
+                              ? `$${(kpi.value / 1e6).toFixed(1)}M`
+                              : typeof kpi.value === 'number' && kpi.value >= 1e3
+                                ? `$${(kpi.value / 1e3).toFixed(0)}K`
+                                : `$${kpi.value}`
+                          : kpi.unit === '%'
+                            ? `${kpi.value}%`
+                            : String(kpi.value)}
+                      </p>
+                      {kpi.unit && kpi.unit !== 'USD' && kpi.unit !== '%' && kpi.unit !== 'Billion USD' && (
+                        <p className="text-[9px] text-muted-foreground">{kpi.unit}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.section>
+          )}
+
           {/* Financial snapshot (editable); long text uses read more to keep cards even */}
           {Object.keys(financialData).length > 0 && (
             <motion.section
@@ -1024,80 +1053,75 @@ export default function CompanyProfilePage() {
           )}
         </div>
 
-        <div className="lg:col-span-4 space-y-6">
-          {/* AI Insights: structured summary + max 3 unique bullets per section; distinct from strengths */}
+        <div className="lg:col-span-4 space-y-5">
+          {/* 1. AI Insights — collapsed by default */}
           <InsightPanel
             structured={canonical?.ai_insights_structured ?? null}
             aiInsightsDeduped={canonical?.ai_insights_deduped ?? null}
             aiSummary={canonical?.ai_summary ?? aiSummary ?? null}
+            defaultExpanded={false}
             headerAction={
-              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10 -mr-1" onClick={() => extraction && questionnaire && generateAIInsights(extraction, questionnaire).then(() => fetchProfile())} disabled={aiLoading}>
-                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                <span className="ml-1">Refresh</span>
+              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10 h-7 text-xs px-2" onClick={() => extraction && questionnaire && generateAIInsights(extraction, questionnaire).then(() => fetchProfile())} disabled={aiLoading}>
+                {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
               </Button>
             }
           />
 
-          {/* LinkedIn re-scrape (pre-filled from Apollo when available) */}
+          {/* 2. LinkedIn re-scrape */}
           <motion.section
             initial={{ opacity: 0, x: 12 }}
             animate={{ opacity: 1, x: 0 }}
-            className="rounded-2xl border border-border/50 bg-muted/40 p-5"
+            className="rounded-2xl border border-border/50 bg-muted/40 p-4"
           >
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-              <Linkedin className="w-5 h-5 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2.5">
+              <Linkedin className="w-4 h-4 text-[#0A66C2]" />
               Refresh from LinkedIn
             </h3>
-            {linkedinForDisplay && (
-              <p className="text-xs text-muted-foreground mb-2">Company LinkedIn is used below. Edit if needed and re-scrape to refresh founder & leadership data.</p>
-            )}
-            {!linkedinForDisplay && (
-              <p className="text-xs text-muted-foreground mb-2">Paste a company LinkedIn URL to re-scrape founder & leadership data.</p>
-            )}
+            <p className="text-[11px] text-muted-foreground mb-2">
+              {linkedinForDisplay ? 'Re-scrape to refresh founder & leadership data.' : 'Paste LinkedIn URL to import data.'}
+            </p>
             <Input
               placeholder="https://linkedin.com/company/..."
               value={linkedinUrl}
               onChange={(e) => setLinkedinUrl(e.target.value)}
-              className="bg-muted border-border mb-3"
+              className="bg-muted border-border mb-2 h-8 text-xs"
             />
             {(scrapeError || scrapeStatus === 'failed') && (
               <p className="text-xs text-red-400 mb-2">{extraction?.meta?.linkedin_scrape_error || scrapeError}</p>
             )}
             {lastScrapedAt && scrapeStatus === 'success' && (
-              <p className="text-xs text-emerald-500/90 mb-2">Last scraped: {new Date(lastScrapedAt).toLocaleString()}</p>
+              <p className="text-[10px] text-emerald-500/90 mb-2">Last scraped: {new Date(lastScrapedAt).toLocaleString()}</p>
             )}
-            <div className="flex gap-2">
-              <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={triggerLinkedInScrape} disabled={scrapeInProgress || !linkedinUrl.trim()}>
-                {scrapeInProgress ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                <span className="ml-2">{scrapeInProgress ? 'Scraping…' : 'Re-scrape'}</span>
-              </Button>
-              {scrapeStatus === 'failed' && (
-                <Button size="sm" variant="outline" onClick={triggerLinkedInScrape} disabled={scrapeInProgress}>Retry</Button>
-              )}
-            </div>
+            <Button size="sm" className="bg-primary hover:bg-primary/90 h-7 text-xs" onClick={triggerLinkedInScrape} disabled={scrapeInProgress || !linkedinUrl.trim()}>
+              {scrapeInProgress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+              <span className="ml-1.5">{scrapeInProgress ? 'Scraping…' : 'Re-scrape'}</span>
+            </Button>
           </motion.section>
 
-          {/* Team: always show when we have profile so user can add first person */}
+          {/* 3. Team */}
           {(extraction || questionnaire) && (
-            <motion.section initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-border/50 bg-muted/40 p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+            <motion.section initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-border/50 bg-muted/40 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Users className="w-5 h-5 text-primary" />
+                  <Users className="w-4 h-4 text-primary" />
                   Founders & team
+                  {teamMembers.length > 0 && (
+                    <span className="text-[10px] text-muted-foreground font-normal">({teamMembers.length})</span>
+                  )}
                 </h3>
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="border-primary/40 text-primary hover:bg-primary/10"
+                  className="border-primary/40 text-primary hover:bg-primary/10 h-7 text-xs px-2"
                   onClick={() => setAddPersonModalOpen(true)}
                 >
-                  <UserPlus className="w-4 h-4" />
-                  <span className="ml-2">Add person</span>
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span className="ml-1.5">Add</span>
                 </Button>
               </div>
               {teamMembers.length > 0 ? (
-                <ul className="space-y-3 list-none p-0 m-0">
+                <ul className="space-y-2.5 list-none p-0 m-0">
                   {teamMembers.slice(0, 8).map((f: any, i: number) => (
                     <TeamMemberCard
                       key={(f.linkedin_url || f.full_name || i).toString()}
@@ -1117,8 +1141,8 @@ export default function CompanyProfilePage() {
                   ))}
                 </ul>
               ) : Object.keys(founderData).length > 0 ? (
-                <div className="rounded-xl border border-dashed border-border p-4 space-y-2">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">From pitch deck</p>
+                <div className="rounded-xl border border-dashed border-border p-3 space-y-1.5">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">From pitch deck</p>
                   {Object.entries(founderData).slice(0, 4).map(([k, v]) => (
                     <div key={k} className="flex flex-col gap-0.5">
                       <span className="text-[10px] font-semibold text-muted-foreground">{k.replace(/_/g, ' ')}</span>
@@ -1127,7 +1151,7 @@ export default function CompanyProfilePage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No team members yet. Click &quot;Add person&quot; to add from a LinkedIn profile.</p>
+                <p className="text-xs text-muted-foreground">No team members yet. Click &quot;Add&quot; to add from LinkedIn.</p>
               )}
             </motion.section>
           )}
@@ -1143,28 +1167,60 @@ export default function CompanyProfilePage() {
             }}
           />
 
-          {/* Readiness questionnaire */}
+          {/* 4. Financial Projections & Charts */}
+          {extraction?.charts?.charts && (extraction.charts.charts as unknown[]).length > 0 && (
+            <motion.section
+              initial={{ opacity: 0, x: 12 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="rounded-2xl border border-border/50 bg-muted/40 overflow-hidden"
+            >
+              <div className="flex items-center gap-2 p-4 pb-2.5 border-b border-border">
+                <BarChart3 className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Charts & Projections</h3>
+                <span className="ml-auto text-[10px] text-muted-foreground">
+                  {(extraction.charts.charts as unknown[]).length} chart{(extraction.charts.charts as unknown[]).length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="p-3 space-y-3">
+                {(extraction.charts.charts as Array<{
+                  chart_type: string;
+                  chart_title: string;
+                  chart_id?: string;
+                  series: Array<{ name: string; data: Array<{ x: string; y: number }> }>;
+                  unit?: string;
+                  x_axis_label?: string | null;
+                  y_axis_label?: string | null;
+                  insight?: string;
+                  categories?: string[];
+                }>).map((chart, idx) => (
+                  <ExtractionChart key={chart.chart_id || idx} chart={chart} index={idx} />
+                ))}
+              </div>
+            </motion.section>
+          )}
+
+          {/* 5. Readiness questionnaire */}
           {questionnaire && (
-            <motion.section initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-border/50 bg-muted/40 p-5">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4">
-                <Globe className="w-5 h-5 text-indigo-400" />
+            <motion.section initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-border/50 bg-muted/40 p-4">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+                <Globe className="w-4 h-4 text-indigo-400" />
                 Readiness signals
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {QUESTION_ORDER.map((key) => {
                   const q = QUESTIONNAIRE[key];
                   const currentVal = (questionnaireEdits[key] ?? questionnaire[key]) as string | undefined;
                   const options = q?.options ?? [];
                   return (
-                    <div key={key} className="space-y-2">
-                      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-tight">{q?.question}</label>
-                      <div className="flex flex-wrap gap-1.5">
+                    <div key={key} className="space-y-1.5">
+                      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-tight">{q?.question}</label>
+                      <div className="flex flex-wrap gap-1">
                         {options.map((o) => (
                           <button
                             key={o.value}
                             type="button"
                             onClick={() => setQuestionnaireEdits((p) => ({ ...p, [key]: o.value }))}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${currentVal === o.value ? 'bg-primary text-primary-foreground' : 'bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground border border-border'}`}
+                            className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all ${currentVal === o.value ? 'bg-primary text-primary-foreground' : 'bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground border border-border'}`}
                           >
                             {o.label}
                           </button>
@@ -1174,8 +1230,8 @@ export default function CompanyProfilePage() {
                   );
                 })}
                 {Object.keys(questionnaireEdits).length > 0 && (
-                  <Button size="sm" className="w-full bg-indigo-600 hover:bg-indigo-500" onClick={saveQuestionnaire} disabled={saving}>
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                  <Button size="sm" className="w-full bg-indigo-600 hover:bg-indigo-500 h-8 text-xs" onClick={saveQuestionnaire} disabled={saving}>
+                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
                     Apply changes
                   </Button>
                 )}

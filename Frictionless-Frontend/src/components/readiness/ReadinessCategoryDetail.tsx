@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowDown, AlertCircle, CheckCircle2, AlertTriangle, CalendarDays, Loader2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowDown, AlertCircle, CheckCircle2, AlertTriangle, CalendarDays, Loader2, X, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { getScoreInfo } from '@/lib/score-utils';
@@ -193,14 +193,17 @@ export function ReadinessCategoryDetail({ category, onViewTasks }: ReadinessCate
                 </div>
               </div>
 
-              {/* Evidence */}
+              {/* Evidence & Reasoning */}
               {(item.Value || item.Reasoning) && (
-                <div className="mt-1.5 pl-2.5 border-l border-border/40 space-y-0.5">
+                <div className="mt-2 pl-3 border-l-2 border-border/40 space-y-1">
                   {item.Value && (
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">&ldquo;{item.Value}&rdquo;</p>
+                    <p className="text-[11px] text-foreground/70 leading-relaxed">&ldquo;{item.Value}&rdquo;</p>
                   )}
                   {item.Reasoning && (
-                    <p className="text-[10px] text-muted-foreground/70 italic leading-relaxed">{item.Reasoning}</p>
+                    <div className="flex items-start gap-1.5">
+                      <Lightbulb className="w-3 h-3 text-primary/60 shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">{item.Reasoning}</p>
+                    </div>
                   )}
                 </div>
               )}

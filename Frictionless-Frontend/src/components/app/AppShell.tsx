@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
@@ -28,6 +28,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMobile(isMobile);
   }, [isMobile, setMobile]);
+
+  // Cmd+J / Ctrl+J opens AI helper panel
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'j' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        toggleAIHelper();
+      }
+    };
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [toggleAIHelper]);
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">

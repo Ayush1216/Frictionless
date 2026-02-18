@@ -43,7 +43,7 @@ const PAGE_REGISTRY: Record<string, SearchItem> = {
   '/dashboard': { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
   '/startup/company-profile': { label: 'Company Profile', icon: Building2, href: '/startup/company-profile' },
   '/startup/readiness': { label: 'Readiness', icon: Gauge, href: '/startup/readiness', description: 'Score + Tasks + Simulator' },
-  '/startup/matches': { label: 'Investor Matches', icon: Handshake, href: '/startup/matches' },
+  '/startup/investors': { label: 'Investors', icon: Handshake, href: '/startup/investors' },
   '/startup/chat': { label: 'AI Chat', icon: Bot, href: '/startup/chat' },
   '/startup/data-room': { label: 'Data Room', icon: FolderOpen, href: '/startup/data-room' },
   '/capital/deal-flow': { label: 'Deal Flow', icon: TrendingUp, href: '/capital/deal-flow' },

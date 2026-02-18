@@ -6,8 +6,7 @@ import { X, Send, CheckCircle2, Loader2, Sparkles, RefreshCw } from 'lucide-reac
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
-import { streamChat, isAIEnabled } from '@/lib/ai/openai-client';
-import { getPrompt } from '@/lib/ai/prompts';
+import { streamChat } from '@/lib/ai/openai-client';
 import { fetchTaskChatMessages, saveTaskChatMessages, chatWithTaskAI } from '@/lib/api/tasks';
 import { useTasksSync } from '@/contexts/TasksSyncContext';
 import { useUIStore } from '@/stores/ui-store';
@@ -30,10 +29,10 @@ interface AskFrictionlessPanelProps {
 
 const FRICTIONLESS_LOGO = '/ai-logo.png';
 
-function FrictionlessAvatar({ size = 32 }: { size?: number }) {
+function FrictionlessAvatar({ size = 26 }: { size?: number }) {
   return (
-    <div className="shrink-0 rounded-lg overflow-hidden bg-primary/10 flex items-center justify-center" style={{ width: size, height: size }}>
-      <Image src={FRICTIONLESS_LOGO} alt="Frictionless" width={size - 8} height={size - 8} className="object-contain" />
+    <div className="shrink-0 rounded-md overflow-hidden bg-primary/8 flex items-center justify-center" style={{ width: size, height: size }}>
+      <Image src={FRICTIONLESS_LOGO} alt="Frictionless AI" width={size - 6} height={size - 6} className="object-contain" />
     </div>
   );
 }
@@ -76,7 +75,7 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
           })));
         } else {
           setMessages([]);
-          // Auto-send initial message
+          // Auto-send initial message via backend
           await sendInitialMessage(task);
         }
       } catch {
@@ -112,24 +111,64 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
   }, [isOpen, historyLoaded]);
 
   const sendInitialMessage = useCallback(async (t: Task) => {
-    const context = `Task: "${t.title}"\nCategory: ${categoryName ?? 'General'}\nDescription: ${t.description || 'No description provided.'}\nPriority: ${t.priority}`;
+    const initialUserMsg = `Help me understand and complete this task:\n\nTask: "${t.title}"\nCategory: ${categoryName ?? 'General'}\nDescription: ${t.description || 'No description provided.'}\nPriority: ${t.priority}`;
+
     const userMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       role: 'user',
-      content: `Help me understand and complete this task:\n\n${context}`,
+      content: initialUserMsg,
       timestamp: new Date(),
     };
     setMessages([userMsg]);
-    await streamResponse([userMsg], t);
+    await getBackendResponse([userMsg], t, initialUserMsg);
   }, [categoryName]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const streamResponse = useCallback(async (allMessages: ChatMessage[], t: Task) => {
+  /**
+   * Send message to backend which has full company context (founders, team, profile).
+   * Falls back to frontend streaming if backend fails.
+   */
+  const getBackendResponse = useCallback(async (allMessages: ChatMessage[], t: Task, userMessage: string) => {
     setIsStreaming(true);
     setStreamingContent('');
 
-    const systemPrompt = getPrompt('TASK_EXPLAINER');
+    try {
+      // Build history from all previous messages (exclude the current user message)
+      const history = allMessages.slice(0, -1).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const result = await chatWithTaskAI(t.id, userMessage, history);
+      const reply = result.reply || 'Sorry, I couldn\'t process that. Please try again.';
+
+      const assistantMsg: ChatMessage = {
+        id: `msg-${Date.now()}-ai`,
+        role: 'assistant',
+        content: reply,
+        timestamp: new Date(),
+      };
+
+      const updatedMessages = [...allMessages, assistantMsg];
+      setMessages(updatedMessages);
+      setStreamingContent('');
+      setIsStreaming(false);
+
+      // Check if backend suggests completion
+      if (result.suggest_complete) {
+        setSuggestComplete(true);
+      }
+    } catch {
+      // Fallback to frontend streaming if backend fails
+      await streamResponseFallback(allMessages, t);
+    }
+  }, []);
+
+  /**
+   * Fallback: frontend-only streaming (no company context).
+   */
+  const streamResponseFallback = useCallback(async (allMessages: ChatMessage[], t: Task) => {
     const chatMsgs = [
-      { role: 'system' as const, content: systemPrompt },
+      { role: 'system' as const, content: `You are "Ask Frictionless", a startup advisor helping complete readiness tasks. Be concise and actionable.` },
       ...allMessages.map((m) => ({ role: m.role as 'system' | 'user' | 'assistant', content: m.content })),
     ];
 
@@ -183,8 +222,8 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
 
     const updated = [...messages, userMsg];
     setMessages(updated);
-    await streamResponse(updated, task);
-  }, [messages, isStreaming, task, streamResponse]);
+    await getBackendResponse(updated, task, content.trim());
+  }, [messages, isStreaming, task, getBackendResponse]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -231,13 +270,18 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
         }
 
         onTaskCompleted?.();
+
+        // Auto-close panel after 4 seconds so user sees the next task
+        setTimeout(() => {
+          onClose();
+        }, 4000);
       }
     } catch {
       setCompletionAnalysis('Failed to mark as complete. Please try again.');
     } finally {
       setIsCompleting(false);
     }
-  }, [task, tasksSync, isCompleting, categoryName, onTaskCompleted]);
+  }, [task, tasksSync, isCompleting, categoryName, onTaskCompleted, onClose]);
 
   return (
     <AnimatePresence>
@@ -421,7 +465,7 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
               {/* Quick actions */}
               {messages.length <= 2 && !isStreaming && (
                 <div className="flex gap-1 mb-2 overflow-x-auto no-scrollbar">
-                  {['How do I start?', 'What evidence is needed?', 'Mark this task complete'].map((q) => (
+                  {['How do I start?', 'Who on my team should handle this?', 'What evidence is needed?'].map((q) => (
                     <button
                       key={q}
                       type="button"

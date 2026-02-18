@@ -235,10 +235,12 @@ function ReadinessContent() {
             <CompetitiveBenchmark
               overallScore={readinessScore}
               categories={parsedCategories}
+              companyName={user?.org_name}
             />
             <InvestorLensPreview
               overallScore={readinessScore}
               categories={parsedCategories}
+              companyName={user?.org_name}
             />
           </motion.div>
         )}

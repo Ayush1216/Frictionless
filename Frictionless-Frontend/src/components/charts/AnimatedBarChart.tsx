@@ -18,9 +18,9 @@ interface AnimatedBarChartProps {
 }
 
 function getBarColor(score: number): string {
-  // Unified primary blue — opacity varies with score for visual differentiation
-  const opacity = 0.35 + (score / 100) * 0.65;
-  return `hsl(217 91% 60% / ${opacity})`;
+  if (score >= 86) return '#10B981'; // Excellent — Green
+  if (score >= 80) return '#EAB308'; // Good — Yellow
+  return '#EF4444';                  // Need Improvement — Red
 }
 
 export function AnimatedBarChart({
@@ -49,7 +49,7 @@ export function AnimatedBarChart({
                 {cat.name}
               </span>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-sm font-mono font-medium text-foreground">
+                <span className="text-sm font-mono font-medium" style={{ color }}>
                   {cat.score}
                 </span>
                 <DeltaIndicator delta={cat.delta} />

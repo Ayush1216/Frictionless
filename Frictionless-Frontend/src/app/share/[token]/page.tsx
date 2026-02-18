@@ -137,17 +137,15 @@ const LIGHT: ThemeColors = {
    HELPERS
    ================================================================ */
 function getScoreColor(score: number) {
-  if (score >= 80) return '#22c55e';
-  if (score >= 60) return '#6366f1';
-  if (score >= 40) return '#f59e0b';
+  if (score >= 86) return '#22c55e';
+  if (score >= 80) return '#eab308';
   return '#ef4444';
 }
 
 function getScoreLabel(score: number) {
-  if (score >= 80) return 'Excellent';
-  if (score >= 60) return 'Good';
-  if (score >= 40) return 'Fair';
-  return 'Needs Work';
+  if (score >= 86) return 'Excellent';
+  if (score >= 80) return 'Good';
+  return 'Need Improvement';
 }
 
 function getPriorityColor(p: string) {
@@ -203,7 +201,7 @@ function RadarChartSVG({ categories, theme }: { categories: ShareCategory[]; the
         return (
           <g key={c.key}>
             <circle cx={p.x} cy={p.y} r="4.5" fill={getScoreColor(c.score)} stroke={theme.bg} strokeWidth="1.5" />
-            <text x={labelP.x} y={labelP.y} textAnchor="middle" dominantBaseline="middle" fontSize="9.5" fill={theme.textSecondary} fontFamily="system-ui" fontWeight="500">
+            <text x={labelP.x} y={labelP.y} textAnchor="middle" dominantBaseline="middle" fontSize="10.5" fill={theme.textSecondary} fontFamily="system-ui" fontWeight="500">
               {c.name.length > 16 ? c.name.slice(0, 14) + '...' : c.name}
             </text>
           </g>
@@ -241,18 +239,18 @@ function ScoreHistoryChart({ history, theme }: { history: ScoreHistoryEntry[]; t
           <stop offset="100%" stopColor="#6366f1" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <text x={pad.left - 4} y={pad.top + 4} textAnchor="end" fontSize="8" fill={theme.textMuted} fontFamily="system-ui">{Math.round(maxS)}</text>
-      <text x={pad.left - 4} y={pad.top + h} textAnchor="end" fontSize="8" fill={theme.textMuted} fontFamily="system-ui">{Math.round(minS)}</text>
+      <text x={pad.left - 4} y={pad.top + 4} textAnchor="end" fontSize="9" fill={theme.textMuted} fontFamily="system-ui">{Math.round(maxS)}</text>
+      <text x={pad.left - 4} y={pad.top + h} textAnchor="end" fontSize="9" fill={theme.textMuted} fontFamily="system-ui">{Math.round(minS)}</text>
       <line x1={pad.left} y1={pad.top + h / 2} x2={pad.left + w} y2={pad.top + h / 2} stroke={theme.border} strokeWidth="0.5" strokeDasharray="4 4" opacity="0.4" />
       <path d={areaPath} fill="url(#histGrad)" />
       <path d={linePath} fill="none" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       {points.map((p, i) => (
         <circle key={i} cx={p.x} cy={p.y} r="3" fill="#6366f1" stroke={theme.bg} strokeWidth="1.5" />
       ))}
-      <text x={points[0].x} y={pad.top + h + 14} textAnchor="start" fontSize="7.5" fill={theme.textMuted} fontFamily="system-ui">
+      <text x={points[0].x} y={pad.top + h + 14} textAnchor="start" fontSize="8.5" fill={theme.textMuted} fontFamily="system-ui">
         {new Date(points[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
       </text>
-      <text x={points[points.length - 1].x} y={pad.top + h + 14} textAnchor="end" fontSize="7.5" fill={theme.textMuted} fontFamily="system-ui">
+      <text x={points[points.length - 1].x} y={pad.top + h + 14} textAnchor="end" fontSize="8.5" fill={theme.textMuted} fontFamily="system-ui">
         {new Date(points[points.length - 1].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
       </text>
     </svg>
@@ -280,8 +278,8 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
   const categories = data.categories ?? [];
   const scoreColor = getScoreColor(score);
   const sortedCategories = [...categories].sort((a, b) => b.score - a.score);
-  const strengths = sortedCategories.filter((c) => c.score >= 70);
-  const gaps = sortedCategories.filter((c) => c.score < 50);
+  const strengths = sortedCategories.filter((c) => c.score >= 86);
+  const gaps = sortedCategories.filter((c) => c.score < 80);
   const profile = data.company_profile || {};
   const tasks = data.tasks || {};
   const scoreHistory = data.scoreHistory || [];
@@ -308,12 +306,12 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
 
     const catHtml = sortedCategories.map((c) => `
       <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid ${DARK.border};">
-        <span style="flex:1;font-size:12px;font-weight:500;color:${DARK.text};">${c.name}</span>
+        <span style="flex:1;font-size:13px;font-weight:500;color:${DARK.text};">${c.name}</span>
         <div style="width:160px;height:8px;border-radius:4px;background:${DARK.border};overflow:hidden;">
           <div style="width:${c.score}%;height:100%;border-radius:4px;background:${getScoreColor(c.score)};"></div>
         </div>
-        <span style="width:40px;text-align:right;font-size:12px;font-weight:700;color:${getScoreColor(c.score)};">${c.score}%</span>
-        ${c.weight ? `<span style="width:30px;text-align:right;font-size:10px;color:${DARK.textMuted};">${c.weight}%</span>` : ''}
+        <span style="width:40px;text-align:right;font-size:13px;font-weight:700;color:${getScoreColor(c.score)};">${c.score}%</span>
+        ${c.weight ? `<span style="width:30px;text-align:right;font-size:11px;color:${DARK.textMuted};">${c.weight}%</span>` : ''}
       </div>
     `).join('');
 
@@ -322,11 +320,11 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
       <div style="margin:20px 0;padding:20px;border-radius:12px;background:rgba(99,102,241,0.04);border:1px solid rgba(99,102,241,0.15);">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
           ${LOGO_SVG.replace(/width="32" height="32"/, 'width="18" height="18"')}
-          <span style="font-size:12px;font-weight:600;color:#818cf8;text-transform:uppercase;letter-spacing:1px;">Frictionless Intelligence</span>
+          <span style="font-size:13px;font-weight:600;color:#818cf8;text-transform:uppercase;letter-spacing:1px;">Frictionless Intelligence</span>
         </div>
-        ${ai.executive_summary ? `<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Executive Summary</div><p style="font-size:12px;color:#cbd5e1;line-height:1.6;">${ai.executive_summary}</p></div>` : ''}
-        ${ai.investor_verdict ? `<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Investor Perspective</div><p style="font-size:12px;color:#cbd5e1;line-height:1.6;">${ai.investor_verdict}</p></div>` : ''}
-        ${ai.top_priorities && ai.top_priorities.length > 0 ? `<div><div style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Top Priorities</div>${ai.top_priorities.map((p, i) => `<div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;"><span style="color:#f59e0b;font-weight:700;font-size:11px;">${i + 1}.</span><span style="font-size:12px;color:#cbd5e1;">${p}</span></div>`).join('')}</div>` : ''}
+        ${ai.executive_summary ? `<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Executive Summary</div><p style="font-size:13px;color:#cbd5e1;line-height:1.6;">${ai.executive_summary}</p></div>` : ''}
+        ${ai.investor_verdict ? `<div style="margin-bottom:12px;"><div style="font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Investor Perspective</div><p style="font-size:13px;color:#cbd5e1;line-height:1.6;">${ai.investor_verdict}</p></div>` : ''}
+        ${ai.top_priorities && ai.top_priorities.length > 0 ? `<div><div style="font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Top Priorities</div>${ai.top_priorities.map((p, i) => `<div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;"><span style="color:#f59e0b;font-weight:700;font-size:12px;">${i + 1}.</span><span style="font-size:13px;color:#cbd5e1;">${p}</span></div>`).join('')}</div>` : ''}
       </div>` : '';
 
     // Rubric details
@@ -334,16 +332,16 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
       if (!cat.items || cat.items.length === 0) return '';
       const rows = cat.items.map((item) => {
         const pct = item.maxPoints > 0 ? Math.round((item.points / item.maxPoints) * 100) : 0;
-        const color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+        const color = pct >= 86 ? '#22c55e' : pct >= 80 ? '#eab308' : '#ef4444';
         const icon = pct >= 80 ? '&#10003;' : pct > 0 ? '&#9679;' : '&#10007;';
         return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 12px;border-bottom:1px solid #0f172a;">
-          <span style="color:${color};font-size:11px;font-weight:700;margin-top:1px;">${icon}</span>
-          <div style="flex:1;"><div style="font-size:11px;color:#cbd5e1;line-height:1.4;">${item.question}</div>${item.answer ? `<div style="font-size:10px;color:#64748b;margin-top:1px;">${String(item.answer).slice(0, 100)}${String(item.answer).length > 100 ? '...' : ''}</div>` : ''}</div>
-          <span style="font-size:11px;font-weight:700;color:${color};white-space:nowrap;">${item.points}/${item.maxPoints}</span>
+          <span style="color:${color};font-size:12px;font-weight:700;margin-top:1px;">${icon}</span>
+          <div style="flex:1;"><div style="font-size:12px;color:#cbd5e1;line-height:1.4;">${item.question}</div>${item.answer ? `<div style="font-size:11px;color:#64748b;margin-top:1px;">${String(item.answer).slice(0, 100)}${String(item.answer).length > 100 ? '...' : ''}</div>` : ''}</div>
+          <span style="font-size:12px;font-weight:700;color:${color};white-space:nowrap;">${item.points}/${item.maxPoints}</span>
         </div>`;
       }).join('');
       return `<div style="margin-bottom:14px;border-radius:10px;border:1px solid ${DARK.border};overflow:hidden;">
-        <div style="display:flex;justify-content:space-between;padding:10px 14px;background:${DARK.bgCard};"><span style="font-size:12px;font-weight:600;color:${DARK.text};">${cat.name}</span><span style="font-size:12px;font-weight:700;color:${getScoreColor(cat.score)};">${cat.score}%</span></div>
+        <div style="display:flex;justify-content:space-between;padding:10px 14px;background:${DARK.bgCard};"><span style="font-size:13px;font-weight:600;color:${DARK.text};">${cat.name}</span><span style="font-size:13px;font-weight:700;color:${getScoreColor(cat.score)};">${cat.score}%</span></div>
         ${rows}</div>`;
     }).join('');
 
@@ -353,28 +351,28 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
       const rows = catTasks.map((x) => `
         <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid #0f172a;">
           <span style="width:7px;height:7px;border-radius:50%;background:${x.status === 'done' ? '#22c55e' : getPriorityColor(x.priority)};flex-shrink:0;"></span>
-          <span style="flex:1;font-size:11px;color:${x.status === 'done' ? '#64748b' : '#cbd5e1'};${x.status === 'done' ? 'text-decoration:line-through;' : ''}">${x.title}</span>
-          <span style="font-size:9px;font-weight:600;color:${getPriorityColor(x.priority)};text-transform:uppercase;">${getPriorityLabel(x.priority)}</span>
-          ${x.points ? `<span style="font-size:10px;font-weight:600;color:#6366f1;">+${x.points}</span>` : ''}
+          <span style="flex:1;font-size:12px;color:${x.status === 'done' ? '#64748b' : '#cbd5e1'};${x.status === 'done' ? 'text-decoration:line-through;' : ''}">${x.title}</span>
+          <span style="font-size:10px;font-weight:600;color:${getPriorityColor(x.priority)};text-transform:uppercase;">${getPriorityLabel(x.priority)}</span>
+          ${x.points ? `<span style="font-size:11px;font-weight:600;color:#6366f1;">+${x.points}</span>` : ''}
         </div>`).join('');
       return `<div style="margin-bottom:10px;border-radius:10px;border:1px solid ${DARK.border};overflow:hidden;">
-        <div style="padding:8px 14px;background:${DARK.bgCard};"><span style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">${catName}</span></div>
+        <div style="padding:8px 14px;background:${DARK.bgCard};"><span style="font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">${catName}</span></div>
         ${rows}</div>`;
     }).join('');
 
     // Profile
     const profileHtml = (profile.description || profile.industry || profile.stage) ? `
       <div style="margin:16px 0;padding:16px;border-radius:12px;background:${DARK.bgCard};border:1px solid ${DARK.border};">
-        <div style="font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Company Profile</div>
-        ${profile.description ? `<p style="font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:10px;">${profile.description}</p>` : ''}
+        <div style="font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Company Profile</div>
+        ${profile.description ? `<p style="font-size:13px;color:#94a3b8;line-height:1.5;margin-bottom:10px;">${profile.description}</p>` : ''}
         <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          ${[profile.industry && `Industry: ${profile.industry}`, profile.stage && `Stage: ${profile.stage}`, profile.location && `Location: ${profile.location}`, profile.team_size && `Team: ${profile.team_size}`, profile.founded_year && `Founded: ${profile.founded_year}`, profile.website && profile.website].filter(Boolean).map((v) => `<span style="padding:4px 10px;border-radius:6px;background:${DARK.border};font-size:10px;color:#94a3b8;">${v}</span>`).join('')}
+          ${[profile.industry && `Industry: ${profile.industry}`, profile.stage && `Stage: ${profile.stage}`, profile.location && `Location: ${profile.location}`, profile.team_size && `Team: ${profile.team_size}`, profile.founded_year && `Founded: ${profile.founded_year}`, profile.website && profile.website].filter(Boolean).map((v) => `<span style="padding:4px 10px;border-radius:6px;background:${DARK.border};font-size:11px;color:#94a3b8;">${v}</span>`).join('')}
         </div>
       </div>` : '';
 
     // Strengths + Gaps
-    const sHtml = strengths.map((s) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(34,197,94,0.08);"><span style="color:#d1d5db;font-size:12px;">${s.name}</span><span style="font-weight:700;color:#22c55e;font-size:12px;">${s.score}%</span></div>`).join('') || '<p style="color:#6b7280;font-size:11px;">None above 70%</p>';
-    const gHtml = gaps.map((g) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(239,68,68,0.08);"><span style="color:#d1d5db;font-size:12px;">${g.name}</span><span style="font-weight:700;color:#ef4444;font-size:12px;">${g.score}%</span></div>`).join('') || '<p style="color:#6b7280;font-size:11px;">All above 50%</p>';
+    const sHtml = strengths.map((s) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(34,197,94,0.08);"><span style="color:#d1d5db;font-size:13px;">${s.name}</span><span style="font-weight:700;color:#22c55e;font-size:13px;">${s.score}%</span></div>`).join('') || '<p style="color:#6b7280;font-size:12px;">None above 70%</p>';
+    const gHtml = gaps.map((g) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(239,68,68,0.08);"><span style="color:#d1d5db;font-size:13px;">${g.name}</span><span style="font-weight:700;color:#ef4444;font-size:13px;">${g.score}%</span></div>`).join('') || '<p style="color:#6b7280;font-size:12px;">All above 50%</p>';
 
     pw.document.write(`<!DOCTYPE html><html><head>
       <title>${companyName} — Investor Readiness Report</title>
@@ -384,34 +382,34 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
         body{font-family:'DM Sans',system-ui,sans-serif;background:${DARK.bg};color:${DARK.text};}
         .page{max-width:720px;margin:0 auto;padding:28px 20px;}
         @media print{body{padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.page{padding:14px;}@page{margin:0.4in;size:A4;}.no-print{display:none!important;}.page-break{page-break-before:always;}}
-        h2{font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+        h2{font-size:13px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
       </style>
     </head><body><div class="page">
       <!-- Header -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid ${DARK.border};margin-bottom:20px;">
-        <div style="display:flex;align-items:center;gap:10px;">${LOGO_SVG}<span style="font-size:17px;font-weight:700;color:#818cf8;letter-spacing:-0.5px;">Frictionless</span></div>
-        <div style="text-align:right;"><div style="font-size:10px;color:#64748b;">Investor Readiness Report</div><div style="font-size:10px;color:#4b5563;">${generatedDate}</div></div>
+        <div style="display:flex;align-items:center;gap:10px;">${LOGO_SVG}<span style="font-size:18px;font-weight:700;color:#818cf8;letter-spacing:-0.5px;">Frictionless</span></div>
+        <div style="text-align:right;"><div style="font-size:11px;color:#64748b;">Investor Readiness Report</div><div style="font-size:11px;color:#4b5563;">${generatedDate}</div></div>
       </div>
 
       <!-- Title -->
       <div style="text-align:center;margin-bottom:20px;">
-        <div style="font-size:26px;font-weight:700;color:#f8fafc;margin-bottom:4px;">${companyName}</div>
-        ${profile.description ? `<p style="font-size:12px;color:#64748b;max-width:480px;margin:0 auto;line-height:1.5;">${profile.description}</p>` : ''}
+        <div style="font-size:27px;font-weight:700;color:#f8fafc;margin-bottom:4px;">${companyName}</div>
+        ${profile.description ? `<p style="font-size:13px;color:#64748b;max-width:480px;margin:0 auto;line-height:1.5;">${profile.description}</p>` : ''}
       </div>
 
       <!-- Score -->
       <div style="display:flex;align-items:center;justify-content:center;gap:24px;margin:20px 0;padding:20px;border-radius:14px;background:${DARK.bgCard};border:1px solid ${DARK.border};">
         <div style="width:110px;height:110px;border-radius:50%;border:5px solid ${scoreColor};display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
-          <div style="font-size:38px;font-weight:700;color:${scoreColor};line-height:1;">${Math.round(score)}</div>
-          <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:1px;">${getScoreLabel(score)}</div>
+          <div style="font-size:39px;font-weight:700;color:${scoreColor};line-height:1;">${Math.round(score)}</div>
+          <div style="font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:1px;">${getScoreLabel(score)}</div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px 20px;">
-          <div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:#f8fafc;">${categories.length}</div><div style="font-size:9px;color:#64748b;text-transform:uppercase;">Categories</div></div>
-          <div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:#22c55e;">${strengths.length}</div><div style="font-size:9px;color:#64748b;text-transform:uppercase;">Strengths</div></div>
-          <div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:#ef4444;">${gaps.length}</div><div style="font-size:9px;color:#64748b;text-transform:uppercase;">Gaps</div></div>
-          <div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:#6366f1;">${data.completedTasks ?? doneTasks.length}/${data.totalTasks ?? allTasks.length}</div><div style="font-size:9px;color:#64748b;text-transform:uppercase;">Tasks</div></div>
-          <div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:#22c55e;">${completedRubricItems}/${totalRubricItems}</div><div style="font-size:9px;color:#64748b;text-transform:uppercase;">Rubric Items</div></div>
-          ${data.delta ? `<div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:${(data.delta ?? 0) >= 0 ? '#22c55e' : '#ef4444'};">${(data.delta ?? 0) >= 0 ? '+' : ''}${data.delta}%</div><div style="font-size:9px;color:#64748b;text-transform:uppercase;">Change</div></div>` : `<div style="text-align:center;"><div style="font-size:18px;font-weight:700;color:#f59e0b;">+${totalPotentialPoints}</div><div style="font-size:9px;color:#64748b;text-transform:uppercase;">Pts Available</div></div>`}
+          <div style="text-align:center;"><div style="font-size:19px;font-weight:700;color:#f8fafc;">${categories.length}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;">Categories</div></div>
+          <div style="text-align:center;"><div style="font-size:19px;font-weight:700;color:#22c55e;">${strengths.length}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;">Strengths</div></div>
+          <div style="text-align:center;"><div style="font-size:19px;font-weight:700;color:#ef4444;">${gaps.length}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;">Gaps</div></div>
+          <div style="text-align:center;"><div style="font-size:19px;font-weight:700;color:#6366f1;">${data.completedTasks ?? doneTasks.length}/${data.totalTasks ?? allTasks.length}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;">Tasks</div></div>
+          <div style="text-align:center;"><div style="font-size:19px;font-weight:700;color:#22c55e;">${completedRubricItems}/${totalRubricItems}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;">Rubric Items</div></div>
+          ${data.delta ? `<div style="text-align:center;"><div style="font-size:19px;font-weight:700;color:${(data.delta ?? 0) >= 0 ? '#22c55e' : '#ef4444'};">${(data.delta ?? 0) >= 0 ? '+' : ''}${data.delta}%</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;">Change</div></div>` : `<div style="text-align:center;"><div style="font-size:19px;font-weight:700;color:#f59e0b;">+${totalPotentialPoints}</div><div style="font-size:10px;color:#64748b;text-transform:uppercase;">Pts Available</div></div>`}
         </div>
       </div>
 
@@ -426,10 +424,10 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
       <!-- Strengths + Gaps -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
         <div style="padding:14px;border-radius:12px;background:${DARK.greenBg};border:1px solid ${DARK.greenBorder};">
-          <div style="font-size:11px;font-weight:600;color:#22c55e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Strengths</div>${sHtml}
+          <div style="font-size:12px;font-weight:600;color:#22c55e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Strengths</div>${sHtml}
         </div>
         <div style="padding:14px;border-radius:12px;background:${DARK.redBg};border:1px solid ${DARK.redBorder};">
-          <div style="font-size:11px;font-weight:600;color:#ef4444;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Improvement Areas</div>${gHtml}
+          <div style="font-size:12px;font-weight:600;color:#ef4444;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Improvement Areas</div>${gHtml}
         </div>
       </div>
 
@@ -442,13 +440,13 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
 
       <!-- Tasks -->
       ${Object.keys(tasks).length > 0 ? `<div class="page-break"></div><div style="margin-bottom:14px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">${LOGO_SVG.replace(/width="32" height="32"/, 'width="18" height="18"')}<h2 style="margin-bottom:0;">Recommended Actions</h2><span style="margin-left:auto;font-size:10px;color:#6366f1;font-weight:600;">${pendingTasks.length} pending &middot; ${doneTasks.length} done</span></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">${LOGO_SVG.replace(/width="32" height="32"/, 'width="18" height="18"')}<h2 style="margin-bottom:0;">Recommended Actions</h2><span style="margin-left:auto;font-size:11px;color:#6366f1;font-weight:600;">${pendingTasks.length} pending &middot; ${doneTasks.length} done</span></div>
         ${tasksHtml}</div>` : ''}
 
       <!-- Footer -->
       <div style="text-align:center;padding:16px 0;border-top:1px solid ${DARK.border};margin-top:14px;">
-        <div style="display:inline-flex;align-items:center;gap:6px;margin-bottom:3px;">${LOGO_SVG.replace(/width="32" height="32"/, 'width="14" height="14"')}<span style="font-size:11px;font-weight:600;color:#818cf8;">Frictionless Intelligence</span></div>
-        <div style="font-size:9px;color:#4b5563;">${generatedDate} &middot; Confidential</div>
+        <div style="display:inline-flex;align-items:center;gap:6px;margin-bottom:3px;">${LOGO_SVG.replace(/width="32" height="32"/, 'width="14" height="14"')}<span style="font-size:12px;font-weight:600;color:#818cf8;">Frictionless Intelligence</span></div>
+        <div style="font-size:10px;color:#4b5563;">${generatedDate} &middot; Confidential</div>
       </div>
     </div></body></html>`);
 
@@ -477,8 +475,8 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
               {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
             </button>
             <div className="text-right">
-              <div className="text-[11px]" style={{ color: t.textMuted }}>Investor Readiness Report</div>
-              <div className="text-[11px]" style={{ color: t.textMuted }}>{generatedDate}</div>
+              <div className="text-[12px]" style={{ color: t.textMuted }}>Investor Readiness Report</div>
+              <div className="text-[12px]" style={{ color: t.textMuted }}>{generatedDate}</div>
             </div>
           </div>
         </div>
@@ -504,24 +502,24 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
             style={{ border: `5px solid ${scoreColor}` }}
           >
             <span className="text-4xl font-bold leading-none" style={{ color: scoreColor }}>{Math.round(score)}</span>
-            <span className="text-[10px] font-semibold uppercase tracking-wider mt-1" style={{ color: t.textMuted }}>{getScoreLabel(score)}</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider mt-1" style={{ color: t.textMuted }}>{getScoreLabel(score)}</span>
           </div>
           <div className="grid grid-cols-3 gap-4 text-center">
-            <div><div className="text-xl font-bold" style={{ color: t.text }}>{categories.length}</div><div className="text-[10px] uppercase tracking-wider" style={{ color: t.textMuted }}>Categories</div></div>
-            <div><div className="text-xl font-bold" style={{ color: t.greenText }}>{strengths.length}</div><div className="text-[10px] uppercase tracking-wider" style={{ color: t.textMuted }}>Strengths</div></div>
-            <div><div className="text-xl font-bold" style={{ color: t.redText }}>{gaps.length}</div><div className="text-[10px] uppercase tracking-wider" style={{ color: t.textMuted }}>Gaps</div></div>
-            <div><div className="text-xl font-bold" style={{ color: t.indigoText }}>{data.completedTasks ?? doneTasks.length}/{data.totalTasks ?? allTasks.length}</div><div className="text-[10px] uppercase tracking-wider" style={{ color: t.textMuted }}>Tasks</div></div>
-            <div><div className="text-xl font-bold" style={{ color: t.greenText }}>{completedRubricItems}/{totalRubricItems}</div><div className="text-[10px] uppercase tracking-wider" style={{ color: t.textMuted }}>Rubric Items</div></div>
+            <div><div className="text-xl font-bold" style={{ color: t.text }}>{categories.length}</div><div className="text-[11px] uppercase tracking-wider" style={{ color: t.textMuted }}>Categories</div></div>
+            <div><div className="text-xl font-bold" style={{ color: t.greenText }}>{strengths.length}</div><div className="text-[11px] uppercase tracking-wider" style={{ color: t.textMuted }}>Strengths</div></div>
+            <div><div className="text-xl font-bold" style={{ color: t.redText }}>{gaps.length}</div><div className="text-[11px] uppercase tracking-wider" style={{ color: t.textMuted }}>Gaps</div></div>
+            <div><div className="text-xl font-bold" style={{ color: t.indigoText }}>{data.completedTasks ?? doneTasks.length}/{data.totalTasks ?? allTasks.length}</div><div className="text-[11px] uppercase tracking-wider" style={{ color: t.textMuted }}>Tasks</div></div>
+            <div><div className="text-xl font-bold" style={{ color: t.greenText }}>{completedRubricItems}/{totalRubricItems}</div><div className="text-[11px] uppercase tracking-wider" style={{ color: t.textMuted }}>Rubric Items</div></div>
             {data.delta !== undefined && data.delta !== 0 ? (
               <div>
                 <div className="text-xl font-bold flex items-center justify-center gap-1" style={{ color: data.delta >= 0 ? t.greenText : t.redText }}>
                   {data.delta >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                   {data.delta >= 0 ? '+' : ''}{data.delta}%
                 </div>
-                <div className="text-[10px] uppercase tracking-wider" style={{ color: t.textMuted }}>Change</div>
+                <div className="text-[11px] uppercase tracking-wider" style={{ color: t.textMuted }}>Change</div>
               </div>
             ) : totalPotentialPoints > 0 ? (
-              <div><div className="text-xl font-bold" style={{ color: t.amberText }}>+{totalPotentialPoints}</div><div className="text-[10px] uppercase tracking-wider" style={{ color: t.textMuted }}>Pts Available</div></div>
+              <div><div className="text-xl font-bold" style={{ color: t.amberText }}>+{totalPotentialPoints}</div><div className="text-[11px] uppercase tracking-wider" style={{ color: t.textMuted }}>Pts Available</div></div>
             ) : null}
           </div>
         </motion.div>
@@ -544,7 +542,7 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
               <div className="mb-4">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <Brain className="w-3.5 h-3.5" style={{ color: t.indigoText }} />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: t.textSecondary }}>Executive Summary</span>
+                  <span className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: t.textSecondary }}>Executive Summary</span>
                 </div>
                 <p className="text-sm leading-relaxed" style={{ color: t.text }}>{ai.executive_summary}</p>
               </div>
@@ -554,7 +552,7 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
               <div className="mb-4">
                 <div className="flex items-center gap-1.5 mb-1.5">
                   <Eye className="w-3.5 h-3.5" style={{ color: t.amberText }} />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: t.textSecondary }}>Investor Perspective</span>
+                  <span className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: t.textSecondary }}>Investor Perspective</span>
                 </div>
                 <p className="text-sm leading-relaxed" style={{ color: t.text }}>{ai.investor_verdict}</p>
               </div>
@@ -564,7 +562,7 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
               <div>
                 <div className="flex items-center gap-1.5 mb-2">
                   <Zap className="w-3.5 h-3.5" style={{ color: t.amberText }} />
-                  <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: t.textSecondary }}>Top Priorities</span>
+                  <span className="text-[12px] font-semibold uppercase tracking-wider" style={{ color: t.textSecondary }}>Top Priorities</span>
                 </div>
                 <div className="space-y-1.5">
                   {ai.top_priorities.map((p, i) => (
@@ -639,7 +637,7 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
                       <motion.div className="h-full rounded-full" style={{ backgroundColor: color }} initial={{ width: 0 }} animate={{ width: `${cat.score}%` }} transition={{ duration: 0.8, delay: 0.18 + idx * 0.03 }} />
                     </div>
                     <span className="text-xs font-bold tabular-nums w-10 text-right" style={{ color }}>{cat.score}%</span>
-                    {cat.weight && <span className="text-[10px] w-8 text-right" style={{ color: t.textMuted }}>{cat.weight}%</span>}
+                    {cat.weight && <span className="text-[11px] w-8 text-right" style={{ color: t.textMuted }}>{cat.weight}%</span>}
                   </motion.div>
                 );
               })}
@@ -689,7 +687,7 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
             <div className="flex items-center gap-2 mb-3">
               <Shield className="w-4 h-4" style={{ color: t.indigoText }} />
               <h2 className="text-xs font-semibold uppercase tracking-wider" style={{ color: t.textSecondary }}>Detailed Assessment</h2>
-              <span className="text-[10px] ml-auto" style={{ color: t.textMuted }}>{completedRubricItems} complete &middot; {partialRubricItems} partial &middot; {totalRubricItems - completedRubricItems - partialRubricItems} missing</span>
+              <span className="text-[11px] ml-auto" style={{ color: t.textMuted }}>{completedRubricItems} complete &middot; {partialRubricItems} partial &middot; {totalRubricItems - completedRubricItems - partialRubricItems} missing</span>
             </div>
             <div className="space-y-3">
               {sortedCategories.map((cat) => {
@@ -701,14 +699,14 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
                     <div className="flex items-center justify-between px-5 py-3" style={{ background: t.bgCard, borderBottom: `1px solid ${t.border}` }}>
                       <span className="text-sm font-semibold" style={{ color: t.text }}>{cat.name}</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-[11px]" style={{ color: t.textMuted }}>{catComplete}/{cat.items.length}</span>
+                        <span className="text-[12px]" style={{ color: t.textMuted }}>{catComplete}/{cat.items.length}</span>
                         <span className="text-sm font-bold" style={{ color }}>{cat.score}%</span>
                       </div>
                     </div>
                     <div>
                       {cat.items.map((item, idx) => {
                         const pct = item.maxPoints > 0 ? Math.round((item.points / item.maxPoints) * 100) : 0;
-                        const itemColor = pct >= 80 ? t.greenText : pct >= 50 ? t.amberText : pct > 0 ? '#f97316' : t.redText;
+                        const itemColor = pct >= 86 ? t.greenText : pct >= 80 ? t.amberText : t.redText;
                         return (
                           <div key={idx} className="flex items-start gap-3 px-5 py-2.5" style={{ borderBottom: `1px solid ${t.borderLight}` }}>
                             <div className="mt-0.5 shrink-0">
@@ -716,8 +714,8 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="text-xs leading-relaxed" style={{ color: t.text }}>{item.question}</div>
-                              {item.answer && <div className="text-[11px] mt-0.5 truncate" style={{ color: t.textMuted }}>{String(item.answer)}</div>}
-                              {item.reasoning && <div className="text-[10px] mt-0.5 italic" style={{ color: t.textMuted }}>{String(item.reasoning).slice(0, 150)}</div>}
+                              {item.answer && <div className="text-[12px] mt-0.5 truncate" style={{ color: t.textMuted }}>{String(item.answer)}</div>}
+                              {item.reasoning && <div className="text-[11px] mt-0.5 italic" style={{ color: t.textMuted }}>{String(item.reasoning).slice(0, 150)}</div>}
                             </div>
                             <span className="text-xs font-bold tabular-nums shrink-0" style={{ color: itemColor }}>{item.points}/{item.maxPoints}</span>
                           </div>
@@ -751,7 +749,7 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
                 <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: t.bgCardAlt }}>
                   <div className="h-full rounded-full transition-all" style={{ width: `${(doneTasks.length / allTasks.length) * 100}%`, background: 'linear-gradient(to right, #6366f1, #22c55e)' }} />
                 </div>
-                <span className="text-[11px] font-semibold tabular-nums" style={{ color: t.textMuted }}>{Math.round((doneTasks.length / allTasks.length) * 100)}%</span>
+                <span className="text-[12px] font-semibold tabular-nums" style={{ color: t.textMuted }}>{Math.round((doneTasks.length / allTasks.length) * 100)}%</span>
               </div>
             )}
 
@@ -763,7 +761,7 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
                   <div key={catName} className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${t.border}` }}>
                     <div className="flex items-center justify-between px-5 py-3" style={{ background: t.bgCard, borderBottom: `1px solid ${t.border}` }}>
                       <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: t.textSecondary }}>{catName}</span>
-                      <span className="text-[11px]" style={{ color: t.textMuted }}>{catDone}/{catTasks.length} done</span>
+                      <span className="text-[12px]" style={{ color: t.textMuted }}>{catDone}/{catTasks.length} done</span>
                     </div>
                     <div>
                       {catTasks.map((task, idx) => {
@@ -772,8 +770,8 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
                           <div key={idx} className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: `1px solid ${t.borderLight}` }}>
                             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: isDone ? t.greenText : getPriorityColor(task.priority) }} />
                             <span className={`flex-1 text-xs ${isDone ? 'line-through' : ''}`} style={{ color: isDone ? t.textMuted : t.text }}>{task.title}</span>
-                            <span className="text-[10px] font-semibold uppercase" style={{ color: getPriorityColor(task.priority) }}>{getPriorityLabel(task.priority)}</span>
-                            {task.points > 0 && <span className="text-[10px] font-semibold tabular-nums" style={{ color: t.indigoText }}>+{task.points}</span>}
+                            <span className="text-[11px] font-semibold uppercase" style={{ color: getPriorityColor(task.priority) }}>{getPriorityLabel(task.priority)}</span>
+                            {task.points > 0 && <span className="text-[11px] font-semibold tabular-nums" style={{ color: t.indigoText }}>+{task.points}</span>}
                           </div>
                         );
                       })}

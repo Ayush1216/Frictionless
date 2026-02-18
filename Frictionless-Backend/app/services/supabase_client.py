@@ -38,9 +38,6 @@ def upsert_person_provenance(
             on_conflict="org_id,identity_key",
         ).execute()
     except Exception as e:
-        log.warning("person_provenance upsert failed (table may not exist): %s", e)
-        raise
-    except Exception as e:
         log.warning("upsert_person_provenance failed (table may not exist): %s", e)
         raise
 
@@ -295,6 +292,30 @@ def append_readiness_history(
 # ---------------------------------------------------------------------------
 
 
+def _supabase_retry(fn, retries: int = 3, backoff: float = 0.5):
+    """Execute a Supabase call with retry + exponential backoff for transient errors."""
+    import time as _time
+    for attempt in range(retries):
+        try:
+            return fn()
+        except Exception as e:
+            err_str = str(e)
+            is_transient = (
+                "500" in err_str
+                or "cloudflare" in err_str.lower()
+                or "JSON could not be generated" in err_str
+                or "502" in err_str
+                or "503" in err_str
+            )
+            if is_transient and attempt < retries - 1:
+                wait = backoff * (2 ** attempt)
+                log.warning("Supabase transient error (attempt %d/%d), retrying in %.1fs: %s",
+                            attempt + 1, retries, wait, err_str[:120])
+                _time.sleep(wait)
+            else:
+                raise
+
+
 def replace_org_tasks(
     supabase: Client,
     org_id: str,
@@ -304,9 +325,12 @@ def replace_org_tasks(
     Merge task_groups and tasks for an org with the given groups_data (pending only).
     Reuses existing groups/tasks when category_key and subcategory_name match so
     task IDs (and thus task_ai_chat_messages) are preserved.
-    Completed tasks are never deleted: we only upsert pending ones. The caller
-    filters to pending when building the response so the UI shows the remaining layout.
+    Completed tasks are never deleted: we only upsert pending ones.
+
+    Uses batch upserts instead of individual PATCH requests to avoid Cloudflare
+    rate-limiting (HTTP 500) on Supabase.
     """
+    import time as _time
     now = datetime.now(timezone.utc).isoformat()
     r = (
         supabase.table("task_groups")
@@ -338,6 +362,12 @@ def replace_org_tasks(
 
     result_groups: list[dict] = []
 
+    # Collect batch operations to reduce API calls
+    groups_to_update: list[dict] = []  # existing groups that need updating
+    groups_to_insert: list[dict] = []  # new groups to create
+    # Map: index in groups_data → group_id (filled after inserts)
+    group_id_map: dict[int, str] = {}
+
     for sort_order, g in enumerate(groups_data):
         cat_key = g.get("category_key", "")
         if not cat_key:
@@ -353,21 +383,67 @@ def replace_org_tasks(
         }
         if existing:
             group_id = existing["id"]
-            supabase.table("task_groups").update(group_row).eq("id", group_id).execute()
-            group_out = {**existing, **group_row, "id": group_id}
+            groups_to_update.append({**group_row, "id": group_id, "org_id": org_id, "created_at": existing.get("created_at", now)})
+            group_id_map[sort_order] = group_id
         else:
-            ins = supabase.table("task_groups").insert({
+            groups_to_insert.append({
                 "org_id": org_id,
                 **group_row,
                 "created_at": now,
-            }).execute()
-            if not ins.data:
-                continue
-            group_id = ins.data[0].get("id")
-            if not group_id:
-                continue
-            group_out = {**ins.data[0]}
-            by_cat_key[cat_key] = group_out
+            })
+
+    # Batch upsert existing groups (single call instead of N individual updates)
+    if groups_to_update:
+        try:
+            _supabase_retry(lambda: supabase.table("task_groups").upsert(
+                groups_to_update, on_conflict="id"
+            ).execute())
+        except Exception as e:
+            log.warning("Batch group upsert failed, falling back to individual: %s", e)
+            for gu in groups_to_update:
+                gid = gu.pop("id", None)
+                if gid:
+                    try:
+                        _supabase_retry(lambda _gid=gid, _gu=gu: supabase.table("task_groups").update(_gu).eq("id", _gid).execute())
+                    except Exception as e2:
+                        log.warning("Individual group update failed for %s: %s", gid, e2)
+
+    # Insert new groups (batch)
+    if groups_to_insert:
+        try:
+            ins = _supabase_retry(lambda: supabase.table("task_groups").insert(groups_to_insert).execute())
+            for row in (ins.data or []):
+                cat_key = row.get("category_key")
+                gid = row.get("id")
+                if cat_key and gid:
+                    by_cat_key[cat_key] = row
+        except Exception as e:
+            log.warning("Batch group insert failed, falling back to individual: %s", e)
+            for gi in groups_to_insert:
+                try:
+                    ins = _supabase_retry(lambda _gi=gi: supabase.table("task_groups").insert(_gi).execute())
+                    if ins.data:
+                        cat_key = ins.data[0].get("category_key")
+                        gid = ins.data[0].get("id")
+                        if cat_key and gid:
+                            by_cat_key[cat_key] = ins.data[0]
+                except Exception as e2:
+                    log.warning("Individual group insert failed: %s", e2)
+
+    # Now process tasks per group — collect batch updates and inserts
+    tasks_to_upsert: list[dict] = []  # existing tasks to update
+    tasks_to_insert: list[dict] = []  # new tasks to create
+
+    for sort_order, g in enumerate(groups_data):
+        cat_key = g.get("category_key", "")
+        if not cat_key:
+            continue
+        group_entry = by_cat_key.get(cat_key)
+        if not group_entry:
+            continue
+        group_id = group_entry.get("id") or group_id_map.get(sort_order)
+        if not group_id:
+            continue
 
         existing_tasks = tasks_by_group.get(group_id, [])
         by_sub = {t["subcategory_name"]: t for t in existing_tasks}
@@ -386,28 +462,85 @@ def replace_org_tasks(
             }
             ex = by_sub.get(sub)
             if ex:
-                supabase.table("tasks").update(task_payload).eq("id", ex["id"]).execute()
+                # Batch update: include id for upsert
+                tasks_to_upsert.append({
+                    **task_payload,
+                    "id": ex["id"],
+                    "group_id": group_id,
+                    "subcategory_name": sub,
+                    "status": ex.get("status", "todo"),
+                    "created_at": ex.get("created_at", now),
+                })
                 task_rows_out.append({**ex, **task_payload})
             else:
-                ins_t = supabase.table("tasks").insert({
+                new_task = {
                     "group_id": group_id,
                     "subcategory_name": sub,
                     "status": "todo",
                     "created_at": now,
                     **task_payload,
-                }).execute()
-                if ins_t.data:
-                    task_rows_out.append(ins_t.data[0])
+                }
+                tasks_to_insert.append(new_task)
+                task_rows_out.append(new_task)
 
+        group_out = {**group_entry, "id": group_id}
         result_groups.append({**group_out, "tasks": task_rows_out})
 
-    # Only remove groups that are no longer in the rubric at all (not groups that just have no pending tasks)
+    # Batch upsert existing tasks (single call instead of N individual PATCHes)
+    BATCH_SIZE = 30
+    if tasks_to_upsert:
+        for i in range(0, len(tasks_to_upsert), BATCH_SIZE):
+            batch = tasks_to_upsert[i:i + BATCH_SIZE]
+            try:
+                _supabase_retry(lambda _b=batch: supabase.table("tasks").upsert(_b, on_conflict="id").execute())
+            except Exception as e:
+                log.warning("Batch task upsert failed (batch %d-%d): %s", i, i + len(batch), e)
+                # Fallback: individual updates with small delay
+                for tu in batch:
+                    tid = tu.pop("id", None)
+                    if tid:
+                        try:
+                            _supabase_retry(lambda _tid=tid, _tu=tu: supabase.table("tasks").update(_tu).eq("id", _tid).execute())
+                        except Exception as e2:
+                            log.warning("Individual task update failed for %s: %s", tid, e2)
+                        _time.sleep(0.1)  # small delay to avoid rate limits
+
+    # Batch insert new tasks
+    if tasks_to_insert:
+        for i in range(0, len(tasks_to_insert), BATCH_SIZE):
+            batch = tasks_to_insert[i:i + BATCH_SIZE]
+            try:
+                ins_t = _supabase_retry(lambda _b=batch: supabase.table("tasks").insert(_b).execute())
+                # Update result_groups with inserted IDs
+                if ins_t.data:
+                    for row in ins_t.data:
+                        sub = row.get("subcategory_name")
+                        gid = row.get("group_id")
+                        for rg in result_groups:
+                            if rg.get("id") == gid:
+                                for t in rg.get("tasks", []):
+                                    if t.get("subcategory_name") == sub and "id" not in t:
+                                        t.update(row)
+                                        break
+            except Exception as e:
+                log.warning("Batch task insert failed (batch %d-%d): %s", i, i + len(batch), e)
+                for ti in batch:
+                    try:
+                        _supabase_retry(lambda _ti=ti: supabase.table("tasks").insert(_ti).execute())
+                    except Exception as e2:
+                        log.warning("Individual task insert failed: %s", e2)
+                    _time.sleep(0.1)
+
+    # Only remove groups that are no longer in the rubric at all
     # Completed tasks stay in DB for history.
     groups_to_remove = [eg for eg in existing_groups if eg.get("category_key") not in current_cat_keys]
     if groups_to_remove:
         remove_ids = [eg["id"] for eg in groups_to_remove]
-        supabase.table("tasks").delete().in_("group_id", remove_ids).execute()
-        supabase.table("task_groups").delete().in_("id", remove_ids).execute()
+        try:
+            supabase.table("tasks").delete().in_("group_id", remove_ids).execute()
+            supabase.table("task_groups").delete().in_("id", remove_ids).execute()
+        except Exception as e:
+            log.warning("Cleanup of removed groups failed: %s", e)
 
     return result_groups
 

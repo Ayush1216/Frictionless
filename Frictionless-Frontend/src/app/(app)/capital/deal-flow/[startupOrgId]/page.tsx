@@ -57,16 +57,14 @@ function pct(value: number): string {
 }
 
 function getScoreColor(score: number) {
-  if (score >= 80) return '#10B981';
-  if (score >= 60) return '#3B82F6';
-  if (score >= 40) return '#F59E0B';
+  if (score >= 86) return '#10B981';
+  if (score >= 80) return '#EAB308';
   return '#EF4444';
 }
 
 function getScoreBarColor(score: number) {
-  if (score >= 80) return 'bg-score-excellent';
-  if (score >= 60) return 'bg-score-good';
-  if (score >= 40) return 'bg-score-fair';
+  if (score >= 86) return 'bg-score-excellent';
+  if (score >= 80) return 'bg-score-good';
   return 'bg-score-poor';
 }
 

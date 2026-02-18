@@ -67,6 +67,12 @@ function ChartTooltip({
   );
 }
 
+/** Shorten long X-axis labels for better chart readability */
+function truncateLabel(label: string, maxLen = 12): string {
+  if (label.length <= maxLen) return label;
+  return label.slice(0, maxLen - 1) + '…';
+}
+
 export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartConfig; index?: number }) {
   const unit = chart.unit;
   const series = chart.series ?? [];
@@ -97,6 +103,11 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
     );
   }
 
+  // Determine if X-axis labels are long and need angled display
+  const hasLongLabels = rechartsData.some((d) => String(d.x).length > 10);
+  const xAxisAngle = hasLongLabels ? -30 : 0;
+  const bottomMargin = hasLongLabels ? 50 : 20;
+
   if (chart.chart_type === 'pie') {
     const pieData = (series[0]?.data ?? []).map((d, i) => ({
       name: d.x,
@@ -108,32 +119,40 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: index * 0.05 }}
-        className="glass-card p-5"
+        className="rounded-2xl border border-border/50 bg-card p-5"
       >
-        <h3 className="text-sm font-display font-semibold text-foreground mb-3">{chart.chart_title}</h3>
-        <div className="w-full" style={{ height: 260 }}>
+        <h3 className="text-sm font-display font-semibold text-foreground mb-4">{chart.chart_title}</h3>
+        <div className="w-full" style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={pieData}
                 cx="50%"
-                cy="50%"
-                outerRadius="80%"
-                label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                cy="45%"
+                outerRadius="70%"
+                innerRadius="30%"
+                label={({ name, percent }) => `${truncateLabel(name ?? '', 16)} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                labelLine={{ stroke: '#9CA3AF', strokeWidth: 1 }}
                 dataKey="value"
                 isAnimationActive
                 animationDuration={1000}
+                paddingAngle={2}
               >
                 {pieData.map((entry, i) => (
                   <Cell key={i} fill={entry.color} stroke="none" />
                 ))}
               </Pie>
               <Tooltip content={(props: Record<string, unknown>) => <ChartTooltip {...props} unit={unit} />} />
+              <Legend
+                verticalAlign="bottom"
+                height={36}
+                formatter={(value: string) => <span className="text-xs text-muted-foreground">{value}</span>}
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
         {chart.insight && (
-          <p className="text-xs text-muted-foreground mt-2 border-t border-obsidian-600/50 pt-2">
+          <p className="text-xs text-muted-foreground mt-2 border-t border-border/40 pt-2">
             {chart.insight}
           </p>
         )}
@@ -147,23 +166,29 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: index * 0.05 }}
-        className="glass-card p-5"
+        className="rounded-2xl border border-border/50 bg-card p-5"
       >
-        <h3 className="text-sm font-display font-semibold text-foreground mb-3">{chart.chart_title}</h3>
-        <div className="w-full" style={{ height: 240 }}>
+        <h3 className="text-sm font-display font-semibold text-foreground mb-4">{chart.chart_title}</h3>
+        {chart.x_axis_label && <p className="text-[10px] text-muted-foreground mb-1">{chart.x_axis_label}</p>}
+        <div className="w-full" style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={rechartsData} margin={{ top: 8, right: 8, bottom: 0, left: -10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.2)" />
+            <LineChart data={rechartsData} margin={{ top: 8, right: 16, bottom: bottomMargin, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.15)" />
               <XAxis
                 dataKey="x"
                 tick={{ fontSize: 10, fill: '#9CA3AF' }}
                 tickLine={false}
                 axisLine={false}
+                angle={xAxisAngle}
+                textAnchor={hasLongLabels ? 'end' : 'middle'}
+                height={hasLongLabels ? 60 : 30}
+                tickFormatter={(v: string) => truncateLabel(v)}
               />
               <YAxis
                 tick={{ fontSize: 10, fill: '#9CA3AF' }}
                 tickLine={false}
                 axisLine={false}
+                width={55}
                 tickFormatter={(v: number) =>
                   unit === 'USD' ? `$${v >= 1e6 ? v / 1e6 + 'M' : v >= 1e3 ? v / 1e3 + 'K' : v}` : String(v)
                 }
@@ -186,7 +211,7 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
           </ResponsiveContainer>
         </div>
         {chart.insight && (
-          <p className="text-xs text-muted-foreground mt-2 border-t border-obsidian-600/50 pt-2">
+          <p className="text-xs text-muted-foreground mt-2 border-t border-border/40 pt-2">
             {chart.insight}
           </p>
         )}
@@ -200,23 +225,29 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
-      className="glass-card p-5"
+      className="rounded-2xl border border-border/50 bg-card p-5"
     >
-      <h3 className="text-sm font-display font-semibold text-foreground mb-3">{chart.chart_title}</h3>
-      <div className="w-full" style={{ height: 240 }}>
+      <h3 className="text-sm font-display font-semibold text-foreground mb-4">{chart.chart_title}</h3>
+      {chart.x_axis_label && <p className="text-[10px] text-muted-foreground mb-1">{chart.x_axis_label}</p>}
+      <div className="w-full" style={{ height: 280 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rechartsData} margin={{ top: 8, right: 8, bottom: 0, left: -10 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.2)" />
+          <BarChart data={rechartsData} margin={{ top: 8, right: 16, bottom: bottomMargin, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.15)" />
             <XAxis
               dataKey="x"
               tick={{ fontSize: 10, fill: '#9CA3AF' }}
               tickLine={false}
               axisLine={false}
+              angle={xAxisAngle}
+              textAnchor={hasLongLabels ? 'end' : 'middle'}
+              height={hasLongLabels ? 60 : 30}
+              tickFormatter={(v: string) => truncateLabel(v)}
             />
             <YAxis
               tick={{ fontSize: 10, fill: '#9CA3AF' }}
               tickLine={false}
               axisLine={false}
+              width={55}
               tickFormatter={(v: number) =>
                 unit === 'USD' ? `$${v >= 1e6 ? v / 1e6 + 'M' : v >= 1e3 ? v / 1e3 + 'K' : v}` : String(v)
               }
@@ -237,7 +268,7 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
         </ResponsiveContainer>
       </div>
       {chart.insight && (
-        <p className="text-xs text-muted-foreground mt-2 border-t border-obsidian-600/50 pt-2">
+        <p className="text-xs text-muted-foreground mt-2 border-t border-border/40 pt-2">
           {chart.insight}
         </p>
       )}

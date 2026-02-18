@@ -171,7 +171,7 @@ export default function AnalyticsPage() {
 
   // Build real score trend from scoreHistory
   const realScoreTrend = scoreHistory.length >= 2
-    ? scoreHistory.slice(-6).map((h) => ({ date: new Date(h.date).toLocaleDateString('en-US', { month: 'short' }), score: Math.round(h.score) }))
+    ? scoreHistory.slice(-6).map((h) => ({ date: new Date(h.updated_at).toLocaleDateString('en-US', { month: 'short' }), score: Math.round(h.score) }))
     : scoreTrend;
 
   // Real task donut
@@ -294,9 +294,26 @@ export default function AnalyticsPage() {
             )}
           </h2>
           {!extractionLoaded ? (
-            <div className="glass-card p-12 flex flex-col items-center justify-center gap-3">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Loading extraction data…</p>
+            <div className="space-y-4 animate-pulse">
+              {/* KPI skeleton */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="glass-card p-4 space-y-2">
+                    <div className="h-3 w-16 bg-muted/20 rounded" />
+                    <div className="h-6 w-12 bg-muted/30 rounded" />
+                    <div className="h-2 w-20 bg-muted/15 rounded" />
+                  </div>
+                ))}
+              </div>
+              {/* Chart skeletons */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="glass-card p-5 space-y-3">
+                    <div className="h-4 w-28 bg-muted/20 rounded" />
+                    <div className="h-40 bg-muted/10 rounded-lg" />
+                  </div>
+                ))}
+              </div>
             </div>
           ) : extractionCharts.length > 0 ? (
             <>

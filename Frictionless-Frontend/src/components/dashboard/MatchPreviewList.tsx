@@ -16,9 +16,8 @@ interface MatchPreviewListProps {
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 80) return 'text-score-excellent';
-  if (score >= 60) return 'text-score-good';
-  if (score >= 40) return 'text-score-fair';
+  if (score >= 86) return 'text-score-excellent';
+  if (score >= 80) return 'text-score-good';
   return 'text-score-poor';
 }
 
@@ -53,7 +52,7 @@ export function MatchPreviewList({
           Top Matches
         </h3>
         <Link
-          href="/startup/matches"
+          href="/startup/investors"
           className="text-xs font-medium text-primary hover:text-chart-5 transition-colors flex items-center gap-1"
         >
           View All

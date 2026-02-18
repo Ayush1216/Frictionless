@@ -1,14 +1,18 @@
 """FastAPI backend for Frictionless: Apollo enrichment, extraction pipeline."""
+import collections
 import json
 import logging
 import os
+import sys
 import tempfile
+import threading
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi.responses import JSONResponse
 
 # Load .env from backend root (reliable when cwd differs under uvicorn --reload)
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -64,6 +68,14 @@ from app.services.ai_cache import get_cached_analysis, set_cached_analysis
 from app.services.activity import log_activity, get_activity_events
 from app.services.share import create_share_link, validate_share_link, revoke_share_link, get_share_links
 from app.services.team import invite_member, accept_invite, get_team_members, get_pending_invites, update_member_role, revoke_invite
+from app.services.investor_matching import (
+    generate_startup_thesis_profile,
+    get_investor_matches,
+    get_startup_thesis_profile,
+    run_investor_matching,
+    _LOG_FILE as INVESTOR_LOG_FILE,
+    _file_logger as investor_file_logger,
+)
 from app.utils.domain import extract_domain
 
 logging.basicConfig(
@@ -71,6 +83,47 @@ logging.basicConfig(
     format="%(asctime)s │ %(levelname)-5s │ %(name)s │ %(message)s",
 )
 log = logging.getLogger("main")
+
+
+def _log(msg: str):
+    """Write to both log file and stderr (guaranteed visible)."""
+    investor_file_logger.info(msg)
+    try:
+        sys.stderr.write(msg + "\n")
+        sys.stderr.flush()
+    except Exception:
+        pass
+
+# ---------------------------------------------------------------------------
+# In-memory investor pipeline status tracker
+# Tracks whether thesis generation / matching is in progress per org_id
+# ---------------------------------------------------------------------------
+_pipeline_lock = threading.Lock()
+_pipeline_status: dict[str, dict] = {}
+# Example: {"org_123": {"status": "generating", "started_at": 1700000000}}
+
+_PIPELINE_TIMEOUT_SECS = 300  # 5 min – treat as stale if stuck longer
+
+
+def _get_pipeline_status(org_id: str) -> str | None:
+    """Return current pipeline status for an org, clearing stale entries."""
+    with _pipeline_lock:
+        entry = _pipeline_status.get(org_id)
+        if not entry:
+            return None
+        # Clear stale entries (stuck > 5 min)
+        if time.time() - entry.get("started_at", 0) > _PIPELINE_TIMEOUT_SECS:
+            _pipeline_status.pop(org_id, None)
+            return None
+        return entry.get("status")
+
+
+def _set_pipeline_status(org_id: str, status: str):
+    with _pipeline_lock:
+        if status in ("ready", "error"):
+            _pipeline_status.pop(org_id, None)
+        else:
+            _pipeline_status[org_id] = {"status": status, "started_at": time.time()}
 
 
 class EnrichRequest(BaseModel):
@@ -308,26 +361,45 @@ def _run_dataroom_doc_task(org_id: str, storage_path: str) -> None:
 
 
 def _run_readiness_task(org_id: str, update_source: str = "scheduled") -> None:
-    """Run readiness scoring and save to Supabase. Background thread."""
+    """Run readiness scoring, then thesis profile + investor matching. Background thread.
+
+    Sequence: readiness scoring → thesis profile → investor matching.
+    Each step waits for the previous to complete before starting.
+    """
+    t0 = time.time()
+    _log(f"{'=' * 60}")
+    _log(f"FULL PIPELINE STARTED for org {org_id}")
+    _log(f"Sequence: Readiness → Thesis Profile → Investor Matching")
+    _log(f"{'=' * 60}")
+
     supabase = get_supabase()
     if not supabase:
+        _log("ERROR: Supabase not configured!")
         log.error("Supabase not configured")
         return
     extraction = get_extraction_data(supabase, org_id)
     if not extraction:
+        _log("ERROR: No extraction data found. Run pitch deck extraction first.")
         log.warning("No extraction data for org %s", org_id)
         return
     ocr_storage_path = extraction.get("ocr_storage_path")
     if not ocr_storage_path:
+        _log("ERROR: No OCR storage path. Run extraction pipeline first.")
         log.warning("No OCR storage path for org %s", org_id)
         return
     ocr_text = download_ocr_text(supabase, ocr_storage_path)
     if not ocr_text:
+        _log("ERROR: Could not download OCR text.")
         log.warning("Could not download OCR for org %s", org_id)
         return
     apollo = get_apollo_data(supabase, org_id)
     apollo_data = apollo if apollo else {}
     questionnaire = get_questionnaire(supabase, org_id)
+    _log(f"Data loaded: extraction=YES, ocr=YES, apollo={'YES' if apollo else 'NO'}, questionnaire={'YES' if questionnaire else 'NO'}")
+
+    # --- Step 1: Readiness scoring ---
+    _log("[1/3] READINESS SCORING...")
+    t1 = time.time()
     try:
         result = run_readiness_scoring(
             ocr_text=ocr_text,
@@ -339,9 +411,50 @@ def _run_readiness_task(org_id: str, update_source: str = "scheduled") -> None:
             supabase, org_id, result["scored_rubric"], result["score_summary"], update_source
         )
         _invalidate_dashboard_cache(org_id)
+        score = result.get("score_summary", {}).get("overall_score", "?")
+        elapsed1 = time.time() - t1
+        _log(f"  Readiness score: {score}")
+        _log(f"  Completed in {elapsed1:.1f}s")
         log.info("Readiness scored and saved for org %s", org_id)
     except Exception as exc:
+        _log(f"  FAILED: {exc}")
         log.exception("Readiness scoring failed for org %s: %s", org_id, exc)
+        return
+
+    # --- Step 2: Generate startup thesis profile ---
+    _log("[2/3] THESIS PROFILE GENERATION...")
+    t2 = time.time()
+    try:
+        _set_pipeline_status(org_id, "generating")
+        generate_startup_thesis_profile(supabase, org_id, use_llm=True)
+        elapsed2 = time.time() - t2
+        _log(f"  Completed in {elapsed2:.1f}s")
+        log.info("Thesis profile generated for org %s after readiness scoring", org_id)
+    except Exception as thesis_exc:
+        _log(f"  FAILED: {thesis_exc}")
+        log.warning("Thesis profile generation failed for org %s: %s", org_id, thesis_exc)
+        _set_pipeline_status(org_id, "error")
+        return
+
+    # --- Step 3: Run investor matching ---
+    _log("[3/3] INVESTOR MATCHING...")
+    t3 = time.time()
+    try:
+        _set_pipeline_status(org_id, "matching")
+        run_investor_matching(supabase, org_id, max_matches=10)
+        elapsed3 = time.time() - t3
+        _log(f"  Completed in {elapsed3:.1f}s")
+        log.info("Investor matching complete for org %s", org_id)
+        _set_pipeline_status(org_id, "ready")
+    except Exception as match_exc:
+        _log(f"  FAILED: {match_exc}")
+        log.warning("Investor matching failed for org %s: %s", org_id, match_exc)
+        _set_pipeline_status(org_id, "error")
+
+    total = time.time() - t0
+    _log(f"{'=' * 60}")
+    _log(f"FULL PIPELINE COMPLETE — Total time: {total:.1f}s")
+    _log(f"{'=' * 60}")
 
 
 @app.post("/api/run-readiness-scoring")
@@ -389,13 +502,17 @@ async def extraction_data_endpoint(org_id: str):
         raise HTTPException(status_code=500, detail="Supabase not configured")
     extraction = get_extraction_data(supabase, org_id)
     if extraction:
-        return {"status": "ready", "extraction_data": extraction}
+        return JSONResponse(
+            content={"status": "ready", "extraction_data": extraction},
+            headers={"Cache-Control": "private, max-age=300"},
+        )
     return {"status": "pending"}
 
 
 # In-memory cache for startup-dashboard (readiness + tasks in one). TTL seconds; invalidated on task complete / readiness update.
-_DASHBOARD_CACHE_TTL = 45
-_dashboard_cache: dict[str, tuple[float, dict]] = {}
+_DASHBOARD_CACHE_TTL = 60
+_DASHBOARD_CACHE_MAX = 500
+_dashboard_cache: collections.OrderedDict[str, tuple[float, dict]] = collections.OrderedDict()
 
 
 def _invalidate_dashboard_cache(org_id: str) -> None:
@@ -489,10 +606,14 @@ async def startup_dashboard_endpoint(org_id: str):
     if entry:
         expires_at, payload = entry
         if now < expires_at:
-            return payload
+            _dashboard_cache.move_to_end(org_id)  # LRU: mark as recently used
+            return JSONResponse(content=payload, headers={"Cache-Control": "private, max-age=30"})
     payload = _build_startup_dashboard(supabase, org_id)
     _dashboard_cache[org_id] = (now + _DASHBOARD_CACHE_TTL, payload)
-    return payload
+    # Evict oldest entries if cache exceeds limit
+    while len(_dashboard_cache) > _DASHBOARD_CACHE_MAX:
+        _dashboard_cache.popitem(last=False)
+    return JSONResponse(content=payload, headers={"Cache-Control": "private, max-age=30"})
 
 
 @app.get("/api/startup-activity")
@@ -502,7 +623,10 @@ async def startup_activity_endpoint(org_id: str, limit: int = 30):
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase not configured")
     activities = get_recent_activity(supabase, org_id, limit=min(limit, 50))
-    return {"activities": activities}
+    return JSONResponse(
+        content={"activities": activities},
+        headers={"Cache-Control": "private, max-age=30"},
+    )
 
 
 @app.get("/api/apollo-data")
@@ -513,7 +637,10 @@ async def apollo_data_endpoint(org_id: str):
         raise HTTPException(status_code=500, detail="Supabase not configured")
     raw_data = get_apollo_data(supabase, org_id)
     if raw_data is not None:
-        return {"status": "ready", "raw_data": raw_data}
+        return JSONResponse(
+            content={"status": "ready", "raw_data": raw_data},
+            headers={"Cache-Control": "private, max-age=3600"},
+        )
     return {"status": "pending"}
 
 
@@ -950,11 +1077,109 @@ async def task_chat_messages_post_endpoint(task_id: str, body: TaskChatMessagesB
     return {"ok": True}
 
 
+def _build_company_context_for_chat(supabase, org_id: str) -> dict:
+    """Fetch company profile, founders, and team data for chat context."""
+    ctx: dict = {}
+    try:
+        # Extraction data (company name, metrics, etc.)
+        extraction = get_extraction_data(supabase, org_id)
+        if extraction:
+            for k in ["company_name", "name", "industry", "sector", "stage",
+                       "business_model", "hq_city", "hq_country", "website",
+                       "founded_year", "employee_count", "description"]:
+                if extraction.get(k):
+                    ctx[k] = extraction[k]
+            # Metrics
+            metrics = {}
+            for k in ["arr_usd", "mrr_usd", "revenue_ttm_usd", "burn_monthly",
+                       "runway_months", "customer_count", "headcount"]:
+                if extraction.get(k):
+                    metrics[k] = extraction[k]
+            if metrics:
+                ctx["metrics"] = metrics
+
+        # Apollo data (richer company info)
+        apollo = get_apollo_data(supabase, org_id)
+        if apollo:
+            if not ctx.get("company_name"):
+                ctx["company_name"] = apollo.get("name") or apollo.get("organization_name")
+            if not ctx.get("industry"):
+                ctx["industry"] = apollo.get("industry")
+            if not ctx.get("description"):
+                ctx["description"] = apollo.get("short_description")
+
+        # Founders and team from extraction_data.founder_linkedin
+        if extraction:
+            fl = extraction.get("founder_linkedin") or {}
+            fl_data = (fl.get("data") or {}) if isinstance(fl, dict) else {}
+            raw_founders = fl_data.get("founders") or []
+            raw_leadership = fl_data.get("leadership_team") or []
+            all_people = []
+            for p in raw_founders:
+                if isinstance(p, dict):
+                    person = {
+                        "full_name": p.get("full_name") or p.get("name") or "Unknown",
+                        "title": p.get("title") or p.get("headline") or "",
+                        "role_type": p.get("role_type") or "Founder",
+                        "linkedin_url": p.get("linkedin_url") or "",
+                        "skills": p.get("skills") or p.get("expertise") or "",
+                    }
+                    all_people.append(person)
+            for p in raw_leadership:
+                if isinstance(p, dict):
+                    person = {
+                        "full_name": p.get("full_name") or p.get("name") or "Unknown",
+                        "title": p.get("title") or p.get("headline") or "",
+                        "role_type": p.get("role_type") or "Leadership",
+                        "linkedin_url": p.get("linkedin_url") or "",
+                        "skills": p.get("skills") or p.get("expertise") or "",
+                    }
+                    all_people.append(person)
+            if all_people:
+                founders = [p for p in all_people if (p.get("role_type") or "").lower() in ("founder", "co-founder")]
+                others = [p for p in all_people if p not in founders]
+                if founders:
+                    ctx["founders"] = founders
+                if others:
+                    ctx["team_members"] = others
+                if not founders and not others:
+                    ctx["founders"] = all_people
+
+        # Fallback: try person_provenance table
+        if not ctx.get("founders") and not ctx.get("team_members"):
+            try:
+                prov_resp = supabase.table("person_provenance").select(
+                    "person_jsonb, source"
+                ).eq("org_id", org_id).execute()
+                prov_people = prov_resp.data or []
+                if prov_people:
+                    provenance_list = []
+                    for row in prov_people:
+                        pj = row.get("person_jsonb") or {}
+                        if isinstance(pj, dict):
+                            provenance_list.append({
+                                "full_name": pj.get("full_name") or pj.get("name") or "Unknown",
+                                "title": pj.get("title") or pj.get("headline") or "",
+                                "role_type": pj.get("role_type") or "Team",
+                                "linkedin_url": pj.get("linkedin_url") or "",
+                                "skills": pj.get("skills") or "",
+                            })
+                    if provenance_list:
+                        ctx["founders"] = provenance_list
+            except Exception:
+                pass  # person_provenance may not exist
+
+    except Exception as e:
+        log.warning("Failed to build company context for org %s: %s", org_id, e)
+    return ctx
+
+
 @app.post("/api/tasks/{task_id}/chat")
 async def task_chat_endpoint(task_id: str, body: TaskChatBody):
     """
     Chat: collect the user's answer for this task. When they provide it, we store
-    submitted_value and tell them to mark the task complete. No generic "how to" steps.
+    submitted_value and tell them to mark the task complete.
+    Uses real company data (founders, team, profile) for personalized responses.
     """
     supabase = get_supabase()
     if not supabase:
@@ -964,6 +1189,11 @@ async def task_chat_endpoint(task_id: str, body: TaskChatBody):
         raise HTTPException(status_code=404, detail="Task not found")
     if task.get("status") == "done":
         return {"reply": "This task is already complete.", "suggest_complete": False, "submitted_value": None}
+
+    # Get org_id for company context
+    _, org_id = get_task_and_org_id(supabase, task_id)
+    company_context = _build_company_context_for_chat(supabase, org_id) if org_id else {}
+
     history = body.history or []
     result = get_task_chat_response(
         task_title=task.get("title", ""),
@@ -971,6 +1201,7 @@ async def task_chat_endpoint(task_id: str, body: TaskChatBody):
         subcategory_name=task.get("subcategory_name") or "",
         user_message=body.message,
         history=history,
+        company_context=company_context,
     )
     insert_task_ai_chat_message(supabase, task_id, "user", body.message)
     insert_task_ai_chat_message(supabase, task_id, "assistant", result["reply"])
@@ -1416,4 +1647,527 @@ async def pin_chat_thread(thread_id: str, body: PinThreadBody):
     except Exception as e:
         log.warning("chat thread pin failed: %s", e)
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Investor Matching Endpoints
+# ---------------------------------------------------------------------------
+
+
+class GenerateThesisRequest(BaseModel):
+    org_id: str
+    use_llm: bool = True
+
+
+class TriggerMatchingRequest(BaseModel):
+    org_id: str
+    max_matches: int = 10
+
+
+@app.post("/api/generate-thesis-profile")
+async def generate_thesis_profile_endpoint(
+    body: GenerateThesisRequest, background_tasks: BackgroundTasks
+):
+    """Generate startup thesis profile in background."""
+    log.info("POST /api/generate-thesis-profile for org_id=%s", body.org_id)
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+
+    # Don't re-trigger if already running
+    current = _get_pipeline_status(body.org_id)
+    if current in ("generating", "matching"):
+        return {"ok": True, "status": current, "message": f"Already running: {current}"}
+
+    _set_pipeline_status(body.org_id, "generating")
+
+    def _task():
+        import traceback
+        t0 = time.time()
+        _log(f"[Generate Thesis] Starting for org {body.org_id} (llm={'ON' if body.use_llm else 'OFF'})")
+        try:
+            sb = get_supabase()
+            generate_startup_thesis_profile(sb, body.org_id, use_llm=body.use_llm)
+            elapsed = time.time() - t0
+            _log(f"[Generate Thesis] DONE for {body.org_id} in {elapsed:.1f}s")
+            _set_pipeline_status(body.org_id, "ready")
+        except Exception as exc:
+            tb = traceback.format_exc()
+            _log(f"[Generate Thesis] FAILED for {body.org_id}: {exc}\n{tb}")
+            log.exception("Thesis profile generation failed for %s: %s", body.org_id, exc)
+            _set_pipeline_status(body.org_id, "error")
+
+    background_tasks.add_task(_task)
+    return {"ok": True, "status": "generating", "message": "Thesis profile generation started"}
+
+
+@app.get("/api/investor-matches")
+async def investor_matches_endpoint(org_id: str):
+    """Fetch stored investor matches + profiles for an org, sorted by score.
+
+    Also reports in-memory pipeline status so the frontend knows if
+    thesis generation or matching is currently running.
+    """
+    _log(f"[GET investor-matches] org={org_id}")
+    log.info("GET /api/investor-matches for org_id=%s", org_id)
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+
+    pipeline_status = _get_pipeline_status(org_id)
+    _log(f"[GET investor-matches] pipeline_status={pipeline_status}")
+
+    try:
+        # Check if thesis profile exists
+        profile = get_startup_thesis_profile(supabase, org_id)
+        _log(f"[GET investor-matches] thesis_profile={'EXISTS' if profile else 'NONE'}")
+        if not profile:
+            if pipeline_status in ("generating", "matching"):
+                _log(f"[GET investor-matches] → returning status={pipeline_status} (no profile, pipeline running)")
+                return {"status": pipeline_status, "matches": []}
+            _log("[GET investor-matches] → returning status=no_profile")
+            return {"status": "no_profile", "matches": []}
+
+        matches = get_investor_matches(supabase, org_id)
+        _log(f"[GET investor-matches] found {len(matches)} matches in DB")
+
+        # If matches are empty but pipeline is still running, report that
+        if not matches and pipeline_status in ("generating", "matching"):
+            _log(f"[GET investor-matches] → returning status={pipeline_status} (0 matches, pipeline running)")
+            return {"status": pipeline_status, "matches": []}
+
+        _log(f"[GET investor-matches] → returning status=ready with {len(matches)} matches")
+        return JSONResponse(
+            content={"status": "ready", "matches": matches, "match_count": len(matches)},
+            headers={"Cache-Control": "private, max-age=60"},
+        )
+    except Exception as e:
+        _log(f"[GET investor-matches] ERROR: {e}")
+        log.warning("investor_matches_endpoint error for org %s: %s", org_id, e)
+        if pipeline_status in ("generating", "matching"):
+            return {"status": pipeline_status, "matches": []}
+        return {"status": "no_profile", "matches": [], "error": str(e)}
+
+
+@app.post("/api/trigger-investor-matching")
+async def trigger_investor_matching_endpoint(
+    body: TriggerMatchingRequest, background_tasks: BackgroundTasks
+):
+    """Run investor matching if fewer than max_matches exist."""
+    log.info("POST /api/trigger-investor-matching for org_id=%s", body.org_id)
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+
+    # Don't re-trigger if pipeline already running
+    current = _get_pipeline_status(body.org_id)
+    if current in ("generating", "matching"):
+        return {"ok": True, "status": current, "message": f"Pipeline already running: {current}"}
+
+    try:
+        existing = get_investor_matches(supabase, body.org_id)
+        if len(existing) >= body.max_matches:
+            return {
+                "ok": True,
+                "message": f"Already have {len(existing)} matches",
+                "match_count": len(existing),
+            }
+    except Exception as e:
+        log.warning("Could not fetch existing matches for %s: %s", body.org_id, e)
+
+    _set_pipeline_status(body.org_id, "matching")
+
+    def _task():
+        import traceback
+        t0 = time.time()
+        _log(f"[Trigger Matching] Starting for org {body.org_id} (max={body.max_matches})")
+        try:
+            sb = get_supabase()
+            run_investor_matching(sb, body.org_id, max_matches=body.max_matches)
+            elapsed = time.time() - t0
+            _log(f"[Trigger Matching] DONE for {body.org_id} in {elapsed:.1f}s")
+            _set_pipeline_status(body.org_id, "ready")
+        except Exception as exc:
+            tb = traceback.format_exc()
+            _log(f"[Trigger Matching] FAILED for {body.org_id}: {exc}\n{tb}")
+            log.exception("Investor matching failed for %s: %s", body.org_id, exc)
+            _set_pipeline_status(body.org_id, "error")
+
+    background_tasks.add_task(_task)
+    return {"ok": True, "status": "matching", "message": "Investor matching started"}
+
+
+@app.post("/api/run-investor-pipeline")
+async def run_investor_pipeline_endpoint(
+    body: TriggerMatchingRequest, background_tasks: BackgroundTasks
+):
+    """Combined pipeline: generate thesis profile (if missing) then run matching.
+
+    This is the primary endpoint the frontend should call. It:
+    1. Checks if the pipeline is already running (deduplication).
+    2. Checks if we already have enough matches (skip if so).
+    3. Runs a background task that generates thesis profile + matches.
+    """
+    org_id = body.org_id
+    _log(f"[POST run-investor-pipeline] org={org_id}, max_matches={body.max_matches}")
+    log.info("POST /api/run-investor-pipeline for org_id=%s", org_id)
+
+    # Don't re-trigger if already running
+    current = _get_pipeline_status(org_id)
+    if current in ("generating", "matching"):
+        _log(f"[POST run-investor-pipeline] Already running: {current}")
+        return {"ok": True, "status": current, "message": f"Pipeline already running: {current}"}
+
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+
+    # Check if we already have enough matches
+    try:
+        existing = get_investor_matches(supabase, org_id)
+        if len(existing) >= body.max_matches:
+            return {
+                "ok": True,
+                "status": "ready",
+                "message": f"Already have {len(existing)} matches",
+                "match_count": len(existing),
+            }
+    except Exception:
+        pass
+
+    # Start the combined pipeline as a background task
+    _set_pipeline_status(org_id, "generating")
+
+    def _pipeline_task():
+        import traceback
+        t0 = time.time()
+        _log(f"{'='*60}")
+        _log(f"[Investor Pipeline] STARTED for {org_id}")
+        _log(f"{'='*60}")
+        try:
+            sb = get_supabase()
+            if not sb:
+                _log("[Investor Pipeline] ERROR: Supabase not configured!")
+                _set_pipeline_status(org_id, "error")
+                return
+
+            # Step 1: Generate thesis profile if it doesn't exist
+            _log("[Investor Pipeline] Checking thesis profile...")
+            profile = get_startup_thesis_profile(sb, org_id)
+            if not profile:
+                _log("[Investor Pipeline] No thesis profile — generating with OpenAI...")
+                _set_pipeline_status(org_id, "generating")
+                generate_startup_thesis_profile(sb, org_id, use_llm=True)
+                _log("[Investor Pipeline] Thesis profile generated!")
+            else:
+                _log("[Investor Pipeline] Thesis profile already exists — skipping generation")
+
+            # Step 2: Run investor matching
+            _log(f"[Investor Pipeline] Starting investor matching (max={body.max_matches})...")
+            _set_pipeline_status(org_id, "matching")
+            run_investor_matching(sb, org_id, max_matches=body.max_matches)
+
+            elapsed = time.time() - t0
+            _log(f"{'='*60}")
+            _log(f"[Investor Pipeline] DONE for {org_id} in {elapsed:.1f}s")
+            _log(f"{'='*60}")
+            _set_pipeline_status(org_id, "ready")
+        except Exception as exc:
+            elapsed = time.time() - t0
+            tb = traceback.format_exc()
+            _log(f"[Investor Pipeline] FAILED for {org_id} after {elapsed:.1f}s")
+            _log(f"Error: {exc}")
+            _log(f"Traceback:\n{tb}")
+            log.exception("Investor pipeline failed for %s: %s", org_id, exc)
+            _set_pipeline_status(org_id, "error")
+
+    background_tasks.add_task(_pipeline_task)
+    return {"ok": True, "status": "generating", "message": "Investor pipeline started"}
+
+
+# ---------------------------------------------------------------------------
+# Diagnostic endpoint — test the pipeline components without running anything
+# ---------------------------------------------------------------------------
+@app.get("/api/investor-pipeline-diagnostics")
+async def investor_pipeline_diagnostics(org_id: str = ""):
+    """Check that all pipeline components are connected and working.
+    Call: GET /api/investor-pipeline-diagnostics?org_id=...
+    Returns status of each component so you can debug issues.
+    """
+    import traceback
+    checks: dict = {}
+
+    # 1. Supabase
+    try:
+        sb = get_supabase()
+        checks["supabase"] = "OK" if sb else "FAIL: get_supabase() returned None"
+    except Exception as e:
+        checks["supabase"] = f"FAIL: {e}"
+
+    # 2. OpenAI API key
+    openai_key = os.getenv("OPENAI_API_KEY", "")
+    # Strip quotes that dotenv may or may not have stripped
+    openai_key_clean = openai_key.strip().strip('"').strip("'")
+    checks["openai_api_key"] = f"{'OK' if openai_key_clean.startswith('sk-') else 'MISSING/INVALID'} (len={len(openai_key_clean)}, starts={openai_key_clean[:10]}...)"
+    checks["openai_model"] = os.getenv("OPENAI_MODEL", "gpt-4o-mini (default)")
+
+    # 3. Quick OpenAI test call
+    try:
+        import requests as _req
+        resp = _req.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {openai_key_clean}", "Content-Type": "application/json"},
+            json={
+                "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                "messages": [{"role": "user", "content": "Say hello in JSON: {\"greeting\": \"...\"}"}],
+                "max_tokens": 30,
+                "response_format": {"type": "json_object"},
+            },
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            reply = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            checks["openai_test_call"] = f"OK — response: {reply[:100]}"
+        else:
+            checks["openai_test_call"] = f"FAIL HTTP {resp.status_code}: {resp.text[:200]}"
+    except Exception as e:
+        checks["openai_test_call"] = f"FAIL: {e}"
+
+    # 4. Investor table count
+    if sb:
+        try:
+            resp = sb.table("investor_universal_profiles").select("id", count="exact").ilike("investor_active_status", "active").limit(1).execute()
+            checks["investor_table_active_count"] = resp.count if resp.count is not None else f"query returned {len(resp.data or [])} rows (count unavailable)"
+        except Exception as e:
+            checks["investor_table_active_count"] = f"FAIL: {e}"
+
+    # 5. Thesis profile for org
+    if org_id and sb:
+        try:
+            profile = get_startup_thesis_profile(sb, org_id)
+            if profile:
+                startup = profile.get("startup", {})
+                checks["thesis_profile"] = f"EXISTS — sector={startup.get('primary_sector','?')}, stage={startup.get('funding_stage','?')}, hq={startup.get('hq_city','?')}"
+            else:
+                checks["thesis_profile"] = "NOT FOUND — will be generated on first pipeline run"
+        except Exception as e:
+            checks["thesis_profile"] = f"FAIL: {e}"
+
+        # 6. Existing matches
+        try:
+            matches = get_investor_matches(sb, org_id)
+            checks["existing_matches"] = f"{len(matches)} matches found"
+        except Exception as e:
+            checks["existing_matches"] = f"FAIL: {e}"
+
+    # 7. Pipeline status
+    if org_id:
+        status = _get_pipeline_status(org_id)
+        checks["pipeline_status"] = status or "idle (not running)"
+
+    # 8. Log file
+    checks["log_file"] = INVESTOR_LOG_FILE
+    try:
+        if os.path.exists(INVESTOR_LOG_FILE):
+            size = os.path.getsize(INVESTOR_LOG_FILE)
+            checks["log_file_size"] = f"{size} bytes"
+        else:
+            checks["log_file_size"] = "not created yet (will be created on first pipeline run)"
+    except Exception as e:
+        checks["log_file_size"] = f"FAIL: {e}"
+
+    _log(f"[Diagnostics] Ran for org={org_id}: {json.dumps(checks, default=str)}")
+    return {"ok": True, "diagnostics": checks}
+
+
+# ---------------------------------------------------------------------------
+# Investor Profile + AI Insights (Gemini) — with caching
+# ---------------------------------------------------------------------------
+
+_GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+
+# In-memory cache for AI insights: investor_id → (expires_at, insights_dict)
+_ai_insights_cache: collections.OrderedDict[str, tuple[float, dict]] = collections.OrderedDict()
+_AI_INSIGHTS_TTL = 3600  # 1 hour
+_AI_INSIGHTS_MAX = 200   # max cached investors
+_ai_insights_generating: set[str] = set()  # track in-flight generation
+
+
+def _generate_investor_insights_gemini(profile: dict) -> dict:
+    """Call Gemini to generate AI-powered insights about an investor."""
+    import google.generativeai as genai
+
+    if not _GEMINI_API_KEY:
+        return {"error": "Gemini API key not configured"}
+
+    genai.configure(api_key=_GEMINI_API_KEY)
+    model = genai.GenerativeModel(_GEMINI_MODEL)
+
+    name = profile.get("investor_name", "Unknown")
+    thesis = profile.get("investor_thesis_summary", "")
+    sectors = profile.get("investor_sectors", [])
+    stages = profile.get("investor_stages", [])
+    portfolio = profile.get("investor_notable_portfolio", [])
+    recent = profile.get("investor_recent_investments", [])
+    aum = profile.get("investor_aum_usd")
+    check_min = profile.get("investor_minimum_check_usd")
+    check_max = profile.get("investor_maximum_check_usd")
+    check_typ = profile.get("investor_typical_check_usd")
+    lead = profile.get("investor_lead_or_follow", "")
+    hq = f"{profile.get('investor_hq_city', '')}, {profile.get('investor_hq_state', '')}, {profile.get('investor_hq_country', '')}"
+    founded = profile.get("investor_founded_year")
+    portfolio_size = profile.get("investor_portfolio_size")
+    ticket_style = profile.get("investor_ticket_style", "")
+
+    prompt = f"""You are an expert VC analyst. Analyze this investor and return a JSON object with these exact keys:
+
+1. "strategic_summary" - 2-3 sentence overview of their investment strategy and positioning
+2. "approach_tips" - Array of 3-4 actionable tips for a startup approaching this investor (short strings)
+3. "red_flags" - Array of 2-3 potential concerns or things to watch out for when pitching to this investor
+4. "competitive_edge" - What makes this investor unique vs others in their space (1-2 sentences)
+5. "ideal_startup_profile" - Description of the ideal startup for this investor (2-3 sentences)
+6. "sector_trend_data" - Array of objects with {{"sector": str, "weight": number (0-100)}} for a chart showing their sector allocation focus (use the sectors and portfolio to infer weights, 4-6 items)
+7. "investment_pace" - Estimated deals per year and investment pacing insight (1 sentence)
+8. "portfolio_synergy_score" - Number 0-100 representing how synergistic their portfolio companies are
+
+INVESTOR DATA:
+- Name: {name}
+- Thesis: {thesis}
+- Sectors: {', '.join(sectors) if isinstance(sectors, list) else sectors}
+- Stages: {', '.join(stages) if isinstance(stages, list) else stages}
+- Notable Portfolio: {', '.join(portfolio) if isinstance(portfolio, list) else portfolio}
+- Recent Investments: {', '.join(recent) if isinstance(recent, list) else recent}
+- AUM: ${aum}
+- Check Size: ${check_min} - ${check_max} (typical: ${check_typ})
+- Lead/Follow: {lead}
+- HQ: {hq}
+- Founded: {founded}
+- Portfolio Size: {portfolio_size}
+- Ticket Style: {ticket_style}
+
+Return ONLY valid JSON, no markdown fences or explanation."""
+
+    try:
+        response = model.generate_content(prompt)
+        text = response.text.strip()
+        # Strip markdown code fences if present
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1] if "\n" in text else text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+        if text.startswith("json"):
+            text = text[4:]
+        return json.loads(text.strip())
+    except Exception as exc:
+        log.warning("Gemini investor insights failed: %s", exc)
+        return {"error": str(exc)}
+
+
+def _get_cached_ai_insights(investor_id: str) -> dict | None:
+    """Return cached AI insights if fresh, else None."""
+    entry = _ai_insights_cache.get(investor_id)
+    if not entry:
+        return None
+    expires_at, insights = entry
+    if time.monotonic() > expires_at:
+        _ai_insights_cache.pop(investor_id, None)
+        return None
+    _ai_insights_cache.move_to_end(investor_id)
+    return insights
+
+
+def _cache_ai_insights(investor_id: str, insights: dict):
+    """Store AI insights in cache with TTL."""
+    _ai_insights_cache[investor_id] = (time.monotonic() + _AI_INSIGHTS_TTL, insights)
+    while len(_ai_insights_cache) > _AI_INSIGHTS_MAX:
+        _ai_insights_cache.popitem(last=False)
+
+
+def _background_generate_insights(investor_id: str, profile: dict):
+    """Generate Gemini insights in background thread, caching result."""
+    if investor_id in _ai_insights_generating:
+        return
+    _ai_insights_generating.add(investor_id)
+    try:
+        insights = _generate_investor_insights_gemini(profile)
+        if not insights.get("error"):
+            _cache_ai_insights(investor_id, insights)
+    except Exception as exc:
+        log.warning("Background AI insights failed for %s: %s", investor_id, exc)
+    finally:
+        _ai_insights_generating.discard(investor_id)
+
+
+@app.get("/api/investor-profile")
+async def get_investor_profile_endpoint(
+    investor_id: str, background_tasks: BackgroundTasks
+):
+    """Fetch full investor profile. AI insights are returned from cache or generated in background.
+
+    - First call: returns profile immediately + ai_insights=null, kicks off background Gemini call
+    - Subsequent calls within 1hr: returns profile + cached ai_insights instantly
+    """
+    log.info("GET /api/investor-profile for investor_id=%s", investor_id)
+
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+
+    # Fetch the investor profile
+    try:
+        resp = (
+            supabase.table("investor_universal_profiles")
+            .select("*")
+            .eq("id", investor_id)
+            .limit(1)
+            .execute()
+        )
+        rows = resp.data or []
+    except Exception as exc:
+        log.exception("Failed to fetch investor profile: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    if not rows:
+        raise HTTPException(status_code=404, detail="Investor not found")
+
+    profile = rows[0]
+
+    # Parse JSON string fields
+    for field in ("raw_profile_json", "normalized_thesis_json", "metadata_json"):
+        val = profile.get(field)
+        if isinstance(val, str):
+            try:
+                profile[field] = json.loads(val)
+            except Exception:
+                pass
+
+    # Extract logo_url from metadata or raw_profile
+    logo_url = None
+    meta = profile.get("metadata_json") or {}
+    if isinstance(meta, dict):
+        logo_url = meta.get("logo_public_url")
+    if not logo_url:
+        raw = profile.get("raw_profile_json") or {}
+        if isinstance(raw, dict):
+            logo_url = raw.get("logo_url")
+    profile["logo_url"] = logo_url
+
+    # AI insights: check cache first, generate in background if miss
+    ai_insights = _get_cached_ai_insights(investor_id)
+    ai_status = "ready" if ai_insights else "generating"
+
+    if not ai_insights and investor_id not in _ai_insights_generating:
+        background_tasks.add_task(_background_generate_insights, investor_id, profile)
+
+    return JSONResponse(
+        content={
+            "status": "ok",
+            "profile": profile,
+            "ai_insights": ai_insights,
+            "ai_insights_status": ai_status,
+        },
+        headers={"Cache-Control": "private, max-age=60"},
+    )
 

@@ -21,7 +21,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 const pathTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/startup/readiness': 'Readiness Score',
-  '/startup/matches': 'Matches',
+  '/startup/investors': 'Investors',
   '/startup/chat': 'AI Chat',
   '/startup/tasks': 'Tasks',
   '/startup/data-room': 'Data Room',

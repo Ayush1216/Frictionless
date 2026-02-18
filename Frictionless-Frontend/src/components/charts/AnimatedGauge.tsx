@@ -13,18 +13,15 @@ interface AnimatedGaugeProps {
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 80) return '#10B981';
-  if (score >= 60) return '#3B82F6';
-  if (score >= 40) return '#F59E0B';
-  return '#EF4444';
+  if (score >= 86) return '#10B981'; // green
+  if (score >= 80) return '#EAB308'; // yellow
+  return '#EF4444'; // red
 }
 
 function getScoreBadge(score: number): string {
-  if (score >= 90) return 'Exceptional';
-  if (score >= 80) return 'Strong';
-  if (score >= 60) return 'Promising';
-  if (score >= 40) return 'Developing';
-  return 'Early';
+  if (score >= 86) return 'Excellent';
+  if (score >= 80) return 'Good';
+  return 'Need Improvement';
 }
 
 export function AnimatedGauge({

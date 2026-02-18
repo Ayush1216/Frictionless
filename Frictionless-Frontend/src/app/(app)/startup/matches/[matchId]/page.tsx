@@ -40,7 +40,7 @@ export default function MatchDetailPage() {
         </p>
         <Button
           variant="outline"
-          onClick={() => router.push('/startup/matches')}
+          onClick={() => router.push('/startup/investors')}
           className="gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -61,7 +61,7 @@ export default function MatchDetailPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.push('/startup/matches')}
+          onClick={() => router.push('/startup/investors')}
           className="text-muted-foreground hover:text-foreground gap-1.5 -ml-2"
         >
           <ArrowLeft className="w-4 h-4" />

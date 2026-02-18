@@ -34,9 +34,8 @@ function formatCurrency(value: number): string {
 }
 
 function getScoreColorClass(score: number) {
-  if (score >= 80) return 'text-score-excellent';
-  if (score >= 60) return 'text-score-good';
-  if (score >= 40) return 'text-score-fair';
+  if (score >= 86) return 'text-score-excellent';
+  if (score >= 80) return 'text-score-good';
   return 'text-score-poor';
 }
 
@@ -46,13 +45,11 @@ function MiniGauge({ score }: { score: number }) {
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 100) * circumference;
   const color =
-    score >= 80
+    score >= 86
       ? '#10B981'
-      : score >= 60
-        ? '#3B82F6'
-        : score >= 40
-          ? '#F59E0B'
-          : '#EF4444';
+      : score >= 80
+        ? '#EAB308'
+        : '#EF4444';
 
   return (
     <div className="relative w-10 h-10 flex-shrink-0">

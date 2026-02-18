@@ -145,8 +145,8 @@ export function ReadinessScoreHero({
         {/* Score Gauge Card */}
         <div className="lg:col-span-3 glass-card p-6 flex flex-col items-center justify-center relative overflow-hidden">
           <div className={cn('absolute inset-0 opacity-20 pointer-events-none bg-gradient-to-br',
-            score >= 80 ? 'from-score-excellent/30 to-transparent' :
-            score >= 60 ? 'from-score-fair/30 to-transparent' :
+            score >= 86 ? 'from-score-excellent/30 to-transparent' :
+            score >= 80 ? 'from-score-good/30 to-transparent' :
             'from-score-poor/30 to-transparent'
           )} />
           <div className="relative">

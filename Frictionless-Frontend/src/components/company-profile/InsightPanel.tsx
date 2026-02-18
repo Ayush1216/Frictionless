@@ -1,7 +1,9 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { Sparkles, TrendingUp, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { TrendingUp, AlertTriangle, CheckCircle2, ChevronDown } from 'lucide-react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import type { AIInsightsStructured } from '@/lib/company-profile-canonical';
 
@@ -20,6 +22,8 @@ export interface InsightPanelProps {
   nextActions?: string[];
   className?: string;
   headerAction?: React.ReactNode;
+  /** Default collapsed state */
+  defaultExpanded?: boolean;
 }
 
 function parseBullets(text: string): string[] {
@@ -59,7 +63,10 @@ export function InsightPanel({
   nextActions: propNextActions,
   className,
   headerAction,
+  defaultExpanded = false,
 }: InsightPanelProps) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
   const hasStructured = structured && (structured.key_strengths?.length > 0 || structured.top_risks?.length > 0 || structured.suggested_next_actions?.length > 0 || (structured.summary && structured.summary.trim().length > 0));
   const summaryText = structured?.summary ?? aiSummary ?? null;
   const strengths = (hasStructured ? structured!.key_strengths : propStrengths) ?? [];
@@ -76,11 +83,14 @@ export function InsightPanel({
 
   if (!hasAny && !hasDeduped) {
     return (
-      <div className={cn('rounded-2xl border border-border/50 bg-background/40 p-6', className)}>
+      <div className={cn('rounded-2xl border border-border/50 bg-background/40 p-5', className)}>
         <p className="text-xs text-muted-foreground">No insights yet. Refresh to generate.</p>
       </div>
     );
   }
+
+  // Count of insight items
+  const insightCount = finalStrengths.length + finalRisks.length + finalNextActions.length;
 
   return (
     <motion.div
@@ -92,76 +102,104 @@ export function InsightPanel({
         className
       )}
     >
-      <div className="flex items-center justify-between gap-2 px-6 py-4 border-b border-primary/10">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-primary" />
-          AI Insights
-        </h3>
-        {headerAction}
-      </div>
-      <div className="p-6 space-y-6">
-        {summaryText && summaryText.trim().length > 0 && (
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Summary</p>
-            <p className="text-sm text-foreground/90 leading-relaxed">{summaryText.trim()}</p>
+      {/* Clickable header — always visible */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between gap-2 px-5 py-3.5 hover:bg-muted/10 transition-colors text-left"
+      >
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className="w-7 h-7 rounded-lg overflow-hidden shrink-0">
+            <Image src="/ai-logo.png" alt="AI" width={28} height={28} className="w-full h-full object-contain" />
           </div>
-        )}
-        {finalStrengths.length > 0 && (
-          <div>
-            <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Key strengths
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-foreground leading-tight">AI Insights</h3>
+            <p className="text-[10px] text-muted-foreground">
+              {insightCount > 0 ? `${insightCount} insights available` : 'AI-powered analysis'}
             </p>
-            <ul className="space-y-1.5">
-              {finalStrengths.map((s, i) => (
-                <li key={i} className="text-sm text-foreground/90 flex gap-2">
-                  <span className="text-primary shrink-0">•</span>
-                  <span>{s}</span>
-                </li>
-              ))}
-            </ul>
           </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {headerAction && <div onClick={(e) => e.stopPropagation()}>{headerAction}</div>}
+          <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform duration-200', expanded && 'rotate-180')} />
+        </div>
+      </button>
+
+      {/* Expandable content */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-5 pt-0 space-y-4 border-t border-primary/10">
+              {summaryText && summaryText.trim().length > 0 && (
+                <div className="pt-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Summary</p>
+                  <p className="text-sm text-foreground/90 leading-relaxed">{summaryText.trim()}</p>
+                </div>
+              )}
+              {finalStrengths.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Key strengths
+                  </p>
+                  <ul className="space-y-1">
+                    {finalStrengths.map((s, i) => (
+                      <li key={i} className="text-sm text-foreground/90 flex gap-2">
+                        <span className="text-primary shrink-0">•</span>
+                        <span>{s}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {finalRisks.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" /> Top risks
+                  </p>
+                  <ul className="space-y-1">
+                    {finalRisks.map((r, i) => (
+                      <li key={i} className="text-sm text-foreground/90 flex gap-2">
+                        <span className="text-amber-500 shrink-0">•</span>
+                        <span>{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {finalNextActions.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5" /> Suggested next actions
+                  </p>
+                  <ul className="space-y-1">
+                    {finalNextActions.map((a, i) => (
+                      <li key={i} className="text-sm text-foreground/90 flex gap-2">
+                        <span className="text-emerald-500 shrink-0">•</span>
+                        <span>{a}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {hasDeduped && finalStrengths.length === 0 && finalRisks.length === 0 && finalNextActions.length === 0 && (
+                <ul className="space-y-1.5 text-sm text-foreground/90 pt-2">
+                  {rawBullets.slice(0, 5).map((line, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="text-primary shrink-0 font-bold">•</span>
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </motion.div>
         )}
-        {finalRisks.length > 0 && (
-          <div>
-            <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5" /> Top risks
-            </p>
-            <ul className="space-y-1.5">
-              {finalRisks.map((r, i) => (
-                <li key={i} className="text-sm text-foreground/90 flex gap-2">
-                  <span className="text-amber-500 shrink-0">•</span>
-                  <span>{r}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {finalNextActions.length > 0 && (
-          <div>
-            <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5" /> Suggested next actions
-            </p>
-            <ul className="space-y-1.5">
-              {finalNextActions.map((a, i) => (
-                <li key={i} className="text-sm text-foreground/90 flex gap-2">
-                  <span className="text-emerald-500 shrink-0">•</span>
-                  <span>{a}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {hasDeduped && finalStrengths.length === 0 && finalRisks.length === 0 && finalNextActions.length === 0 && (
-          <ul className="space-y-2 text-sm text-foreground/90">
-            {rawBullets.slice(0, 5).map((line, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="text-primary shrink-0 font-bold">•</span>
-                <span>{line}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      </AnimatePresence>
     </motion.div>
   );
 }

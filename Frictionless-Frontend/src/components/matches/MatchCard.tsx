@@ -44,9 +44,8 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 };
 
 function getScoreColor(score: number) {
-  if (score >= 80) return '#10B981';
-  if (score >= 60) return '#3B82F6';
-  if (score >= 40) return '#F59E0B';
+  if (score >= 86) return '#10B981';
+  if (score >= 80) return '#EAB308';
   return '#EF4444';
 }
 
@@ -167,7 +166,7 @@ export function MatchCard({ match, investor, index = 0, showFitPillars = true }:
       </div>
 
       <button
-        onClick={() => router.push(`/startup/matches/${match.id}`)}
+        onClick={() => router.push(`/startup/investors/${match.id}`)}
         className="w-full text-left glass-card p-4 lg:p-5 hover:border-primary/20 transition-all duration-200 cursor-pointer"
       >
         <div className="flex items-start gap-4">
@@ -229,7 +228,7 @@ export function MatchCard({ match, investor, index = 0, showFitPillars = true }:
                   .map((b) => {
                     const config = FIT_PILLAR_MAP[b.dimension];
                     const Icon = config.icon;
-                    const isStrong = b.score >= 80;
+                    const isStrong = b.score >= 86;
                     return (
                       <Badge
                         key={b.dimension}
@@ -251,14 +250,14 @@ export function MatchCard({ match, investor, index = 0, showFitPillars = true }:
             {match.ai_explanation && (
               <div className={cn(
                 'mt-3 p-2.5 rounded-lg border text-[11px] leading-relaxed',
-                displayScore >= 70
+                displayScore >= 86
                   ? 'bg-score-excellent/5 border-score-excellent/20 text-score-excellent/90'
-                  : displayScore >= 50
-                    ? 'bg-primary/5 border-primary/20 text-muted-foreground'
-                    : 'bg-score-fair/5 border-score-fair/20 text-muted-foreground'
+                  : displayScore >= 80
+                    ? 'bg-score-good/5 border-score-good/20 text-score-good/90'
+                    : 'bg-score-poor/5 border-score-poor/20 text-muted-foreground'
               )}>
                 <span className="font-semibold text-foreground text-[10px] uppercase tracking-wider block mb-1">
-                  {displayScore >= 70 ? 'Why this investor' : displayScore >= 50 ? 'Match insight' : 'Why not a fit yet'}
+                  {displayScore >= 86 ? 'Why this investor' : displayScore >= 80 ? 'Match insight' : 'Why not a fit yet'}
                 </span>
                 <p className="line-clamp-2">{match.ai_explanation}</p>
               </div>

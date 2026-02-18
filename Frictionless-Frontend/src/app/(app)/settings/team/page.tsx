@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { UserPlus, MoreVertical, Trash2, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -39,7 +39,7 @@ interface TeamMember {
   id: string;
   name: string;
   email: string;
-  role: 'owner' | 'admin' | 'editor' | 'viewer';
+  role: 'owner' | 'admin' | 'editor' | 'viewer' | 'member';
   status: 'active' | 'invited';
   joinedAt: string;
   avatar?: string;
@@ -52,14 +52,6 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   viewer: 'Read-only access to all sections',
 };
 
-const dummyMembers: TeamMember[] = [
-  { id: 'tm-1', name: 'Alex Chen', email: 'alex@neuralpay.io', role: 'owner', status: 'active', joinedAt: '2024-01-15', avatar: undefined },
-  { id: 'tm-2', name: 'Sarah Mitchell', email: 'sarah@neuralpay.io', role: 'admin', status: 'active', joinedAt: '2024-03-22', avatar: undefined },
-  { id: 'tm-3', name: 'James Wilson', email: 'james@neuralpay.io', role: 'editor', status: 'active', joinedAt: '2024-05-10', avatar: undefined },
-  { id: 'tm-4', name: 'Emily Davis', email: 'emily@neuralpay.io', role: 'viewer', status: 'invited', joinedAt: '2025-02-01', avatar: undefined },
-  { id: 'tm-5', name: 'Michael Brown', email: 'michael@neuralpay.io', role: 'editor', status: 'active', joinedAt: '2024-08-05', avatar: undefined },
-];
-
 const roleBadgeColors: Record<string, string> = {
   owner: 'bg-primary/15 text-primary border-primary/30',
   admin: 'bg-accent/15 text-accent border-accent/30',
@@ -68,7 +60,8 @@ const roleBadgeColors: Record<string, string> = {
 };
 
 export default function SettingsTeamPage() {
-  const [members, setMembers] = useState<TeamMember[]>(dummyMembers);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(true);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState<TeamMember | null>(null);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -80,6 +73,37 @@ export default function SettingsTeamPage() {
     const { data } = await supabase.auth.getSession();
     return data?.session?.access_token ?? null;
   }, []);
+
+  // Fetch real team members on mount
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const token = await getToken();
+        if (!token || cancelled) {
+          setLoadingMembers(false);
+          return;
+        }
+        const res = await fetch('/api/team/members', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({ members: [] }));
+        if (!cancelled && data.members) {
+          setMembers(
+            data.members.map((m: TeamMember) => ({
+              ...m,
+              role: m.role === 'member' ? 'editor' : m.role,
+            }))
+          );
+        }
+      } catch {
+        // Silent fail — show empty state
+      } finally {
+        if (!cancelled) setLoadingMembers(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [getToken]);
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
@@ -160,6 +184,21 @@ export default function SettingsTeamPage() {
               </tr>
             </thead>
             <tbody>
+              {loadingMembers && (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center">
+                    <Loader2 className="w-5 h-5 animate-spin text-primary mx-auto mb-2" />
+                    <p className="text-xs text-muted-foreground">Loading team members...</p>
+                  </td>
+                </tr>
+              )}
+              {!loadingMembers && members.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-12 text-center">
+                    <p className="text-sm text-muted-foreground">No team members yet. Invite someone to get started.</p>
+                  </td>
+                </tr>
+              )}
               {members.map((member) => (
                 <motion.tr
                   key={member.id}

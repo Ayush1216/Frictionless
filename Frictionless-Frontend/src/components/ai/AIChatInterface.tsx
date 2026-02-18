@@ -21,9 +21,10 @@ const demoAIResponses = [
 interface AIChatInterfaceProps {
   initialMessages?: ChatMessage[];
   className?: string;
+  onMessagesChange?: (messages: ChatMessage[]) => void;
 }
 
-export function AIChatInterface({ initialMessages = [], className }: AIChatInterfaceProps) {
+export function AIChatInterface({ initialMessages = [], className, onMessagesChange }: AIChatInterfaceProps) {
   const [displayMessages, setDisplayMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState('');
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
@@ -68,6 +69,13 @@ export function AIChatInterface({ initialMessages = [], className }: AIChatInter
         : messages,
     [messages, streamingContentForDisplay]
   );
+
+  // Notify parent when messages change (for persistence)
+  useEffect(() => {
+    if (messages.length > 0 && onMessagesChange) {
+      onMessagesChange(messages);
+    }
+  }, [messages, onMessagesChange]);
 
   // Auto-scroll to bottom
   const scrollToBottom = useCallback(() => {

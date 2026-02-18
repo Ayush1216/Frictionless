@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { BarChart3, Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { BarChart3, Loader2, TrendingUp, TrendingDown, Minus, Info, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { geminiAnalyze, isGeminiEnabled } from '@/lib/ai/gemini-client';
 import { getPrompt } from '@/lib/ai/prompts';
@@ -27,14 +27,16 @@ interface BenchmarkData {
 interface CompetitiveBenchmarkProps {
   overallScore: number;
   categories: ParsedRubricCategory[];
+  companyName?: string;
   className?: string;
 }
 
-function generateDemoBenchmark(overallScore: number, categories: ParsedRubricCategory[]): BenchmarkData {
+function generateDemoBenchmark(overallScore: number, categories: ParsedRubricCategory[], companyName?: string): BenchmarkData {
   const overallPercentile = Math.min(95, Math.max(5, Math.round(overallScore * 0.95)));
+  const displayName = companyName || 'Your startup';
   return {
     overall_percentile: overallPercentile,
-    summary: `Your startup ranks in the top ${100 - overallPercentile}% of seed-stage companies on the Frictionless platform.`,
+    summary: `${displayName} ranks in the top ${100 - overallPercentile}% of seed-stage companies on the Frictionless platform.`,
     categories: categories.map((c) => {
       const median = Math.round(45 + Math.random() * 25);
       const diff = c.score - median;
@@ -55,11 +57,14 @@ function generateDemoBenchmark(overallScore: number, categories: ParsedRubricCat
 export function CompetitiveBenchmark({
   overallScore,
   categories,
+  companyName,
   className,
 }: CompetitiveBenchmarkProps) {
   const [data, setData] = useState<BenchmarkData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showInfo, setShowInfo] = useState(false);
+  const name = companyName || 'Your startup';
 
   const scoreHash = buildScoreHash(overallScore, categories);
 
@@ -74,7 +79,7 @@ export function CompetitiveBenchmark({
       if (isGeminiEnabled()) {
         const prompt = getPrompt('COMPETITIVE_BENCHMARK');
         const categoryData = categories.map((c) => `${c.name}: ${c.score}%`).join('\n');
-        const userMessage = `${prompt}\n\nOverall score: ${overallScore}%\nStage: Seed\n\nCategories:\n${categoryData}`;
+        const userMessage = `${prompt}\n\nCompany: ${name}\nOverall score: ${overallScore}%\nStage: Seed\n\nCategories:\n${categoryData}`;
 
         const result = await geminiAnalyze(userMessage, { temperature: 0.3 });
         // Parse JSON from response — may have markdown code blocks
@@ -83,13 +88,13 @@ export function CompetitiveBenchmark({
         setData(parsed);
         setCachedAnalysis('competitive-benchmark', scoreHash, parsed);
       } else {
-        const demo = generateDemoBenchmark(overallScore, categories);
+        const demo = generateDemoBenchmark(overallScore, categories, companyName);
         setData(demo);
         setCachedAnalysis('competitive-benchmark', scoreHash, demo);
       }
     } catch {
       // Fallback to demo
-      const demo = generateDemoBenchmark(overallScore, categories);
+      const demo = generateDemoBenchmark(overallScore, categories, companyName);
       setData(demo);
       setCachedAnalysis('competitive-benchmark', scoreHash, demo);
     } finally {
@@ -111,8 +116,21 @@ export function CompetitiveBenchmark({
       <div className="flex items-center gap-2 mb-1">
         <BarChart3 className="w-5 h-5 text-primary" />
         <h3 className="text-sm font-display font-semibold text-foreground">Competitive Benchmark</h3>
+        <button
+          onClick={() => setShowInfo(!showInfo)}
+          className="p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          aria-label="What is Competitive Benchmark?"
+        >
+          {showInfo ? <X className="w-3.5 h-3.5" /> : <Info className="w-3.5 h-3.5" />}
+        </button>
       </div>
-      <p className="text-[11px] text-muted-foreground mb-4">How you compare to seed-stage peers</p>
+      {showInfo ? (
+        <div className="text-[11px] text-muted-foreground mb-4 p-2.5 rounded-lg bg-primary/5 border border-primary/10 leading-relaxed">
+          <strong className="text-foreground">How this helps you:</strong> Competitive Benchmark compares {name}&apos;s readiness scores against other seed-stage companies. See where you outperform peers and where you need to catch up — so you can prioritize the gaps that matter most to investors.
+        </div>
+      ) : (
+        <p className="text-[11px] text-muted-foreground mb-4">How {name} compares to seed-stage peers</p>
+      )}
 
       {isLoading && !data && (
         <div className="flex-1 flex items-center justify-center py-8">
@@ -126,8 +144,8 @@ export function CompetitiveBenchmark({
           <div className="flex items-center gap-3">
             <div className={cn(
               'px-3 py-1.5 rounded-full text-sm font-bold',
-              data.overall_percentile >= 70 ? 'bg-score-excellent/10 text-score-excellent' :
-              data.overall_percentile >= 50 ? 'bg-score-fair/10 text-score-fair' :
+              data.overall_percentile >= 86 ? 'bg-score-excellent/10 text-score-excellent' :
+              data.overall_percentile >= 80 ? 'bg-score-good/10 text-score-good' :
               'bg-score-poor/10 text-score-poor'
             )}>
               Top {100 - data.overall_percentile}%

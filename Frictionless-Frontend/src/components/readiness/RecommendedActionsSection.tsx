@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -89,6 +89,13 @@ export function RecommendedActionsSection({
 
   const totalTasks = tasks.length + completedCount;
   const progressPct = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
+
+  // Auto-expand first task when the currently expanded task disappears (completed)
+  useEffect(() => {
+    if (expandedTaskId && !sortedTasks.some((t) => t.id === expandedTaskId)) {
+      setExpandedTaskId(sortedTasks[0]?.id ?? null);
+    }
+  }, [sortedTasks, expandedTaskId]);
 
   const handleToggleExpand = (taskId: string) => {
     setExpandedTaskId((prev) => prev === taskId ? null : taskId);

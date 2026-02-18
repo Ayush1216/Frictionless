@@ -28,7 +28,7 @@ export default function OutreachStudioPage() {
             Generate and refine cold emails, intro requests, and follow-ups tailored to each investor.
           </p>
           <Link
-            href="/startup/matches"
+            href="/startup/investors"
             className="inline-flex items-center gap-2 text-primary hover:text-chart-5 transition-colors text-sm font-medium"
           >
             View Matches

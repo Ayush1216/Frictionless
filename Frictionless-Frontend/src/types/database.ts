@@ -426,3 +426,51 @@ export interface User {
   org_name: string;
   role: UserRole;
 }
+
+// ---------------------------------------------------------------------------
+// Investor Matching (thesis-fit pipeline)
+// ---------------------------------------------------------------------------
+
+export interface SubcategoryScore {
+  raw_points: number;
+  max_point: number;
+  option_chosen: string;
+}
+
+export interface CategoryBreakdown {
+  raw_points: number;
+  max_point: number;
+  weight: number;
+  weighted_contribution: number;
+  subcategories: Record<string, SubcategoryScore>;
+}
+
+export interface InvestorUniversalProfile {
+  id: string;
+  name: string | null;
+  logo_url: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  website: string | null;
+  investor_type: string | null;
+  check_min_usd: number | null;
+  check_max_usd: number | null;
+  check_typical_usd: number | null;
+  stages: string[] | string | null;
+  sectors: string[] | string | null;
+}
+
+export interface InvestorMatchResult {
+  id?: string;
+  org_id: string;
+  investor_id: string;
+  fit_score_0_to_100: number;
+  fit_score_if_eligible_0_to_100: number;
+  eligible: boolean;
+  gate_fail_reasons: string[];
+  category_breakdown: Record<string, CategoryBreakdown>;
+  investor_profile: InvestorUniversalProfile;
+  matching_version: string;
+  matched_at: string;
+}

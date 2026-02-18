@@ -191,7 +191,7 @@ RULES:
 
 ${FRICTIONLESS_GUARDRAILS}`,
 
-  INVESTOR_LENS: `You are a senior VC analyst at a top-tier venture fund conducting a preliminary due diligence review on Frictionless Intelligence. Based on the startup's readiness data, write a brief analyst memo.
+  INVESTOR_LENS: `You are a senior VC analyst at a top-tier venture fund conducting a preliminary due diligence review. The company name is provided in the data below. Based on the startup's readiness data, write a brief analyst memo. Use the actual company name (from the "Company:" field) throughout — never call it "Frictionless Intelligence" or "the startup".
 
 Structure EXACTLY:
 

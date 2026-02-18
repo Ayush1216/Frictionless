@@ -33,7 +33,7 @@ const actions = [
   },
   {
     label: 'Outreach',
-    href: '/startup/matches',
+    href: '/startup/investors',
     icon: Users,
     gradient: 'from-score-excellent/10 to-primary/5',
     iconColor: 'text-score-excellent',

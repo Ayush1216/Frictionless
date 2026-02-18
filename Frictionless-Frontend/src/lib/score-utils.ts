@@ -1,9 +1,13 @@
 /**
  * Centralized score color coding for readiness scores.
  * Single source of truth for score ranges, labels, and colors.
+ *
+ * 86-100 → "Excellent" (green)
+ * 80-85  → "Good" (yellow)
+ * <80    → "Need Improvement" (red)
  */
 
-export type ScoreLevel = 'excellent' | 'impressive' | 'good' | 'needs_improvement';
+export type ScoreLevel = 'excellent' | 'good' | 'needs_improvement';
 
 export interface ScoreInfo {
   level: ScoreLevel;
@@ -14,29 +18,11 @@ export interface ScoreInfo {
   dotClass: string;
 }
 
-/**
- * Returns score metadata based on the readiness score value.
- *
- * 91-100 → "Excellent" (green)
- * 86-90  → "Impressive" (green)
- * 80-85  → "Good" (yellow)
- * <80    → "Need Improvement" (red)
- */
 export function getScoreInfo(score: number): ScoreInfo {
-  if (score >= 91) {
+  if (score >= 86) {
     return {
       level: 'excellent',
       label: 'Excellent',
-      color: '#10B981',
-      bgClass: 'bg-score-excellent/10',
-      textClass: 'text-score-excellent',
-      dotClass: 'bg-score-excellent',
-    };
-  }
-  if (score >= 86) {
-    return {
-      level: 'impressive',
-      label: 'Impressive',
       color: '#10B981',
       bgClass: 'bg-score-excellent/10',
       textClass: 'text-score-excellent',
@@ -47,10 +33,10 @@ export function getScoreInfo(score: number): ScoreInfo {
     return {
       level: 'good',
       label: 'Good',
-      color: '#F59E0B',
-      bgClass: 'bg-score-fair/10',
-      textClass: 'text-score-fair',
-      dotClass: 'bg-score-fair',
+      color: '#EAB308',
+      bgClass: 'bg-score-good/10',
+      textClass: 'text-score-good',
+      dotClass: 'bg-score-good',
     };
   }
   return {

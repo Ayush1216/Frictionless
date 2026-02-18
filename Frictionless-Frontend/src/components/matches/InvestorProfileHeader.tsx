@@ -14,9 +14,8 @@ interface InvestorProfileHeaderProps {
 }
 
 function getScoreColor(score: number) {
-  if (score >= 80) return '#10B981';
-  if (score >= 60) return '#3B82F6';
-  if (score >= 40) return '#F59E0B';
+  if (score >= 86) return '#10B981';
+  if (score >= 80) return '#EAB308';
   return '#EF4444';
 }
 

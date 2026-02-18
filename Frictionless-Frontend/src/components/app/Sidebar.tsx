@@ -46,6 +46,8 @@ import {
 } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { Moon, Sun } from 'lucide-react';
 
 interface NavItem {
   label: string;
@@ -58,7 +60,7 @@ const baseStartupNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Readiness', href: '/startup/readiness', icon: Gauge },
   { label: 'Company Profile', href: '/startup/company-profile', icon: Building2 },
-  { label: 'Matches', href: '/startup/matches', icon: Handshake },
+  { label: 'Investors', href: '/startup/investors', icon: Handshake },
   { label: 'AI Chat', href: '/startup/chat', icon: Bot },
   { label: 'Data Room', href: '/startup/data-room', icon: FolderOpen },
 ];
@@ -241,6 +243,7 @@ export function Sidebar() {
                 onClick={toggleNotifications}
                 badge={unreadCount}
               />
+              <DarkModeToggleButton collapsed={sidebarCollapsed} />
             </div>
 
             <Separator className={cn('shrink-0', sidebarCollapsed ? 'my-2' : 'mb-2')} />
@@ -517,6 +520,36 @@ function SidebarIconButton({
               {'\u2318'}{shortcut}
             </kbd>
           )}
+        </TooltipContent>
+      )}
+    </Tooltip>
+  );
+}
+
+function DarkModeToggleButton({ collapsed }: { collapsed: boolean }) {
+  const { theme, toggleTheme } = useUIStore();
+  const isDark = theme === 'dark';
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={toggleTheme}
+          className={cn(
+            'relative flex items-center gap-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors touch-target min-w-0 shrink-0',
+            collapsed ? 'justify-center w-full h-9 my-1' : 'flex-1 min-w-0 h-9 overflow-hidden my-0.5'
+          )}
+          aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+        >
+          {isDark ? <Sun className="w-5 h-5 flex-shrink-0" /> : <Moon className="w-5 h-5 flex-shrink-0" />}
+          {!collapsed && (
+            <span className="text-xs truncate">{isDark ? 'Light mode' : 'Dark mode'}</span>
+          )}
+        </button>
+      </TooltipTrigger>
+      {collapsed && (
+        <TooltipContent side="right" sideOffset={8}>
+          {isDark ? 'Light mode' : 'Dark mode'}
         </TooltipContent>
       )}
     </Tooltip>

@@ -64,7 +64,7 @@ const config: Config = {
         },
         score: {
           excellent: "#10B981",
-          good: "#3B82F6",
+          good: "#EAB308",
           fair: "#F59E0B",
           poor: "#EF4444",
         },

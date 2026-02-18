@@ -27,13 +27,13 @@ export default function SettingsPage() {
   const { theme, setTheme } = useUIStore();
 
   const [profile, setProfile] = useState({
-    name: user?.full_name ?? 'Alex Chen',
-    email: user?.email ?? 'alex@neuralpay.io',
-    bio: 'Founder at NeuralPay. Building the future of payments.',
+    name: user?.full_name ?? '',
+    email: user?.email ?? '',
+    bio: '',
   });
   const [org, setOrg] = useState({
-    name: user?.org_name ?? 'NeuralPay',
-    website: 'https://neuralpay.io',
+    name: user?.org_name ?? '',
+    website: '',
   });
   const [preferences, setPreferences] = useState({
     emailNotifications: true,

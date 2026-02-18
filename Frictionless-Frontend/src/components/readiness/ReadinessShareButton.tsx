@@ -76,11 +76,11 @@ Return ONLY valid JSON (no markdown, no backticks):
   }
 
   // Fallback
-  const strengths = categories.filter((c) => c.score >= 70).map((c) => c.name);
-  const gaps = categories.filter((c) => c.score < 50).map((c) => c.name);
+  const strengths = categories.filter((c) => c.score >= 86).map((c) => c.name);
+  const gaps = categories.filter((c) => c.score < 80).map((c) => c.name);
   return {
     executive_summary: `This startup has an overall readiness score of ${overallScore}%, with ${strengths.length} strong categories${strengths.length > 0 ? ` (${strengths.slice(0, 2).join(', ')})` : ''} and ${gaps.length} areas needing attention${gaps.length > 0 ? ` (${gaps.slice(0, 2).join(', ')})` : ''}. ${completedTasks} of ${totalTasks} improvement tasks have been completed.`,
-    investor_verdict: overallScore >= 70
+    investor_verdict: overallScore >= 80
       ? `At ${overallScore}%, this startup shows strong readiness fundamentals. An investor would likely take a first meeting to explore further.`
       : `At ${overallScore}%, this startup has meaningful gaps to address before most institutional investors would engage. Focused effort on top priorities could significantly improve perception.`,
     top_priorities: gaps.slice(0, 3).map((g) => `Improve ${g} category to close the readiness gap`),

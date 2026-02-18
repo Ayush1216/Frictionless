@@ -71,7 +71,23 @@ export function TasksSyncProvider({ children }: { children: React.ReactNode }) {
             requires_rescore: true,
           });
 
-          store.setTasks(tasks.filter((t) => t.id !== taskId));
+          const remainingTasks = tasks.filter((t) => t.id !== taskId);
+          store.setTasks(remainingTasks);
+
+          // Auto-select next task so the UI doesn't lose focus ("all tasks blue" fix)
+          const currentSelected = store.selectedTask;
+          if (currentSelected?.id === taskId || !currentSelected) {
+            const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+            const nextTask = [...remainingTasks]
+              .filter((t) => t.status !== 'done')
+              .sort((a, b) => {
+                const pa = priorityOrder[a.priority] ?? 3;
+                const pb = priorityOrder[b.priority] ?? 3;
+                if (pa !== pb) return pa - pb;
+                return (b.potential_points ?? 0) - (a.potential_points ?? 0);
+              })[0] ?? null;
+            store.selectTask(nextTask);
+          }
 
           if (task) {
             const completedTask = {
