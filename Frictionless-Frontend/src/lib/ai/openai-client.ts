@@ -28,7 +28,7 @@ export async function* streamChat(
   }
 
   const stream = await client.chat.completions.create({
-    model: options?.model ?? 'gpt-4.1-mini',
+    model: options?.model ?? process.env.NEXT_PUBLIC_OPENAI_MODEL ?? 'gpt-4.1-mini',
     messages,
     stream: true,
     temperature: options?.temperature ?? 0.7,

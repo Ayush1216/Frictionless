@@ -2,13 +2,12 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, Loader2, AlertTriangle, CheckCircle2, ShieldCheck, TrendingUp, TrendingDown, Info, X } from 'lucide-react';
-import Image from 'next/image';
+import { Eye, Loader2, AlertTriangle, CheckCircle2, ShieldCheck, TrendingUp, TrendingDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
 import { geminiStream, isGeminiEnabled } from '@/lib/ai/gemini-client';
 import { getPrompt } from '@/lib/ai/prompts';
-import { getCachedAnalysis, setCachedAnalysis, buildScoreHash } from '@/lib/ai/analysis-cache';
+import { getCachedAnalysis, setCachedAnalysis, clearCachedAnalysis, buildScoreHash } from '@/lib/ai/analysis-cache';
 import { useUIStore } from '@/stores/ui-store';
 import type { ParsedRubricCategory } from '@/lib/readiness-rubric';
 
@@ -19,22 +18,73 @@ interface InvestorLensPreviewProps {
   className?: string;
 }
 
-function getDemoMemo(companyName: string): string {
+const STRENGTH_TEMPLATES: Record<string, string> = {
+  'Founder Team': 'The founding team has strong credentials with all key information documented, signalling transparency and credibility to investors.',
+  'GTM Strategy': 'Go-to-market positioning is well-articulated, showing the team understands their target market and how to reach customers.',
+  'Storytelling Comms': 'Consistent messaging across materials demonstrates a clear, compelling narrative that would hold up in an investor meeting.',
+  'Product Maturity': 'Product development shows meaningful traction with validated milestones, reducing technical risk for potential investors.',
+  'Financials': 'Financial documentation is thorough with clear projections and unit economics, providing the transparency investors need for diligence.',
+  'Foundational Setup': 'Corporate structure and legal foundations are clean, reducing friction and downstream risk in any deal process.',
+  'Traction Validation': 'Third-party validation metrics are solid — retention, engagement, or revenue signals give investors confidence in product-market fit.',
+};
+
+const CONCERN_TEMPLATES: Record<string, (score: number, gapName: string) => string> = {
+  'Traction Validation': (s, g) => `At ${s}%, traction validation is weak. Key metrics like ${g} are missing, which investors rely on to gauge product-market fit.`,
+  'Foundational Setup': (s, g) => `Scoring only ${s}% on structural readiness raises due diligence concerns. Items like ${g} are expected before any serious investor conversation.`,
+  'Financials': (s, g) => `Financial readiness at ${s}% is a red flag. Without ${g}, investors cannot model returns or assess burn sustainability.`,
+  'GTM Strategy': (s, g) => `Go-to-market strategy at ${s}% lacks depth. Missing clarity on ${g} makes it hard for investors to evaluate scalability.`,
+  'Product Maturity': (s, g) => `Product maturity at ${s}% suggests early stage risk. ${g} would help demonstrate the product is beyond proof-of-concept.`,
+  'Storytelling Comms': (s, g) => `At ${s}%, messaging consistency is weak. Investors cross-reference materials, and gaps like ${g} erode confidence.`,
+  'Founder Team': (s, g) => `Team documentation at ${s}% is unusually low. Gaps like ${g} make it difficult for investors to evaluate the founding team.`,
+};
+
+function buildDemoMemo(
+  overallScore: number,
+  cats: ParsedRubricCategory[],
+): string {
+  const sorted = [...cats].sort((a, b) => b.score - a.score);
+  const top = sorted.slice(0, 3);
+  const bottom = sorted.filter((c) => c.score < 60).slice(0, 3);
+
+  const strengthBullets = top.map((c) => {
+    const template = STRENGTH_TEMPLATES[c.name];
+    if (template) return `- **${c.name}** (${c.score}%) — ${template}`;
+    const completedCount = c.items.filter((i) => ((i.Points as number) ?? 0) > 0).length;
+    return `- **${c.name}** (${c.score}%) — ${completedCount} of ${c.items.length} rubric items completed, placing this category well above the meeting-ready threshold.`;
+  });
+
+  const concernBullets = bottom.length > 0
+    ? bottom.map((c) => {
+        const worst = c.items
+          .filter((i) => ((i.Points as number) ?? 0) === 0)
+          .sort((a, b) => ((b.maximum_points as number) ?? 0) - ((a.maximum_points as number) ?? 0))[0];
+        const gapName = worst?.Subtopic_Name ?? worst?.Question ?? 'key documentation';
+        const templateFn = CONCERN_TEMPLATES[c.name];
+        if (templateFn) return `- ${templateFn(c.score, gapName)}`;
+        const missingCount = c.items.filter((i) => ((i.Points as number) ?? 0) === 0).length;
+        return `- **${c.name}** (${c.score}%) — ${missingCount} critical items remain incomplete, including ${gapName}. This would slow down any diligence process.`;
+      })
+    : ['- No critical gaps identified at this time.'];
+
+  const verdict = overallScore >= 85
+    ? `Would I take a meeting? **Yes, enthusiastically.** At ${overallScore}%, this startup is well-prepared for diligence. Minor gaps remain, but nothing that would slow down a serious investor conversation.`
+    : overallScore >= 70
+      ? `Would I take a meeting? **Yes, conditionally.** At ${overallScore}%, the profile is compelling enough for a conversation, but I'd want the weaker categories addressed before advancing to full diligence.`
+      : overallScore >= 50
+        ? `Would I take a meeting? **Not yet.** At ${overallScore}%, there are too many open gaps for a productive investor conversation. The red flags above need to be resolved first.`
+        : `Would I take a meeting? **No.** At ${overallScore}%, the readiness profile has fundamental gaps across multiple categories. Significant groundwork is needed before this would warrant investor time.`;
+
   return `## First Impression
-${companyName} presents an intriguing profile. The team composition looks promising, but the data room has significant gaps that would slow down any diligence process.
+At ${overallScore}% overall readiness across ${cats.length} categories, the profile shows ${top[0] ? `clear strength in **${top[0].name}** (${top[0].score}%)` : 'early-stage progress'} but ${bottom.length > 0 ? `notable weakness in ${bottom.map((c) => `**${c.name}** (${c.score}%)`).join(' and ')}` : 'room for improvement across the board'}. ${overallScore >= 70 ? 'The overall score clears the meeting-ready bar, though gaps remain.' : 'The overall score falls short of the 70% meeting-ready threshold.'}
 
 ## Strengths Worth Highlighting
-- **Founding team** has relevant domain experience and complementary skill sets
-- **Product development** shows clear direction with early market validation signals
-- **Legal and structural foundations** are clean, reducing downstream friction
+${strengthBullets.join('\n')}
 
 ## Red Flags / Concerns
-- **Financial documentation** is incomplete — no audited statements or projections
-- **Go-to-market strategy** lacks specificity around unit economics and CAC/LTV
-- **Limited third-party validation** — need more customer testimonials
+${concernBullets.join('\n')}
 
 ## Verdict
-Would I take a meeting with ${companyName}? **Yes, conditionally.** The team is compelling enough for a conversation, but I'd want financial projections and a clearer GTM strategy before advancing to full diligence.`;
+${verdict}`;
 }
 
 export function InvestorLensPreview({
@@ -46,7 +96,6 @@ export function InvestorLensPreview({
   const [memo, setMemo] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
   const theme = useUIStore((s) => s.theme);
   const name = companyName || 'your startup';
 
@@ -62,23 +111,68 @@ export function InvestorLensPreview({
     return { strengths, concerns, meetingReady, diligenceReady };
   }, [categories, overallScore]);
 
-  const generate = useCallback(async () => {
+  const generate = useCallback(async (force = false) => {
     if (isLoading) return;
-    const cached = getCachedAnalysis<string>('investor-lens', scoreHash);
-    if (cached) { setMemo(cached); setHasGenerated(true); return; }
+    if (!force) {
+      const cached = getCachedAnalysis<string>('investor-lens', scoreHash);
+      if (cached) { setMemo(cached); setHasGenerated(true); return; }
+    }
+    clearCachedAnalysis('investor-lens');
 
     setIsLoading(true);
     setMemo(null);
 
     const prompt = getPrompt('INVESTOR_LENS');
+
+    const formatItem = (i: typeof categories[0]['items'][0], prefix: string) => {
+      const label = i.Subtopic_Name || i.Question || 'Unknown';
+      const pts = `${i.Points ?? 0}/${i.maximum_points ?? '?'} pts`;
+      const reasoning = i.Reasoning ? ` | Reasoning: ${i.Reasoning}` : '';
+      const answer = i.Answer ? ` | Answer: ${i.Answer}` : '';
+      return `    ${prefix} ${label} (${pts})${reasoning}${answer}`;
+    };
+
     const categoryData = categories
       .map((c) => {
-        const missing = c.items.filter((i) => ((i.Points as number) ?? 0) === 0);
-        return `${c.name}: ${c.score}% (${missing.length} gaps)`;
-      })
-      .join('\n');
+        const strong = c.items
+          .filter((i) => ((i.Points as number) ?? 0) > 0)
+          .sort((a, b) => ((b.Points as number) ?? 0) - ((a.Points as number) ?? 0))
+          .slice(0, 3)
+          .map((i) => formatItem(i, '[+]'));
+        const gaps = c.items
+          .filter((i) => ((i.Points as number) ?? 0) === 0 && ((i.maximum_points as number) ?? 0) > 0)
+          .sort((a, b) => ((b.maximum_points as number) ?? 0) - ((a.maximum_points as number) ?? 0))
+          .slice(0, 3)
+          .map((i) => formatItem(i, '[-] MISSING:'));
+        const partial = c.items
+          .filter((i) => {
+            const pts = (i.Points as number) ?? 0;
+            const max = (i.maximum_points as number) ?? 0;
+            return pts > 0 && max > 0 && pts < max;
+          })
+          .slice(0, 2)
+          .map((i) => formatItem(i, '[~] PARTIAL:'));
 
-    const userMessage = `Company: ${name}\nOverall readiness: ${overallScore}%\nStage: Seed\n\nCategories:\n${categoryData}`;
+        const lines = [`  ${c.name}: ${c.score}% (${c.items.length} rubric items)`];
+        if (strong.length) lines.push('    Strengths:', ...strong);
+        if (gaps.length) lines.push('    Gaps:', ...gaps);
+        if (partial.length) lines.push('    Partial:', ...partial);
+        return lines.join('\n');
+      })
+      .join('\n\n');
+
+    const meetingReady = overallScore >= 70 ? 'Yes' : 'No';
+    const diligenceReady = overallScore >= 85 ? 'Yes' : 'No';
+
+    const userMessage = [
+      `Overall readiness: ${overallScore}%`,
+      `Meeting-ready threshold (70%): ${meetingReady}`,
+      `Diligence-ready threshold (85%): ${diligenceReady}`,
+      `Total categories: ${categories.length}`,
+      '',
+      'Detailed category breakdown:',
+      categoryData,
+    ].join('\n');
 
     let fullContent = '';
     try {
@@ -88,7 +182,7 @@ export function InvestorLensPreview({
           setMemo(fullContent);
         }
       } else {
-        const demoContent = getDemoMemo(name);
+        const demoContent = buildDemoMemo(overallScore, categories);
         for (const char of demoContent) {
           fullContent += char;
           if (fullContent.length % 8 === 0) {
@@ -120,61 +214,50 @@ export function InvestorLensPreview({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn('glass-card flex flex-col overflow-hidden relative', className)}
+      className={cn('glass-card overflow-hidden relative', className)}
     >
       {/* Gold accent border */}
       <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400/60 via-amber-500/40 to-amber-400/60" />
 
-      {/* Header + readiness gates — compact */}
-      <div className="p-4 pb-3 shrink-0">
-        <div className="flex items-center gap-2 mb-1">
-          <Eye className="w-5 h-5 text-amber-500" />
-          <h3 className="text-sm font-display font-semibold text-foreground">Investor Lens</h3>
-          <button
-            onClick={() => setShowInfo(!showInfo)}
-            className="p-0.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="What is Investor Lens?"
-          >
-            {showInfo ? <X className="w-3.5 h-3.5" /> : <Info className="w-3.5 h-3.5" />}
-          </button>
-          <span className="text-[10px] text-muted-foreground ml-auto">VC Analyst View</span>
-        </div>
-        {showInfo ? (
-          <div className="text-[11px] text-muted-foreground mb-2 p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/10 leading-relaxed">
-            <strong className="text-foreground">How this helps you:</strong> Investor Lens shows how a VC analyst would evaluate {name} based on your readiness data. It highlights what excites investors, what concerns them, and whether they&apos;d take a meeting — so you can fix gaps <em>before</em> pitching.
+      {/* Header */}
+      <div className="px-5 pt-5 pb-3">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2.5">
+            <Eye className="w-5 h-5 text-amber-500" />
+            <h3 className="text-base font-display font-semibold text-foreground">Investor Lens</h3>
           </div>
-        ) : (
-          <p className="text-[10px] text-muted-foreground mb-2">{name}&apos;s profile through investor eyes</p>
-        )}
+          <span className="text-xs text-muted-foreground">VC Analyst View</span>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3 ml-[30px]">Your profile through investor eyes</p>
 
-        {/* Readiness gates + quick stats in one row */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Readiness gates + quick stats */}
+        <div className="flex items-center gap-2.5 flex-wrap">
           <div className={cn(
-            'flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold border',
+            'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border',
             investorMetrics.meetingReady
               ? 'bg-score-excellent/8 text-score-excellent border-score-excellent/20'
               : 'bg-score-poor/8 text-score-poor border-score-poor/20'
           )}>
-            {investorMetrics.meetingReady ? <CheckCircle2 className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+            {investorMetrics.meetingReady ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
             Meeting Ready
           </div>
           <div className={cn(
-            'flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold border',
+            'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border',
             investorMetrics.diligenceReady
               ? 'bg-score-excellent/8 text-score-excellent border-score-excellent/20'
               : 'bg-muted text-muted-foreground border-border'
           )}>
-            <ShieldCheck className="w-3 h-3" />
+            <ShieldCheck className="w-3.5 h-3.5" />
             Diligence Ready
           </div>
-          <div className="flex items-center gap-3 ml-auto text-[10px]">
+          <div className="flex items-center gap-4 ml-auto text-xs">
             <span className="flex items-center gap-1">
-              <TrendingUp className="w-3 h-3 text-score-excellent" />
+              <TrendingUp className="w-3.5 h-3.5 text-score-excellent" />
               <span className="font-semibold text-score-excellent">{investorMetrics.strengths.length}</span>
               <span className="text-muted-foreground">strengths</span>
             </span>
             <span className="flex items-center gap-1">
-              <TrendingDown className="w-3 h-3 text-score-poor" />
+              <TrendingDown className="w-3.5 h-3.5 text-score-poor" />
               <span className="font-semibold text-score-poor">{investorMetrics.concerns.length}</span>
               <span className="text-muted-foreground">concerns</span>
             </span>
@@ -183,34 +266,36 @@ export function InvestorLensPreview({
       </div>
 
       {/* Memo content */}
-      <div className="flex-1 overflow-y-auto border-t border-border/30 max-h-[400px]">
+      <div className="overflow-y-auto border-t border-border/30 max-h-[420px]">
         {isLoading && !memo && (
-          <div className="flex items-center justify-center gap-2 py-8">
+          <div className="flex items-center justify-center gap-2 py-10">
             <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-            <span className="text-xs text-muted-foreground">Generating analyst memo...</span>
+            <span className="text-sm text-muted-foreground">Generating analyst memo...</span>
           </div>
         )}
 
         {memo && (
           <div className={cn(
-            'p-4 prose prose-sm max-w-none text-foreground',
-            '[&>h2]:text-xs [&>h2]:font-display [&>h2]:font-semibold [&>h2]:mt-3 [&>h2]:mb-1 [&>h2]:text-amber-600 [&>h2]:dark:text-amber-400 [&>h2]:uppercase [&>h2]:tracking-wider',
-            '[&>ul]:space-y-0.5 [&>p]:text-xs [&>p]:text-muted-foreground [&>p]:leading-relaxed',
-            '[&>ul>li]:text-xs [&>ul>li]:text-muted-foreground',
-            '[&_strong]:text-foreground [&_strong]:font-medium',
+            'px-5 py-4 prose prose-sm max-w-none text-foreground',
+            '[&>h2]:text-[13px] [&>h2]:font-display [&>h2]:font-semibold [&>h2]:mt-5 [&>h2]:mb-1.5 [&>h2]:text-amber-600 [&>h2]:dark:text-amber-400 [&>h2]:uppercase [&>h2]:tracking-wider',
+            '[&>h2:first-child]:mt-0',
+            '[&>ul]:space-y-1 [&>ul]:mt-1.5 [&>ul]:mb-2',
+            '[&>p]:text-[13px] [&>p]:text-muted-foreground [&>p]:leading-relaxed [&>p]:my-1.5',
+            '[&>ul>li]:text-[13px] [&>ul>li]:text-muted-foreground [&>ul>li]:leading-relaxed',
+            '[&_strong]:text-foreground [&_strong]:font-semibold',
             theme === 'dark' ? 'prose-invert' : ''
           )}>
             <ReactMarkdown>{memo}</ReactMarkdown>
-            {isLoading && <span className="inline-block w-0.5 h-3 bg-amber-500 animate-pulse ml-0.5" />}
+            {isLoading && <span className="inline-block w-0.5 h-3.5 bg-amber-500 animate-pulse ml-0.5" />}
           </div>
         )}
       </div>
 
       {!isLoading && hasGenerated && (
-        <div className="px-4 py-2 border-t border-border/30 shrink-0">
+        <div className="px-5 py-3 border-t border-border/30">
           <button
-            onClick={generate}
-            className="text-[10px] text-amber-500 font-medium hover:underline"
+            onClick={() => generate(true)}
+            className="text-sm text-amber-500 font-medium hover:underline"
           >
             Regenerate memo
           </button>

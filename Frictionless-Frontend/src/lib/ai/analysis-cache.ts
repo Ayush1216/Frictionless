@@ -47,6 +47,15 @@ export function getCachedAnalysis<T>(key: string, scoreHash: string): T | null {
   }
 }
 
+export function clearCachedAnalysis(key: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(PREFIX + key);
+  } catch {
+    // localStorage unavailable
+  }
+}
+
 export function setCachedAnalysis<T>(key: string, scoreHash: string, data: T): void {
   if (typeof window === 'undefined') return;
   try {
