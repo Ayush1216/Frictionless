@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calculator, ArrowUpRight, Loader2 } from 'lucide-react';
+import { Calculator, ArrowUpRight, Loader2, CheckSquare, Square } from 'lucide-react';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
-import { cn } from '@/lib/utils';
+import { TooltipInfo } from '@/components/ui/TooltipInfo';
+import { ScoreGauge } from '@/components/ui/ScoreGauge';
+import { getScoreColor } from '@/lib/scores';
 import { streamChat, isAIEnabled } from '@/lib/ai/openai-client';
 import { getPrompt } from '@/lib/ai/prompts';
 import { getCachedAnalysis, setCachedAnalysis, buildScoreHash } from '@/lib/ai/analysis-cache';
-import { getScoreInfo } from '@/lib/score-utils';
-import { useUIStore } from '@/stores/ui-store';
 import type { ParsedRubricCategory } from '@/lib/readiness-rubric';
 
 export interface WhatIfTask {
@@ -31,8 +31,6 @@ interface WhatIfSimulatorProps {
 /**
  * Compute projected overall score using category weights.
  * Uses proportional gap-closing: selecting all tasks = score reaches 100.
- * Each task's impactPoints contribute proportionally to closing the gap
- * between the current score and 100 for its category.
  */
 function computeWeightedProjection(
   currentScore: number,
@@ -41,7 +39,6 @@ function computeWeightedProjection(
   categories?: ParsedRubricCategory[]
 ): { projectedScore: number; categoryProjections: { name: string; current: number; projected: number; impact: number }[] } {
   if (!categories || categories.length === 0) {
-    // Simple mode: proportional to total points
     const totalPossible = allTasks.reduce((sum, t) => sum + t.impactPoints, 0) || 1;
     const selectedPoints = selectedTasks.reduce((sum, t) => sum + t.impactPoints, 0);
     const gap = 100 - currentScore;
@@ -51,7 +48,6 @@ function computeWeightedProjection(
 
   const totalWeight = categories.reduce((sum, c) => sum + c.weight, 0) || 1;
 
-  // Build impact per category for selected and all tasks
   const selectedByCategory = new Map<string, number>();
   const allByCategory = new Map<string, number>();
   for (const t of selectedTasks) {
@@ -67,8 +63,6 @@ function computeWeightedProjection(
   for (const cat of categories) {
     const selectedImpact = selectedByCategory.get(cat.name) ?? 0;
     const totalImpact = allByCategory.get(cat.name) ?? 0;
-
-    // Gap-closing: how much of the remaining gap to 100 does this selection close?
     const gap = 100 - cat.score;
     const ratio = totalImpact > 0 ? selectedImpact / totalImpact : 0;
     const projected = Math.min(100, cat.score + gap * ratio);
@@ -99,7 +93,7 @@ export function WhatIfSimulator({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [aiNarrative, setAiNarrative] = useState<string | null>(null);
   const [isLoadingNarrative, setIsLoadingNarrative] = useState(false);
-  const theme = useUIStore((s) => s.theme);
+  const gaugeKey = useRef(0);
 
   const selectedTasks = tasks.filter((t) => selected.has(t.id));
 
@@ -117,6 +111,7 @@ export function WhatIfSimulator({
       else next.add(id);
       return next;
     });
+    gaugeKey.current += 1;
     setAiNarrative(null);
   };
 
@@ -157,109 +152,112 @@ export function WhatIfSimulator({
     }
   }, [selectedTasks, currentScore, projectedScore, totalImpact, categories]);
 
-  // Full circle gauge
-  const radius = 52;
-  const circumference = 2 * Math.PI * radius;
-  const progress = (projectedScore / 100) * circumference;
-  const projectedInfo = getScoreInfo(projectedScore);
-  const currentInfo = getScoreInfo(currentScore);
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className={cn('glass-card p-5', className)}
+      className={`fi-card ${className ?? ''}`}
     >
+      {/* Header */}
       <div className="flex items-center gap-2 mb-1">
-        <Calculator className="w-4 h-4 text-primary" />
-        <h3 className="text-sm font-display font-semibold text-foreground">What-If Simulator</h3>
+        <Calculator className="w-5 h-5" style={{ color: 'var(--fi-primary)' }} />
+        <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>
+          What-If Simulator
+        </h3>
+        <TooltipInfo text="Select tasks to simulate how completing them would affect your weighted readiness score. The projection uses category weights for accuracy." />
       </div>
-      <p className="text-[10px] text-muted-foreground mb-4">
+      <p className="text-[11px] mb-4" style={{ color: 'var(--fi-text-muted)' }}>
         Select tasks to see how they affect your weighted score
       </p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Task selector */}
-        <div className="lg:col-span-2 space-y-1.5 max-h-52 overflow-y-auto pr-1">
-          {tasks.slice(0, 10).map((t) => (
-            <button
-              key={t.id}
-              onClick={() => {
-                toggle(t.id);
-                onSelectTask?.(t.id);
-              }}
-              className={cn(
-                'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-left text-xs transition-colors',
-                selected.has(t.id)
-                  ? 'bg-primary/15 border border-primary/30 text-foreground'
-                  : 'bg-muted/50 border border-transparent text-muted-foreground hover:bg-muted'
-              )}
-            >
-              <div className="flex-1 min-w-0">
-                <span className="truncate block text-xs">{t.title}</span>
-                <span className="text-[9px] text-muted-foreground">{t.category}</span>
-              </div>
-              <span className="text-[10px] font-mono text-primary shrink-0">+{t.impactPoints} pts</span>
-            </button>
-          ))}
+      {/* 65/35 split layout */}
+      <div className="flex flex-col lg:flex-row gap-4">
+        {/* Left: Task selection (~65%) */}
+        <div className="lg:w-[65%] space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
+          {tasks.slice(0, 12).map((t) => {
+            const isSelected = selected.has(t.id);
+            return (
+              <motion.button
+                key={t.id}
+                onClick={() => {
+                  toggle(t.id);
+                  onSelectTask?.(t.id);
+                }}
+                whileTap={{ scale: 0.98 }}
+                animate={{
+                  background: isSelected ? 'rgba(16,185,129,0.08)' : 'var(--fi-bg-secondary)',
+                  borderColor: isSelected ? 'var(--fi-primary)' : 'var(--fi-border)',
+                }}
+                transition={{ duration: 0.2 }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left text-xs"
+                style={{
+                  border: '1px solid',
+                }}
+              >
+                {isSelected ? (
+                  <CheckSquare className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--fi-primary)' }} />
+                ) : (
+                  <Square className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--fi-text-muted)' }} />
+                )}
+                <div className="flex-1 min-w-0">
+                  <span
+                    className="truncate block text-xs font-medium"
+                    style={{ color: isSelected ? 'var(--fi-text-primary)' : 'var(--fi-text-secondary)' }}
+                  >
+                    {t.title}
+                  </span>
+                  <span className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>{t.category}</span>
+                </div>
+                <span
+                  className="text-[10px] font-semibold tabular-nums shrink-0"
+                  style={{ color: 'var(--fi-primary)' }}
+                >
+                  +{t.impactPoints} pts
+                </span>
+              </motion.button>
+            );
+          })}
+          {tasks.length === 0 && (
+            <p className="text-xs py-4 text-center" style={{ color: 'var(--fi-text-muted)' }}>
+              No tasks available for simulation
+            </p>
+          )}
         </div>
 
-        {/* Full circle gauge */}
-        <div className="flex flex-col items-center justify-center gap-2">
-          <div className="relative w-[120px] h-[120px]">
-            <svg viewBox="0 0 120 120" className="w-full h-full -rotate-90">
-              {/* Background track */}
-              <circle
-                cx="60" cy="60" r={radius}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="8"
-                className="text-muted/30"
-              />
-              {/* Current score (faint) */}
-              <circle
-                cx="60" cy="60" r={radius}
-                fill="none"
-                stroke={currentInfo.color}
-                strokeWidth="8"
-                strokeDasharray={circumference}
-                strokeDashoffset={circumference - (currentScore / 100) * circumference}
-                strokeLinecap="round"
-                opacity={0.2}
-              />
-              {/* Projected score */}
-              <motion.circle
-                cx="60" cy="60" r={radius}
-                fill="none"
-                stroke={projectedInfo.color}
-                strokeWidth="8"
-                strokeDasharray={circumference}
-                strokeLinecap="round"
-                animate={{ strokeDashoffset: circumference - progress }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-display font-bold text-foreground tabular-nums">{projectedScore}</span>
-              <span className="text-[9px] text-muted-foreground">projected</span>
-            </div>
-          </div>
-          <div className="text-center">
-            <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', projectedInfo.bgClass, projectedInfo.textClass)}>
-              {projectedInfo.label}
-            </span>
+        {/* Right: Projected score gauge (~35%) */}
+        <div className="lg:w-[35%] flex flex-col items-center justify-center gap-3 py-2">
+          <ScoreGauge
+            key={gaugeKey.current}
+            score={projectedScore}
+            size="lg"
+            showLabel
+            animated
+          />
+          <AnimatePresence mode="wait">
             {totalImpact > 0 && (
-              <div className="flex items-center justify-center gap-1 mt-1 text-[10px] text-score-excellent font-semibold">
-                <ArrowUpRight className="w-3 h-3" />
-                +{totalImpact}%
-              </div>
+              <motion.div
+                key={`delta-${totalImpact}`}
+                initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.25 }}
+                className="flex items-center gap-1 text-xs font-semibold"
+                style={{ color: 'var(--fi-score-excellent)' }}
+              >
+                <ArrowUpRight className="w-3.5 h-3.5" />
+                +{totalImpact}% uplift
+              </motion.div>
             )}
+          </AnimatePresence>
+          <div className="text-center">
+            <span className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>
+              {selectedTasks.length} task{selectedTasks.length !== 1 ? 's' : ''} selected
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Category breakdown */}
+      {/* Category impact breakdown */}
       <AnimatePresence>
         {categoryProjections.length > 0 && (
           <motion.div
@@ -268,44 +266,61 @@ export function WhatIfSimulator({
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="mt-3 pt-3 border-t border-border/40 space-y-1.5">
-              <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Category Impact</span>
-              {categoryProjections.map((cat) => {
-                const info = getScoreInfo(cat.projected);
-                return (
-                  <div key={cat.name} className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground w-28 truncate">{cat.name}</span>
-                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: info.color }}
-                        animate={{ width: `${cat.projected}%` }}
-                        transition={{ duration: 0.4 }}
-                      />
-                    </div>
-                    <span className="text-[10px] font-mono text-muted-foreground tabular-nums w-16 text-right">
-                      {cat.current} → <span className={info.textClass}>{cat.projected}</span>
-                    </span>
+            <div className="mt-4 pt-3 space-y-2" style={{ borderTop: '1px solid var(--fi-border)' }}>
+              <span
+                className="text-[10px] font-semibold uppercase tracking-wider"
+                style={{ color: 'var(--fi-text-muted)' }}
+              >
+                Category Impact
+              </span>
+              {categoryProjections.map((cat) => (
+                <div key={cat.name} className="flex items-center gap-2">
+                  <span
+                    className="text-[10px] w-28 truncate"
+                    style={{ color: 'var(--fi-text-secondary)' }}
+                  >
+                    {cat.name}
+                  </span>
+                  <div
+                    className="flex-1 h-1.5 rounded-full overflow-hidden"
+                    style={{ background: 'var(--fi-bg-tertiary)' }}
+                  >
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ background: getScoreColor(cat.projected) }}
+                      animate={{ width: `${cat.projected}%` }}
+                      transition={{ duration: 0.4 }}
+                    />
                   </div>
-                );
-              })}
+                  <span
+                    className="text-[10px] tabular-nums w-20 text-right"
+                    style={{ color: 'var(--fi-text-muted)' }}
+                  >
+                    {cat.current}% →{' '}
+                    <span style={{ color: getScoreColor(cat.projected), fontWeight: 600 }}>
+                      {cat.projected}%
+                    </span>
+                  </span>
+                </div>
+              ))}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* AI Analysis */}
-      <div className="mt-3 pt-3 border-t border-border/40">
+      <div className="mt-4 pt-3" style={{ borderTop: '1px solid var(--fi-border)' }}>
         {selectedTasks.length > 0 && !aiNarrative && (
           <button
             onClick={generateNarrative}
             disabled={isLoadingNarrative}
-            className={cn(
-              'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
-              isLoadingNarrative
-                ? 'bg-primary/50 text-primary-foreground cursor-not-allowed'
-                : 'bg-primary text-primary-foreground hover:bg-primary/90'
-            )}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+            style={{
+              background: isLoadingNarrative ? 'rgba(16,185,129,0.3)' : 'var(--fi-primary)',
+              color: '#fff',
+              opacity: isLoadingNarrative ? 0.7 : 1,
+              cursor: isLoadingNarrative ? 'not-allowed' : 'pointer',
+            }}
           >
             {isLoadingNarrative ? (
               <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Analyzing...</>
@@ -318,19 +333,44 @@ export function WhatIfSimulator({
           <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rounded-lg bg-primary/5 border border-primary/15 p-3"
+            className="rounded-lg p-3"
+            style={{
+              background: 'rgba(16,185,129,0.05)',
+              border: '1px solid rgba(16,185,129,0.15)',
+            }}
           >
             <div className="flex items-center gap-1.5 mb-1">
               <Image src="/ai-logo.png" alt="Frictionless" width={12} height={12} />
-              <span className="text-[9px] font-semibold text-primary uppercase tracking-wider">AI Insight</span>
+              <span
+                className="text-[10px] font-semibold uppercase tracking-wider"
+                style={{ color: 'var(--fi-primary)' }}
+              >
+                AI Insight
+              </span>
             </div>
-            <div className={cn("text-xs text-foreground leading-relaxed prose prose-sm max-w-none", theme === 'dark' ? 'prose-invert' : '')}>
-              <ReactMarkdown>{aiNarrative}</ReactMarkdown>
-            </div>
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => (
+                  <p className="text-xs leading-relaxed mb-1.5" style={{ color: 'var(--fi-text-secondary)' }}>
+                    {children}
+                  </p>
+                ),
+                strong: ({ children }) => (
+                  <strong style={{ color: 'var(--fi-text-primary)', fontWeight: 600 }}>{children}</strong>
+                ),
+              }}
+            >
+              {aiNarrative}
+            </ReactMarkdown>
+            {isLoadingNarrative && (
+              <span className="inline-block w-0.5 h-3 animate-pulse ml-0.5" style={{ background: 'var(--fi-primary)' }} />
+            )}
           </motion.div>
         )}
         {selectedTasks.length === 0 && (
-          <p className="text-[10px] text-muted-foreground">Select tasks above to see projected impact</p>
+          <p className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>
+            Select tasks above to see projected impact
+          </p>
         )}
       </div>
     </motion.div>

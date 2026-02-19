@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, Loader2, AlertTriangle, CheckCircle2, ShieldCheck, TrendingUp, TrendingDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { cn } from '@/lib/utils';
+import { TooltipInfo } from '@/components/ui/TooltipInfo';
 import { geminiStream, isGeminiEnabled } from '@/lib/ai/gemini-client';
 import { getPrompt } from '@/lib/ai/prompts';
 import { getCachedAnalysis, setCachedAnalysis, clearCachedAnalysis, buildScoreHash } from '@/lib/ai/analysis-cache';
@@ -96,6 +96,7 @@ export function InvestorLensPreview({
   const [memo, setMemo] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [lensMode, setLensMode] = useState<'meeting' | 'diligence'>('meeting');
   const theme = useUIStore((s) => s.theme);
   const name = companyName || 'your startup';
 
@@ -107,7 +108,6 @@ export function InvestorLensPreview({
     const concerns = sorted.filter((c) => c.score < 80);
     const meetingReady = overallScore >= 80;
     const diligenceReady = overallScore >= 86;
-
     return { strengths, concerns, meetingReady, diligenceReady };
   }, [categories, overallScore]);
 
@@ -214,10 +214,10 @@ export function InvestorLensPreview({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn('glass-card overflow-hidden relative', className)}
+      className={`glass-card overflow-hidden relative ${className ?? ''}`}
     >
       {/* Gold accent border */}
-      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-amber-400/60 via-amber-500/40 to-amber-400/60" />
+      <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: 'linear-gradient(to right, rgba(245,158,11,0.6), rgba(245,158,11,0.3), rgba(245,158,11,0.6))' }} />
 
       {/* Header */}
       <div className="px-5 pt-5 pb-3">
@@ -225,6 +225,7 @@ export function InvestorLensPreview({
           <div className="flex items-center gap-2.5">
             <Eye className="w-5 h-5 text-amber-500" />
             <h3 className="text-base font-display font-semibold text-foreground">Investor Lens</h3>
+            <TooltipInfo text={`Investor Lens shows how a VC analyst would evaluate ${name}. It highlights what excites investors, what concerns them, and whether they'd take a meeting.`} />
           </div>
           <span className="text-xs text-muted-foreground">VC Analyst View</span>
         </div>
@@ -232,24 +233,29 @@ export function InvestorLensPreview({
 
         {/* Readiness gates + quick stats */}
         <div className="flex items-center gap-2.5 flex-wrap">
-          <div className={cn(
-            'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border',
-            investorMetrics.meetingReady
-              ? 'bg-score-excellent/8 text-score-excellent border-score-excellent/20'
-              : 'bg-score-poor/8 text-score-poor border-score-poor/20'
-          )}>
-            {investorMetrics.meetingReady ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
-            Meeting Ready
+          {/* Meeting / Diligence toggles */}
+          <div className="flex rounded-lg p-0.5 bg-muted/40">
+            {(['meeting', 'diligence'] as const).map((mode) => {
+              const isActive = lensMode === mode;
+              const label = mode === 'meeting' ? 'Meeting Ready' : 'Diligence Ready';
+              const ready = mode === 'meeting' ? investorMetrics.meetingReady : investorMetrics.diligenceReady;
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setLensMode(mode)}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
+                    isActive
+                      ? `bg-card ${ready ? 'text-score-excellent' : 'text-score-poor'}`
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  {ready ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                  {label}
+                </button>
+              );
+            })}
           </div>
-          <div className={cn(
-            'flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border',
-            investorMetrics.diligenceReady
-              ? 'bg-score-excellent/8 text-score-excellent border-score-excellent/20'
-              : 'bg-muted text-muted-foreground border-border'
-          )}>
-            <ShieldCheck className="w-3.5 h-3.5" />
-            Diligence Ready
-          </div>
+
           <div className="flex items-center gap-4 ml-auto text-xs">
             <span className="flex items-center gap-1">
               <TrendingUp className="w-3.5 h-3.5 text-score-excellent" />
@@ -275,16 +281,14 @@ export function InvestorLensPreview({
         )}
 
         {memo && (
-          <div className={cn(
-            'px-5 py-4 prose prose-sm max-w-none text-foreground',
-            '[&>h2]:text-[13px] [&>h2]:font-display [&>h2]:font-semibold [&>h2]:mt-5 [&>h2]:mb-1.5 [&>h2]:text-amber-600 [&>h2]:dark:text-amber-400 [&>h2]:uppercase [&>h2]:tracking-wider',
-            '[&>h2:first-child]:mt-0',
-            '[&>ul]:space-y-1 [&>ul]:mt-1.5 [&>ul]:mb-2',
-            '[&>p]:text-[13px] [&>p]:text-muted-foreground [&>p]:leading-relaxed [&>p]:my-1.5',
-            '[&>ul>li]:text-[13px] [&>ul>li]:text-muted-foreground [&>ul>li]:leading-relaxed',
-            '[&_strong]:text-foreground [&_strong]:font-semibold',
-            theme === 'dark' ? 'prose-invert' : ''
-          )}>
+          <div className={`px-5 py-4 prose prose-sm max-w-none text-foreground
+            [&>h2]:text-[13px] [&>h2]:font-display [&>h2]:font-semibold [&>h2]:mt-5 [&>h2]:mb-1.5 [&>h2]:text-amber-600 [&>h2]:dark:text-amber-400 [&>h2]:uppercase [&>h2]:tracking-wider
+            [&>h2:first-child]:mt-0
+            [&>ul]:space-y-1 [&>ul]:mt-1.5 [&>ul]:mb-2
+            [&>p]:text-[13px] [&>p]:text-muted-foreground [&>p]:leading-relaxed [&>p]:my-1.5
+            [&>ul>li]:text-[13px] [&>ul>li]:text-muted-foreground [&>ul>li]:leading-relaxed
+            [&_strong]:text-foreground [&_strong]:font-semibold
+            ${theme === 'dark' ? 'prose-invert' : ''}`}>
             <ReactMarkdown>{memo}</ReactMarkdown>
             {isLoading && <span className="inline-block w-0.5 h-3.5 bg-amber-500 animate-pulse ml-0.5" />}
           </div>

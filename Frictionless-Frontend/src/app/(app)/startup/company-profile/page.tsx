@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2,
   Edit3,
@@ -26,25 +26,34 @@ import {
   UserPlus,
   ChevronDown,
   ChevronUp,
+  BarChart3,
+  Rocket,
+  CheckCircle2,
+  Calendar,
+  Hash,
+  Link as LinkIcon,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuthStore } from '@/stores/auth-store';
+import { useUIStore } from '@/stores/ui-store';
 import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { QUESTIONNAIRE } from '@/lib/onboarding-questionnaire';
 import Link from 'next/link';
+import Image from 'next/image';
 import { slugFromName } from '@/lib/founder-utils';
-import { ProfileCard, ProfileCardExpandableBody } from '@/components/company-profile/ProfileCard';
-import { SectionCard } from '@/components/company-profile/SectionCard';
-import { MetaChips } from '@/components/company-profile/MetaChips';
-import { ExpandableText } from '@/components/company-profile/ExpandableText';
 import { InsightPanel } from '@/components/company-profile/InsightPanel';
 import { AddPersonModal } from '@/components/company-profile/AddPersonModal';
 import { TeamMemberCard } from '@/components/company-profile/TeamMemberCard';
 import { ExtractionChart } from '@/components/analytics/ExtractionChart';
-import { BarChart3 } from 'lucide-react';
+import { TabGroup } from '@/components/ui/TabGroup';
+import { StatCard } from '@/components/ui/StatCard';
+import { TooltipInfo } from '@/components/ui/TooltipInfo';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SkeletonCard, SkeletonChart } from '@/components/ui/fi-skeleton';
+import { getScoreColor } from '@/lib/scores';
+import { isGeminiEnabled, geminiSummarize } from '@/lib/ai/gemini-client';
 import {
   buildCanonicalCompanyProfile,
   getCachedCanonicalProfile,
@@ -52,6 +61,12 @@ import {
   CORE_IDENTITY_KEYS_ALREADY_SHOWN,
   type CanonicalCompanyProfile,
 } from '@/lib/company-profile-canonical';
+import {
+  Tooltip as RadixTooltip,
+  TooltipContent as RadixTooltipContent,
+  TooltipTrigger as RadixTooltipTrigger,
+  TooltipProvider,
+} from '@/components/ui/tooltip';
 
 type QuestionnaireRecord = {
   primary_sector?: string;
@@ -65,98 +80,7 @@ type QuestionnaireRecord = {
   entity_type_other?: string;
 };
 
-/** One row in More company details: value = editable if set, else Apollo/company fallback. path = save path when editable. */
 type UnifiedField = { label: string; value: string; href?: string; path?: string };
-
-function CoreIdentityAccordion({
-  fields,
-  defaultOpen = true,
-  editingField,
-  editValue,
-  setEditingField,
-  setEditValue,
-  saveExtractionField,
-  saving,
-}: {
-  fields: UnifiedField[];
-  defaultOpen?: boolean;
-  editingField: string | null;
-  editValue: string;
-  setEditingField: (v: string | null) => void;
-  setEditValue: (v: string) => void;
-  saveExtractionField: (path: string, value: string | number) => Promise<void>;
-  saving: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center justify-between w-full gap-2 p-5 pb-3 border-b border-border text-left hover:bg-muted/30 transition-colors"
-      >
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <FileText className="w-5 h-5 text-primary" />
-          More company details
-        </h3>
-        {open ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
-      </button>
-      {open && fields.length > 0 && (
-        <div className="p-5 pt-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {fields.map(({ label, value, href, path }) => {
-              const isEditing = path && editingField === path;
-              const displayVal = (value || '').trim() || '—';
-              return (
-                <div key={label} className="space-y-1.5 min-w-0">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
-                  {path ? (
-                    isEditing ? (
-                      <div className="flex flex-col gap-2">
-                        <Textarea
-                          value={editValue}
-                          onChange={(e) => setEditValue(e.target.value)}
-                          className="min-h-[100px] w-full resize-y bg-muted border-primary/50 text-sm"
-                          placeholder="Enter text…"
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => saveExtractionField(path, editValue)} disabled={saving}><Save className="w-4 h-4" /></Button>
-                          <Button size="sm" variant="ghost" onClick={() => setEditingField(null)}><X className="w-4 h-4" /></Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-start justify-between gap-3 group rounded-xl px-4 py-3 bg-muted/30 border border-transparent hover:border-border cursor-pointer text-left" onClick={() => { setEditingField(path); setEditValue(displayVal); }}>
-                        {href ? (
-                          <a href={href.startsWith('http') ? href : `https://${href}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
-                            {displayVal}
-                          </a>
-                        ) : (
-                          <span className="text-sm text-foreground break-words flex-1 min-w-0">{displayVal}</span>
-                        )}
-                        <Edit3 className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0 mt-0.5" />
-                      </div>
-                    )
-                  ) : (
-                    <div className="rounded-xl px-4 py-3 bg-muted/30 border border-border">
-                      {href ? (
-                        <a href={href.startsWith('http') ? href : `https://${href}`} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all">
-                          {displayVal}
-                        </a>
-                      ) : (
-                        <span className="text-sm text-foreground break-words">{displayVal}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
 
 type ExtractionData = {
   startup_kv?: {
@@ -177,8 +101,24 @@ type ExtractionData = {
   ai_insights?: string;
 };
 
+// ─── Animation variants ───
+const cardVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.04, duration: 0.25, ease: [0, 0, 0.58, 1] as const },
+  }),
+};
+
+// ═══════════════════════════════════════════
+// MAIN PAGE
+// ═══════════════════════════════════════════
+
 export default function CompanyProfilePage() {
   const user = useAuthStore((s) => s.user);
+  const theme = useUIStore((s) => s.theme);
+
   const [extraction, setExtraction] = useState<ExtractionData | null>(null);
   const [questionnaire, setQuestionnaire] = useState<QuestionnaireRecord | null>(null);
   const [loading, setLoading] = useState(true);
@@ -197,18 +137,15 @@ export default function CompanyProfilePage() {
   const [fillProfileLoading, setFillProfileLoading] = useState(false);
   const [orgId, setOrgId] = useState<string | null>(null);
   const [addPersonModalOpen, setAddPersonModalOpen] = useState(false);
-  /** Canonical UI model (cross-source merge, UI only; never written to DB) */
   const [canonical, setCanonical] = useState<CanonicalCompanyProfile | null>(null);
   const [readinessScore, setReadinessScore] = useState<number | null>(null);
   const [slowLoadHint, setSlowLoadHint] = useState(false);
   const autoFillDoneRef = useRef(false);
 
-  function simpleHash(s: string): string {
-    let h = 0;
-    for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-    return h.toString(36);
-  }
+  // Tab state
+  const [activeTab, setActiveTab] = useState('overview');
 
+  // ─── Helpers ───
   function displayVal(obj: Record<string, unknown> | null, key: string, fallback: string | undefined): string {
     if (!obj || obj[key] == null || obj[key] === '') return fallback ?? '';
     const v = obj[key];
@@ -222,6 +159,7 @@ export default function CompanyProfilePage() {
     return data?.session?.access_token ?? null;
   }, []);
 
+  // ─── AI Generation ───
   const generateAISummary = useCallback(async (currentExtraction: ExtractionData, currentQuestionnaire: QuestionnaireRecord) => {
     const token = await getToken();
     if (!token) return;
@@ -233,38 +171,21 @@ export default function CompanyProfilePage() {
       };
       const res = await fetch('/api/ai/summary', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ context: profileBlob }),
       });
       if (res.ok) {
         const data = await res.json();
         const summary = data.summary || data.text || '';
         setAiSummary(summary);
-        
-        // Save to DB
         await fetch('/api/company-profile', {
           method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            extraction_patch: { ai_summary: summary },
-            regenerate_readiness: false,
-          }),
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ extraction_patch: { ai_summary: summary }, regenerate_readiness: false }),
         });
-        
-        // Save to localStorage
-        if (user?.id) {
-          localStorage.setItem(`ai_summary_${user.id}`, summary);
-        }
+        if (user?.id) localStorage.setItem(`ai_summary_${user.id}`, summary);
       }
-    } catch (e) {
-      console.error('Failed to generate AI summary', e);
-    }
+    } catch (e) { console.error('Failed to generate AI summary', e); }
     setAiLoading(false);
   }, [getToken, user?.id]);
 
@@ -274,13 +195,10 @@ export default function CompanyProfilePage() {
     try {
       const res = await fetch('/api/ai/summary', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           context: { extraction: currentExtraction, questionnaire: currentQuestionnaire },
-          systemPrompt: 'You are a strategic business analyst. Based on the startup profile, provide a concise "Strategic Outlook" in 3 bullet points: 1. Market Opportunity, 2. Key Competitive Advantage, 3. Critical Next Milestone. Be specific.'
+          systemPrompt: 'You are a strategic business analyst. Based on the startup profile, provide a concise "Strategic Outlook" in 3 bullet points: 1. Market Opportunity, 2. Key Competitive Advantage, 3. Critical Next Milestone. Be specific.',
         }),
       });
       if (res.ok) {
@@ -293,87 +211,97 @@ export default function CompanyProfilePage() {
           body: JSON.stringify({ extraction_patch: { ai_insights: insights }, regenerate_readiness: false }),
         });
       }
-    } catch (e) {
-      console.error('Failed to generate AI insights', e);
-    }
+    } catch (e) { console.error('Failed to generate AI insights', e); }
   }, [getToken]);
 
+  // ─── Fetch Profile ───
   const fetchProfile = useCallback(async () => {
     const token = await getToken();
     if (!token) return;
-    const res = await fetch('/api/company-profile', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await fetch('/api/company-profile', { headers: { Authorization: `Bearer ${token}` } });
     const data = await res.json().catch(() => ({}));
     if (data.extraction) {
       setExtraction(data.extraction);
-      if (data.extraction.ai_summary) {
-        setAiSummary(data.extraction.ai_summary);
-      } else if (user?.id) {
-        const cached = localStorage.getItem(`ai_summary_${user.id}`);
-        if (cached) setAiSummary(cached);
-      }
-      if (data.extraction.ai_insights) {
-        setAiInsights(data.extraction.ai_insights);
-      }
+      if (data.extraction.ai_summary) setAiSummary(data.extraction.ai_summary);
+      else if (user?.id) { const cached = localStorage.getItem(`ai_summary_${user.id}`); if (cached) setAiSummary(cached); }
+      if (data.extraction.ai_insights) setAiInsights(data.extraction.ai_insights);
       setScrapeError(data.extraction.meta?.linkedin_scrape_error ?? null);
     }
     if (data.questionnaire) setQuestionnaire(data.questionnaire);
     if (data.apollo && typeof data.apollo === 'object') {
       setApollo(data.apollo as Record<string, unknown>);
       setLinkedinUrl((prev) => prev || String((data.apollo as { linkedin_url?: string })?.linkedin_url ?? ''));
-    } else {
-      setApollo(null);
-    }
+    } else { setApollo(null); }
     if (data.orgId) setOrgId(data.orgId);
     setLoading(false);
-
     if (data.extraction && data.questionnaire) {
       if (!data.extraction.ai_summary) {
         const cached = user?.id ? localStorage.getItem(`ai_summary_${user.id}`) : null;
         if (!cached) generateAISummary(data.extraction, data.questionnaire);
       }
-      if (!data.extraction.ai_insights) {
-        generateAIInsights(data.extraction, data.questionnaire);
-      }
+      if (!data.extraction.ai_insights) generateAIInsights(data.extraction, data.questionnaire);
     }
   }, [getToken, generateAISummary, generateAIInsights, user?.id]);
 
   useEffect(() => {
-    if (!user || user.org_type !== 'startup') {
-      setLoading(false);
-      return;
-    }
+    if (!user || user.org_type !== 'startup') { setLoading(false); return; }
     setSlowLoadHint(false);
     const t = setTimeout(() => setSlowLoadHint(true), 4000);
-    fetchProfile().finally(() => {
-      clearTimeout(t);
-      setSlowLoadHint(false);
-    });
+    fetchProfile().finally(() => { clearTimeout(t); setSlowLoadHint(false); });
   }, [user, fetchProfile]);
 
-  // Cross-source canonical merge (cached 24h). UI only; never writes to DB.
+  // Auto-generate elevator pitch if missing
   useEffect(() => {
-    if (!orgId || (!extraction && !apollo && !questionnaire)) {
-      setCanonical(null);
-      return;
-    }
+    if (!extraction || !questionnaire) return;
+    const existing = extraction?.startup_kv?.initial_details?.elevator_pitch;
+    if (existing) return; // already set
+    const problem = extraction?.startup_kv?.initial_details?.problem ?? '';
+    const solution = extraction?.startup_kv?.initial_details?.solution ?? '';
+    const uniqueValue = extraction?.startup_kv?.initial_details?.unique_value_proposition ?? extraction?.startup_kv?.initial_details?.uvp ?? '';
+    const sector = questionnaire?.primary_sector ?? '';
+    if (!problem && !solution && !uniqueValue) return; // nothing to work with
+    getToken().then(async (token) => {
+      if (!token) return;
+      try {
+        const res = await fetch('/api/ai/summary', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            context: { problem, solution, unique_value: uniqueValue, sector },
+            systemPrompt: `You are a startup pitch expert. Write a concise 1-2 sentence elevator pitch for this startup. Use plain language. Focus on: who they help, the core problem solved, and the unique value. Do NOT start with "Introducing" or "Welcome". Output ONLY the pitch text, no labels or formatting. Maximum 200 characters.`,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const pitch = (data.summary || data.text || '').slice(0, 220).trim();
+          if (pitch) {
+            await fetch('/api/company-profile', {
+              method: 'PATCH',
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ extraction_patch: { startup_kv: { initial_details: { elevator_pitch: pitch } } }, regenerate_readiness: false }),
+            });
+            await fetchProfile();
+          }
+        }
+      } catch { /* silently fail */ }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extraction?.startup_kv?.initial_details?.problem, questionnaire]);
+
+  // Canonical merge
+  useEffect(() => {
+    if (!orgId || (!extraction && !apollo && !questionnaire)) { setCanonical(null); return; }
     const rawSources = { extraction: extraction ?? undefined, apollo: apollo ?? undefined, questionnaire: questionnaire ?? undefined };
     const cached = getCachedCanonicalProfile(orgId, rawSources);
-    if (cached) {
-      setCanonical(cached);
-      return;
-    }
+    if (cached) { setCanonical(cached); return; }
     try {
       const profile = buildCanonicalCompanyProfile(rawSources);
       setCachedCanonicalProfile(orgId, rawSources, profile);
       setCanonical(profile);
-    } catch {
-      setCanonical(buildCanonicalCompanyProfile(rawSources));
-    }
+    } catch { setCanonical(buildCanonicalCompanyProfile(rawSources)); }
   }, [orgId, extraction, apollo, questionnaire]);
 
-  // Optional: fetch readiness score for hero KPI strip
+  // Readiness score
   useEffect(() => {
     if (!orgId) return;
     getToken().then((token) => {
@@ -388,41 +316,27 @@ export default function CompanyProfilePage() {
     });
   }, [orgId, getToken]);
 
+  // ─── Save / Edit Actions ───
   const saveExtractionField = async (path: string, value: string | number) => {
     const token = await getToken();
-    if (!token) {
-      toast.error('Session expired');
-      return;
-    }
+    if (!token) { toast.error('Session expired'); return; }
     setSaving(true);
     setEditingField(null);
     const keys = path.split('.');
     const patch: Record<string, unknown> = {};
     let cur = patch;
-    for (let i = 0; i < keys.length - 1; i++) {
-      const k = keys[i];
-      cur[k] = {};
-      cur = cur[k] as Record<string, unknown>;
-    }
+    for (let i = 0; i < keys.length - 1; i++) { const k = keys[i]; cur[k] = {}; cur = cur[k] as Record<string, unknown>; }
     cur[keys[keys.length - 1]] = value;
     try {
       const res = await fetch('/api/company-profile', {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          extraction_patch: patch,
-          regenerate_readiness: false,
-        }),
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ extraction_patch: patch, regenerate_readiness: false }),
       });
       if (!res.ok) throw new Error('Failed to save');
       toast.success('Saved');
       await fetchProfile();
-    } catch {
-      toast.error('Failed to save');
-    }
+    } catch { toast.error('Failed to save'); }
     setSaving(false);
   };
 
@@ -434,22 +348,14 @@ export default function CompanyProfilePage() {
     try {
       const res = await fetch('/api/company-profile', {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          questionnaire: questionnaireEdits,
-          regenerate_readiness: false,
-        }),
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionnaire: questionnaireEdits, regenerate_readiness: false }),
       });
       if (!res.ok) throw new Error('Failed to save');
       toast.success('Saved');
       setQuestionnaire((q) => (q ? { ...q, ...questionnaireEdits } : questionnaireEdits as QuestionnaireRecord));
       setQuestionnaireEdits({});
-    } catch {
-      toast.error('Failed to save');
-    }
+    } catch { toast.error('Failed to save'); }
     setSaving(false);
   };
 
@@ -460,19 +366,12 @@ export default function CompanyProfilePage() {
     try {
       const res = await fetch('/api/company-profile', {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          regenerate_readiness: true,
-        }),
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ regenerate_readiness: true }),
       });
       if (!res.ok) throw new Error('Failed');
       toast.success('Readiness score is being recalculated. This may take a minute.');
-    } catch {
-      toast.error('Failed to regenerate readiness');
-    }
+    } catch { toast.error('Failed to regenerate readiness'); }
     setRegenerating(false);
   };
 
@@ -483,27 +382,17 @@ export default function CompanyProfilePage() {
     setSaving(true);
     try {
       const updates: Record<string, unknown> = {};
-      if (Object.keys(questionnaireEdits).length > 0) {
-        updates.questionnaire = questionnaireEdits;
-      }
+      if (Object.keys(questionnaireEdits).length > 0) updates.questionnaire = questionnaireEdits;
       const res = await fetch('/api/company-profile', {
         method: 'PATCH',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...updates,
-          regenerate_readiness: true,
-        }),
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...updates, regenerate_readiness: true }),
       });
       if (!res.ok) throw new Error('Failed');
-      toast.success('Saved and recalculating readiness score. This may take a minute.');
+      toast.success('Saved and recalculating readiness score.');
       setQuestionnaireEdits({});
       await fetchProfile();
-    } catch {
-      toast.error('Failed');
-    }
+    } catch { toast.error('Failed'); }
     setRegenerating(false);
     setSaving(false);
   };
@@ -512,36 +401,23 @@ export default function CompanyProfilePage() {
     const token = await getToken();
     if (!token) return;
     const url = linkedinUrl.trim();
-    if (!url) {
-      toast.error('Paste a company LinkedIn URL first');
-      return;
-    }
+    if (!url) { toast.error('Paste a company LinkedIn URL first'); return; }
     setScrapeInProgress(true);
     setScrapeError(null);
     try {
       const res = await fetch('/api/company-profile/linkedin-scrape', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ linkedin_url: url }),
       });
       const data = await res.json().catch(() => ({}));
-      if (data.error && !data.extraction_data) {
-        setScrapeError(data.error);
-        toast.error(data.error);
-        return;
-      }
+      if (data.error && !data.extraction_data) { setScrapeError(data.error); toast.error(data.error); return; }
       if (data.extraction_data) {
         setExtraction(data.extraction_data);
         setScrapeError(data.status === 'failed' ? data.error ?? null : null);
       }
-      if (data.status === 'success') {
-        toast.success('Profile updated with fresh LinkedIn data');
-      } else if (data.status === 'failed') {
-        toast.error(data.error || 'Scrape failed');
-      }
+      if (data.status === 'success') toast.success('Profile updated with fresh LinkedIn data');
+      else if (data.status === 'failed') toast.error(data.error || 'Scrape failed');
       setLinkedinUrl('');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Scrape request failed';
@@ -551,85 +427,96 @@ export default function CompanyProfilePage() {
     setScrapeInProgress(false);
   };
 
+  // ─── Derived Data ───
   const initDetails = extraction?.startup_kv?.initial_details ?? {};
   const financialData = extraction?.startup_kv?.financial_data ?? {};
   const founderData = extraction?.startup_kv?.founder_and_other_data ?? {};
   const founders = extraction?.founder_linkedin?.data?.founders ?? [];
   const leadership = extraction?.founder_linkedin?.data?.leadership_team ?? [];
-  
-  // Deduplicate team members based on full_name or linkedin_url
-  const teamMembers = [...founders, ...leadership].reduce((acc: any[], curr) => {
-    const exists = acc.find(m => 
-      (m.full_name && curr.full_name && m.full_name === curr.full_name) || 
-      (m.linkedin_url && curr.linkedin_url && m.linkedin_url === curr.linkedin_url)
-    );
-    if (!exists) acc.push(curr);
-    return acc;
-  }, []);
 
-  const apolloLinkedIn = apollo?.linkedin_url != null ? String(apollo.linkedin_url) : '';
+  const teamMembers = useMemo(() =>
+    [...founders, ...leadership].reduce((acc: any[], curr) => {
+      const exists = acc.find(
+        (m) =>
+          (m.full_name && curr.full_name && m.full_name === curr.full_name) ||
+          (m.linkedin_url && curr.linkedin_url && m.linkedin_url === curr.linkedin_url)
+      );
+      if (!exists) acc.push(curr);
+      return acc;
+    }, []),
+    [founders, leadership]
+  );
+
+  const str = (v: unknown): string => (v != null && v !== '' ? String(v).trim() : '');
+  const get = (key: string) => str(initDetails[key]) || '';
+
   const companyName = canonical?.company_name ?? extraction?.meta?.company_name ?? initDetails.name ?? (apollo?.name != null ? String(apollo.name) : '') ?? extraction?.charts?.startup_name ?? 'Your startup';
   const logoUrl = (canonical?.logo_url && canonical.logo_url !== '') ? canonical.logo_url : (apollo?.logo_url != null ? String(apollo.logo_url) : undefined);
   const apolloLocJoin = [apollo?.city, apollo?.state, apollo?.country].filter(Boolean).map(String).join(', ');
-  const locationFallback = (apolloLocJoin || initDetails.location || '') as string;
-  const locationDisplay = (canonical?.location_display ?? locationFallback);
-  const linkedinForDisplay = canonical?.linkedin_url ?? apolloLinkedIn ?? '';
-  const rawAddress = canonical?.raw_address ?? (apollo?.raw_address != null && apollo.raw_address !== '' ? String(apollo.raw_address) : undefined);
+  const locationDisplay = (canonical?.location_display ?? apolloLocJoin) || initDetails.location || '';
+  const linkedinForDisplay = canonical?.linkedin_url ?? (apollo?.linkedin_url != null ? String(apollo.linkedin_url) : '') ?? '';
+  const websiteForBanner = canonical?.website_url ?? (apollo?.website_url != null ? String(apollo.website_url) : '') ?? get('website_url');
+  const websiteForBannerHref = websiteForBanner ? (websiteForBanner.startsWith('http') ? websiteForBanner : `https://${websiteForBanner}`) : '';
+  const websiteForBannerLabel = websiteForBanner.replace(/^https?:\/\//, '').split('/')[0];
   const phoneDisplay = canonical?.phone ?? (apollo?.primary_phone && typeof apollo.primary_phone === 'object' && (apollo.primary_phone as { number?: string }).number ? (apollo.primary_phone as { number: string }).number : undefined) ?? (apollo?.sanitized_phone != null ? String(apollo.sanitized_phone) : undefined);
   const keywordsDisplay = canonical?.keywords ?? [];
   const industriesDisplay = canonical?.industries ?? [];
   const overviewText = canonical?.overview_deduped ?? canonical?.short_description ?? initDetails.summary ?? initDetails.company_overview ?? (apollo?.short_description != null ? String(apollo.short_description) : undefined) ?? undefined;
+  const totalFundingDisplay = canonical?.total_funding ?? (apollo?.total_funding_printed != null ? String(apollo.total_funding_printed) : (apollo?.total_funding != null ? String(apollo.total_funding) : '')) ?? '';
+  const organizationRevenueDisplay = canonical?.organization_revenue ?? (apollo?.organization_revenue_printed != null ? String(apollo.organization_revenue_printed) : (apollo?.organization_revenue != null ? String(apollo.organization_revenue) : '')) ?? '';
+  const hasMeaningfulRevenue = organizationRevenueDisplay.trim() !== '' && organizationRevenueDisplay.trim() !== '0' && organizationRevenueDisplay.trim() !== '0.00';
+  const employeesDisplay = canonical?.estimated_num_employees ?? (apollo?.estimated_num_employees != null ? String(apollo.estimated_num_employees) : '') ?? '—';
+  const foundedYearDisplay = canonical?.founded_year ?? (apollo?.founded_year != null ? String(apollo.founded_year) : '');
+  const primarySectorDisplay = canonical?.primary_sector ?? canonical?.industry ?? (questionnaire?.primary_sector ? (QUESTIONNAIRE.primary_sector?.options?.find((o) => o.value === questionnaire.primary_sector)?.label ?? questionnaire.primary_sector) : '') ?? (apollo?.industry != null ? String(apollo.industry) : '');
 
-  const str = (v: unknown): string => (v != null && v !== '' ? String(v).trim() : '');
-  const get = (key: string) => str(initDetails[key]) || '';
-  const unifiedFields: UnifiedField[] = [];
-  const add = (label: string, initKey: string | undefined, apolloValue: string, href?: string) => {
-    const value = (initKey ? get(initKey) : '') || apolloValue;
-    if (!value) return;
-    const path = initKey ? `startup_kv.initial_details.${initKey}` : undefined;
-    unifiedFields.push({ label, value, href, path });
-  };
-  const addRo = (label: string, apolloValue: string, href?: string) => add(label, undefined, apolloValue, href);
+  // Build unified fields for Details tab
+  const unifiedFields = useMemo((): UnifiedField[] => {
+    const fields: UnifiedField[] = [];
+    const add = (label: string, initKey: string | undefined, apolloValue: string, href?: string) => {
+      const value = (initKey ? get(initKey) : '') || apolloValue;
+      if (!value) return;
+      const path = initKey ? `startup_kv.initial_details.${initKey}` : undefined;
+      fields.push({ label, value, href, path });
+    };
+    const addRo = (label: string, apolloValue: string, href?: string) => add(label, undefined, apolloValue, href);
 
-  add('Founded year', 'founded_year', canonical?.founded_year ?? str(apollo?.founded_year));
-  const legalNameApollo = str((apollo as { legal_name?: string })?.legal_name) || str(apollo?.name) || (canonical?.company_name ?? '');
-  add('Legal name', 'legal_name', legalNameApollo);
-  add('Team size', 'team_size', canonical?.estimated_num_employees ?? str(apollo?.estimated_num_employees));
-  const linkedinVal = canonical?.linkedin_url ?? str(apollo?.linkedin_url);
-  addRo('LinkedIn URL', linkedinVal, linkedinVal || undefined);
-  const websiteUrlRaw = canonical?.website_url ?? str(apollo?.website_url);
-  const websiteDomain = str(apollo?.primary_domain) || (websiteUrlRaw && websiteUrlRaw.replace(/^https?:\/\//, '').split('/')[0]) || '';
-  const websiteDisplay = (get('website_url') || websiteUrlRaw || '').replace(/^https?:\/\//, '').split('/')[0];
-  const websiteFull = (get('website_url') || websiteUrlRaw || '').trim();
-  if (websiteDisplay) add('Website', 'website_url', websiteDisplay, websiteFull ? (websiteFull.startsWith('http') ? websiteFull : `https://${websiteFull}`) : undefined);
-  add('Industry', 'industry', canonical?.industry ?? str(apollo?.industry));
-  add('HQ city', 'hq_city', str(apollo?.city));
-  add('HQ state', 'hq_state', str(apollo?.state));
-  add('HQ country', 'hq_country', str(apollo?.country));
-  add('Address', 'address', canonical?.raw_address ?? str(apollo?.raw_address));
-  const phoneVal = canonical?.phone ?? str(apollo?.primary_phone && typeof apollo.primary_phone === 'object' ? (apollo.primary_phone as { number?: string }).number : null) ?? str(apollo?.sanitized_phone);
-  if (phoneVal) addRo('Phone', phoneVal);
-  addRo('Total funding', canonical?.total_funding ?? str(apollo?.total_funding_printed) ?? str(apollo?.total_funding));
-  const rev = canonical?.organization_revenue ?? str(apollo?.organization_revenue_printed) ?? str(apollo?.organization_revenue);
-  if (rev && rev !== '0' && rev !== '0.00') addRo('Revenue', rev);
-  add('Entity type', 'entity_type', str((apollo as { entity_type?: string })?.entity_type));
-  if (keywordsDisplay.length > 0) addRo('Keywords', keywordsDisplay.slice(0, 8).join(', '));
-  if (industriesDisplay.length > 0) addRo('Industries', industriesDisplay.slice(0, 6).join(', '));
+    add('Founded year', 'founded_year', canonical?.founded_year ?? str(apollo?.founded_year));
+    add('Legal name', 'legal_name', str((apollo as any)?.legal_name) || str(apollo?.name) || (canonical?.company_name ?? ''));
+    add('Team size', 'team_size', canonical?.estimated_num_employees ?? str(apollo?.estimated_num_employees));
+    const linkedinVal = canonical?.linkedin_url ?? str(apollo?.linkedin_url);
+    addRo('LinkedIn URL', linkedinVal, linkedinVal || undefined);
+    const websiteUrlRaw = canonical?.website_url ?? str(apollo?.website_url);
+    const websiteDisplay = (get('website_url') || websiteUrlRaw || '').replace(/^https?:\/\//, '').split('/')[0];
+    const websiteFull = (get('website_url') || websiteUrlRaw || '').trim();
+    if (websiteDisplay) add('Website', 'website_url', websiteDisplay, websiteFull ? (websiteFull.startsWith('http') ? websiteFull : `https://${websiteFull}`) : undefined);
+    add('Industry', 'industry', canonical?.industry ?? str(apollo?.industry));
+    add('HQ city', 'hq_city', str(apollo?.city));
+    add('HQ state', 'hq_state', str(apollo?.state));
+    add('HQ country', 'hq_country', str(apollo?.country));
+    add('Address', 'address', canonical?.raw_address ?? str(apollo?.raw_address));
+    const phoneVal = canonical?.phone ?? str(apollo?.primary_phone && typeof apollo.primary_phone === 'object' ? (apollo.primary_phone as { number?: string }).number : null) ?? str(apollo?.sanitized_phone);
+    if (phoneVal) addRo('Phone', phoneVal);
+    addRo('Total funding', canonical?.total_funding ?? str(apollo?.total_funding_printed) ?? str(apollo?.total_funding));
+    const rev = canonical?.organization_revenue ?? str(apollo?.organization_revenue_printed) ?? str(apollo?.organization_revenue);
+    if (rev && rev !== '0' && rev !== '0.00') addRo('Revenue', rev);
+    add('Entity type', 'entity_type', str((apollo as any)?.entity_type));
+    if (keywordsDisplay.length > 0) addRo('Keywords', keywordsDisplay.slice(0, 8).join(', '));
+    if (industriesDisplay.length > 0) addRo('Industries', industriesDisplay.slice(0, 6).join(', '));
 
-  const unifiedKeys = new Set(['founded_year', 'legal_name', 'team_size', 'website_url', 'industry', 'hq_city', 'hq_state', 'hq_country', 'address', 'entity_type']);
-  Object.entries(initDetails).forEach(([key, val]) => {
-    if (CORE_IDENTITY_KEYS_ALREADY_SHOWN.has(key) || unifiedKeys.has(key)) return;
-    const v = String(val ?? '').trim();
-    if (!v) return;
-    unifiedFields.push({
-      label: key.replace(/_/g, ' '),
-      value: v,
-      path: `startup_kv.initial_details.${key}`,
+    const unifiedKeys = new Set(['founded_year', 'legal_name', 'team_size', 'website_url', 'industry', 'hq_city', 'hq_state', 'hq_country', 'address', 'entity_type']);
+    Object.entries(initDetails).forEach(([key, val]) => {
+      if (CORE_IDENTITY_KEYS_ALREADY_SHOWN.has(key) || unifiedKeys.has(key)) return;
+      const v = String(val ?? '').trim();
+      if (!v) return;
+      fields.push({ label: key.replace(/_/g, ' '), value: v, path: `startup_kv.initial_details.${key}` });
     });
-  });
+
+    return fields;
+  }, [canonical, apollo, initDetails, keywordsDisplay, industriesDisplay]);
 
   const QUESTION_ORDER = ['primary_sector', 'product_status', 'funding_stage', 'round_target', 'entity_type', 'revenue_model'] as const;
 
+  // AI auto-fill
   const apolloShortDesc = apollo?.short_description != null ? String(apollo.short_description) : '';
   const fillProfileWithAI = async () => {
     const token = await getToken();
@@ -646,11 +533,7 @@ export default function CompanyProfilePage() {
           },
         }),
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || 'Failed to fill profile');
-        return;
-      }
+      if (!res.ok) { const err = await res.json().catch(() => ({})); toast.error(err.error || 'Failed to fill profile'); return; }
       const fields = await res.json();
       const patch = {
         startup_kv: {
@@ -671,16 +554,13 @@ export default function CompanyProfilePage() {
       if (!patchRes.ok) throw new Error('Save failed');
       toast.success('Profile filled from AI');
       await fetchProfile();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed');
-    }
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed'); }
     setFillProfileLoading(false);
   };
 
   const hasApolloOrExtractionForFill = Boolean(apolloShortDesc || (extraction && Object.keys(initDetails).length > 0));
   const businessFieldsEmpty = [initDetails.problem, initDetails.solution, initDetails.unique_value_proposition ?? initDetails.uvp, initDetails.why_now, initDetails.traction ?? initDetails.milestones].every((v) => !String(v ?? '').trim());
 
-  // Auto-fill business fields with AI when profile loads and those fields are empty (no need to wait for user to click)
   useEffect(() => {
     if (loading || fillProfileLoading) return;
     if (!extraction && !apollo) return;
@@ -690,46 +570,12 @@ export default function CompanyProfilePage() {
     fillProfileWithAI();
   }, [loading, fillProfileLoading, extraction, apollo, hasApolloOrExtractionForFill, businessFieldsEmpty]);
 
-  if (!user || user.org_type !== 'startup') {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-[50vh]">
-        <p className="text-muted-foreground">Company Profile is for startups only.</p>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="p-8 flex flex-col items-center justify-center min-h-[50vh] gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">Loading company profile…</p>
-        {slowLoadHint && (
-          <p className="text-xs text-muted-foreground/80">Taking longer than usual. You may see partial data when it loads.</p>
-        )}
-      </div>
-    );
-  }
-
-  if (!extraction && !questionnaire && !apollo) {
-    return (
-      <div className="p-8 text-center">
-        <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-        <h2 className="text-lg font-semibold text-foreground mb-2">No company data yet</h2>
-        <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          Complete onboarding—add your website and pitch deck—to populate your company profile.
-        </p>
-      </div>
-    );
-  }
-
-  const lastScrapedAt = extraction?.meta?.last_scraped_at;
-  const scrapeStatus = extraction?.meta?.linkedin_scrape_status;
-
-  // Profile completeness score
-  const completenessFields = [
+  // Profile completeness
+  const completenessFields = useMemo(() => [
     { label: 'Company name', filled: !!companyName },
     { label: 'Logo', filled: !!logoUrl },
     { label: 'Industry/sector', filled: !!(canonical?.primary_sector || canonical?.industry || questionnaire?.primary_sector) },
+    { label: 'Elevator pitch', filled: !!initDetails.elevator_pitch },
     { label: 'Problem statement', filled: !!(canonical?.problem || initDetails.problem) },
     { label: 'Solution', filled: !!(canonical?.solution || initDetails.solution) },
     { label: 'Value proposition', filled: !!(canonical?.unique_value_proposition || initDetails.unique_value_proposition || initDetails.uvp) },
@@ -737,509 +583,1408 @@ export default function CompanyProfilePage() {
     { label: 'Funding stage', filled: !!questionnaire?.funding_stage },
     { label: 'Traction/momentum', filled: !!(canonical?.traction || initDetails.traction || initDetails.milestones) },
     { label: 'Location', filled: !!locationDisplay },
+  ], [companyName, logoUrl, canonical, questionnaire, initDetails, teamMembers, locationDisplay]);
+
+  const completenessPercent = Math.round((completenessFields.filter((f) => f.filled).length / completenessFields.length) * 100);
+
+  // KPI data
+  const kpiCards = (extraction?.charts?.kpi_cards ?? []) as Array<{ label: string; value: number | string; unit?: string; kpi_id?: string }>;
+  const charts = (extraction?.charts?.charts ?? []) as Array<{
+    chart_type: string; chart_title: string; chart_id?: string;
+    series: Array<{ name: string; data: Array<{ x: string; y: number }> }>;
+    unit?: string; x_axis_label?: string | null; y_axis_label?: string | null;
+    insight?: string; categories?: string[];
+  }>;
+
+  const lastScrapedAt = extraction?.meta?.last_scraped_at;
+  const scrapeStatus = extraction?.meta?.linkedin_scrape_status;
+
+  // Tab configuration
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'business', label: 'Business & Product' },
+    { id: 'strategy', label: 'Strategy' },
+    { id: 'financials', label: 'Financials' },
+    { id: 'team', label: 'Team', count: teamMembers.length || undefined },
+    { id: 'details', label: 'Details' },
   ];
-  const completenessFilledCount = completenessFields.filter((f) => f.filled).length;
-  const completenessPercent = Math.round((completenessFilledCount / completenessFields.length) * 100);
 
-  const totalFundingDisplay = canonical?.total_funding ?? (apollo?.total_funding_printed != null ? String(apollo.total_funding_printed) : (apollo?.total_funding != null ? String(apollo.total_funding) : '')) ?? '';
-  const organizationRevenueDisplay = canonical?.organization_revenue ?? (apollo?.organization_revenue_printed != null ? String(apollo.organization_revenue_printed) : (apollo?.organization_revenue != null ? String(apollo.organization_revenue) : '')) ?? '';
-  const hasMeaningfulRevenue = organizationRevenueDisplay.trim() !== '' && organizationRevenueDisplay.trim() !== '0' && organizationRevenueDisplay.trim() !== '0.00';
-  const employeesDisplay = canonical?.estimated_num_employees ?? (apollo?.estimated_num_employees != null ? String(apollo.estimated_num_employees) : '') ?? '—';
-  const foundedYearDisplay = canonical?.founded_year ?? (apollo?.founded_year != null ? String(apollo.founded_year) : '');
-  const primarySectorDisplay = canonical?.primary_sector ?? canonical?.industry ?? (questionnaire?.primary_sector ? (QUESTIONNAIRE.primary_sector?.options?.find((o) => o.value === questionnaire.primary_sector)?.label ?? questionnaire.primary_sector) : '') ?? (apollo?.industry != null ? String(apollo.industry) : '');
+  // ─── Guards ───
+  if (!user || user.org_type !== 'startup') {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[50vh]">
+        <p style={{ color: 'var(--fi-text-muted)' }}>Company Profile is for startups only.</p>
+      </div>
+    );
+  }
 
+  if (loading) {
+    return (
+      <div className="p-4 lg:p-6 xl:p-8 space-y-6 max-w-[1600px] mx-auto">
+        <div className="space-y-2">
+          <div className="fi-skeleton h-8 w-72 rounded-lg" />
+          <div className="fi-skeleton h-4 w-48 rounded" />
+        </div>
+        <SkeletonCard />
+        <div className="fi-skeleton h-10 w-full rounded" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2"><SkeletonChart /></div>
+          <SkeletonCard />
+        </div>
+        {slowLoadHint && (
+          <p className="text-xs text-center" style={{ color: 'var(--fi-text-muted)' }}>
+            Taking longer than usual. You may see partial data when it loads.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  if (!extraction && !questionnaire && !apollo) {
+    return (
+      <div className="p-8">
+        <EmptyState
+          icon={<Building2 className="w-12 h-12" />}
+          title="No company data yet"
+          description="Complete onboarding — add your website and pitch deck — to populate your company profile."
+        />
+      </div>
+    );
+  }
+
+  // ═══════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════
   return (
-    <div className="w-full min-w-0 px-4 sm:px-6 lg:px-8 xl:px-10 max-w-[1600px] mx-auto pb-20">
-      {/* Compact header with actions */}
-      <motion.header
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="pt-6 sm:pt-8 pb-4 flex items-center justify-between gap-4 flex-wrap"
-      >
-        <div className="flex items-center gap-3">
-          <Building2 className="w-6 h-6 text-primary shrink-0" />
-          <div>
-            <h1 className="text-xl sm:text-2xl font-display font-bold text-foreground">Company Profile</h1>
-            <div className="flex items-center gap-2 mt-0.5">
-              <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ${completenessPercent >= 86 ? 'bg-score-excellent' : completenessPercent >= 80 ? 'bg-score-good' : 'bg-score-poor'}`}
-                  style={{ width: `${completenessPercent}%` }}
+    <TooltipProvider>
+      <div className="w-full min-w-0 px-4 lg:px-6 xl:px-8 max-w-[1600px] mx-auto pb-20">
+
+        {/* ════════ HERO SECTION ════════ */}
+        <motion.section
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          className="rounded-xl overflow-hidden mt-6 mb-4"
+          style={{
+            background: theme === 'dark'
+              ? 'linear-gradient(135deg, var(--fi-bg-secondary) 0%, var(--fi-bg-primary) 100%)'
+              : 'linear-gradient(135deg, var(--fi-bg-secondary) 0%, var(--fi-bg-card) 100%)',
+            border: '1px solid var(--fi-border)',
+          }}
+        >
+          {/* Top accent bar */}
+          <div className="h-0.5 w-full" style={{ background: 'linear-gradient(to right, var(--fi-primary), rgba(16,185,129,0.2), transparent)' }} />
+
+          <div className="p-5 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-5">
+              {/* Logo */}
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt=""
+                  className="w-20 h-20 rounded-2xl object-cover shrink-0"
+                  style={{ border: '2px solid var(--fi-border)' }}
                 />
-              </div>
-              <span className={`text-xs font-mono font-semibold ${completenessPercent >= 86 ? 'text-score-excellent' : completenessPercent >= 80 ? 'text-score-good' : 'text-score-poor'}`}>
-                {completenessPercent}%
-              </span>
-              <span className="text-[10px] text-muted-foreground">{completenessFilledCount}/{completenessFields.length} complete</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={regenerateReadiness} disabled={regenerating || saving} className="border-border text-muted-foreground hover:bg-muted h-8 text-xs">
-            {regenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-            <span className="ml-1.5 hidden sm:inline">Regenerate</span>
-          </Button>
-          <Button variant="outline" size="sm" onClick={triggerRegenerateWithSave} disabled={regenerating || saving} className="border-primary/40 text-primary hover:bg-primary/10 h-8 text-xs">
-            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            <span className="ml-1.5">Save & recalculate</span>
-          </Button>
-        </div>
-      </motion.header>
+              ) : (
+                <div
+                  className="w-20 h-20 rounded-2xl flex items-center justify-center shrink-0 text-2xl font-bold"
+                  style={{
+                    background: 'rgba(16,185,129,0.1)',
+                    border: '2px solid var(--fi-border)',
+                    color: 'var(--fi-primary)',
+                  }}
+                >
+                  {companyName.charAt(0).toUpperCase()}
+                </div>
+              )}
 
-      {/* Hero card: company identity + KPIs */}
-      <motion.section
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25 }}
-        className="rounded-2xl border border-border/50 bg-gradient-to-br from-muted/90 via-muted/60 to-background/80 overflow-hidden mb-6"
-      >
-        {/* Top accent */}
-        <div className="h-0.5 w-full bg-gradient-to-r from-primary/60 via-primary/20 to-transparent" />
-        <div className="p-5 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-start gap-5">
-            {logoUrl ? (
-              <img src={logoUrl} alt="" className="w-20 h-20 rounded-2xl border border-primary/20 object-cover shrink-0 shadow-md" />
-            ) : (
-              <div className="w-20 h-20 rounded-2xl bg-muted border border-primary/15 flex items-center justify-center shrink-0">
-                <Building2 className="w-10 h-10 text-primary/70" />
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-display font-bold text-foreground truncate mb-2">{companyName}</h2>
-              <div className="flex flex-wrap items-center gap-1.5 mb-4">
-                {questionnaire?.funding_stage && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold bg-primary/12 text-primary border border-primary/20">
-                    <TrendingUp className="w-3 h-3" />
-                    {(QUESTIONNAIRE.funding_stage.options.find((o) => o.value === questionnaire.funding_stage)?.label) ?? questionnaire.funding_stage}
-                  </span>
-                )}
-                {locationDisplay && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-muted/60 text-muted-foreground border border-border/40">
-                    <MapPin className="w-3 h-3" />
-                    {locationDisplay}
-                  </span>
-                )}
-                {primarySectorDisplay && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-muted/60 text-muted-foreground border border-border/40">
-                    <Briefcase className="w-3 h-3" />
-                    {primarySectorDisplay}
-                  </span>
-                )}
-                {foundedYearDisplay && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-muted/60 text-muted-foreground border border-border/40">
-                    Founded {foundedYearDisplay}
-                  </span>
-                )}
-              </div>
-              {/* KPI strip inline */}
-              <div className="flex flex-wrap gap-3">
-                {employeesDisplay && employeesDisplay !== '—' && (
-                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/40 border border-border/40">
-                    <Users className="w-4 h-4 text-primary/70" />
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Team</p>
-                      <p className="text-sm font-bold text-foreground leading-tight">{employeesDisplay}</p>
-                    </div>
+              {/* Name + badges */}
+              <div className="min-w-0 flex-1">
+                <h1
+                  className="text-2xl font-bold truncate mb-2"
+                  style={{ color: 'var(--fi-text-primary)' }}
+                >
+                  {companyName}
+                </h1>
+                <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                  {questionnaire?.funding_stage && (
+                    <span
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold"
+                      style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--fi-primary)', border: '1px solid rgba(16,185,129,0.2)' }}
+                    >
+                      <TrendingUp className="w-3 h-3" />
+                      {(QUESTIONNAIRE.funding_stage.options.find((o) => o.value === questionnaire.funding_stage)?.label) ?? questionnaire.funding_stage}
+                    </span>
+                  )}
+                  {locationDisplay && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium" style={{ background: 'var(--fi-bg-tertiary)', color: 'var(--fi-text-muted)', border: '1px solid var(--fi-border)' }}>
+                      <MapPin className="w-3 h-3" /> {locationDisplay}
+                    </span>
+                  )}
+                  {primarySectorDisplay && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium" style={{ background: 'var(--fi-bg-tertiary)', color: 'var(--fi-text-muted)', border: '1px solid var(--fi-border)' }}>
+                      <Briefcase className="w-3 h-3" /> {primarySectorDisplay}
+                    </span>
+                  )}
+                  {foundedYearDisplay && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium" style={{ background: 'var(--fi-bg-tertiary)', color: 'var(--fi-text-muted)', border: '1px solid var(--fi-border)' }}>
+                      <Calendar className="w-3 h-3" /> Founded {foundedYearDisplay}
+                    </span>
+                  )}
+                </div>
+
+                {/* Info links row */}
+                {(websiteForBannerLabel || linkedinForDisplay || overviewText) && (
+                  <div className="flex flex-wrap items-center gap-3 mb-3 text-xs" style={{ color: 'var(--fi-text-muted)' }}>
+                    {websiteForBannerLabel && (
+                      <a
+                        href={websiteForBannerHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 hover:underline transition-colors"
+                        style={{ color: 'var(--fi-primary)' }}
+                      >
+                        <Globe className="w-3 h-3" />
+                        {websiteForBannerLabel}
+                      </a>
+                    )}
+                    {linkedinForDisplay && (
+                      <a
+                        href={linkedinForDisplay.startsWith('http') ? linkedinForDisplay : `https://${linkedinForDisplay}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 hover:underline transition-colors"
+                        style={{ color: '#0A66C2' }}
+                      >
+                        <Linkedin className="w-3 h-3" />
+                        LinkedIn
+                      </a>
+                    )}
+                    {overviewText && !websiteForBannerLabel && !linkedinForDisplay && (
+                      <span className="line-clamp-1 text-xs" style={{ color: 'var(--fi-text-muted)' }}>
+                        {overviewText}
+                      </span>
+                    )}
+                    {overviewText && (websiteForBannerLabel || linkedinForDisplay) && (
+                      <>
+                        <span style={{ color: 'var(--fi-border)' }}>|</span>
+                        <span className="line-clamp-1 flex-1 min-w-0" style={{ color: 'var(--fi-text-muted)' }}>
+                          {overviewText}
+                        </span>
+                      </>
+                    )}
                   </div>
                 )}
-                {totalFundingDisplay && (
-                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/40 border border-border/40">
-                    <DollarSign className="w-4 h-4 text-emerald-500/70" />
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Funding</p>
-                      <p className="text-sm font-bold text-foreground leading-tight truncate max-w-[120px]">{totalFundingDisplay}</p>
-                    </div>
-                  </div>
-                )}
-                {readinessScore != null && (
-                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/40 border border-border/40">
-                    <Target className="w-4 h-4 text-amber-500/70" />
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Readiness</p>
-                      <p className="text-sm font-bold text-foreground leading-tight">{Math.round(readinessScore)}%</p>
-                    </div>
-                  </div>
-                )}
-                {hasMeaningfulRevenue && (
-                  <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/40 border border-border/40">
-                    <TrendingUp className="w-4 h-4 text-emerald-500/70" />
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Revenue</p>
-                      <p className="text-sm font-bold text-foreground leading-tight truncate max-w-[120px]">{organizationRevenueDisplay}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8">
-        <div className="lg:col-span-8 space-y-6">
-          {/* What this company does: single narrative from canonical (deduped; no repeat of Business or AI) */}
-          <SectionCard title="What this company does" icon={FileText}>
-            <ExpandableText
-              text={overviewText ?? undefined}
-              clampLines={4}
-            />
-          </SectionCard>
-
-          {/* Business & Product: AI fill when empty */}
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-            <h3 className="text-sm font-semibold text-foreground">Business & Product</h3>
-            {hasApolloOrExtractionForFill && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-primary/40 text-primary hover:bg-primary/10"
-                onClick={fillProfileWithAI}
-                disabled={fillProfileLoading}
-              >
-                {fillProfileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                <span className="ml-2">{businessFieldsEmpty ? 'Fill with AI' : 'Refresh with AI'}</span>
-              </Button>
-            )}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ProfileCard title="Problem" icon={AlertTriangle} minHeightRem={12}>
-              <ProfileCardExpandableBody text={canonical?.problem ?? initDetails.problem} clampLines={3} />
-            </ProfileCard>
-            <ProfileCard title="Solution" icon={Lightbulb} minHeightRem={12}>
-              <ProfileCardExpandableBody text={canonical?.solution ?? initDetails.solution} clampLines={3} />
-            </ProfileCard>
-            <ProfileCard title="Unique value" icon={Target} minHeightRem={12}>
-              <ProfileCardExpandableBody text={(canonical?.unique_value_proposition ?? initDetails.unique_value_proposition) ?? initDetails.uvp} clampLines={3} />
-            </ProfileCard>
-            <ProfileCard title="Why now" icon={TrendingUp} minHeightRem={12}>
-              <ProfileCardExpandableBody text={canonical?.why_now ?? initDetails.why_now} clampLines={3} />
-            </ProfileCard>
-          </div>
-
-          {/* Market (TAM/SAM/SOM) */}
-          {(initDetails.tam || initDetails.sam || initDetails.som) && (
-            <ProfileCard title="Market" icon={Globe} minHeightRem={10}>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {(['tam', 'sam', 'som'] as const).map((k) => {
-                  const v = initDetails[k];
-                  if (!v) return null;
-                  return (
-                    <div key={k} className="p-3 rounded-xl bg-muted/30 border border-border">
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">{k}</p>
-                      <p className="text-sm text-foreground break-words mt-1">{String(v)}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </ProfileCard>
-          )}
-
-          {/* Momentum / Traction */}
-          <ProfileCard title="Momentum & milestones" icon={TrendingUp} minHeightRem={10}>
-            <ProfileCardExpandableBody text={(canonical?.traction ?? initDetails.traction) ?? initDetails.milestones} clampLines={4} />
-          </ProfileCard>
-
-          {/* More company details: single list, editable value or company data fallback; no duplicate fields */}
-          {unifiedFields.length > 0 && (
-            <motion.section
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-border/50 bg-muted/40 overflow-hidden"
-            >
-              <CoreIdentityAccordion
-                fields={unifiedFields}
-                defaultOpen={true}
-                editingField={editingField}
-                editValue={editValue}
-                setEditingField={setEditingField}
-                setEditValue={setEditValue}
-                saveExtractionField={saveExtractionField}
-                saving={saving}
-              />
-            </motion.section>
-          )}
-
-          {/* Charts & KPI Cards from extraction data */}
-          {extraction?.charts?.kpi_cards && extraction.charts.kpi_cards.length > 0 && (
-            <motion.section
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-border/50 bg-muted/40 overflow-hidden"
-            >
-              <div className="flex items-center gap-2 p-5 pb-3 border-b border-border">
-                <BarChart3 className="w-5 h-5 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Key Metrics</h3>
-              </div>
-              <div className="p-5 pt-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
-                  {(extraction.charts.kpi_cards as Array<{ label: string; value: number | string; unit?: string; kpi_id?: string }>).map((kpi) => (
-                    <div key={kpi.kpi_id || kpi.label} className="p-3 rounded-xl bg-gradient-to-br from-primary/5 to-muted/30 border border-primary/10">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 line-clamp-2">{kpi.label}</p>
-                      <p className="text-lg font-bold text-foreground font-mono">
-                        {kpi.unit === 'USD' || kpi.unit === 'Billion USD'
-                          ? kpi.unit === 'Billion USD'
-                            ? `$${kpi.value}B`
-                            : typeof kpi.value === 'number' && kpi.value >= 1e6
-                              ? `$${(kpi.value / 1e6).toFixed(1)}M`
-                              : typeof kpi.value === 'number' && kpi.value >= 1e3
-                                ? `$${(kpi.value / 1e3).toFixed(0)}K`
-                                : `$${kpi.value}`
-                          : kpi.unit === '%'
-                            ? `${kpi.value}%`
-                            : String(kpi.value)}
-                      </p>
-                      {kpi.unit && kpi.unit !== 'USD' && kpi.unit !== '%' && kpi.unit !== 'Billion USD' && (
-                        <p className="text-[9px] text-muted-foreground">{kpi.unit}</p>
-                      )}
-                    </div>
-                  ))}
+                {/* Stat chips row */}
+                <div className="flex flex-wrap gap-3">
+                  {(teamMembers.length > 0 || (employeesDisplay && employeesDisplay !== '—')) && (
+                    <HeroStat icon={<Users className="w-4 h-4" />} label="Team" value={teamMembers.length > 0 ? String(teamMembers.length) : employeesDisplay} />
+                  )}
+                  {readinessScore != null && (
+                    <HeroStat
+                      icon={<Target className="w-4 h-4" />}
+                      label="Readiness"
+                      value={`${Math.round(readinessScore)}%`}
+                      valueColor={getScoreColor(readinessScore)}
+                    />
+                  )}
+                  {completenessPercent < 100 && (
+                    <HeroStat
+                      icon={<CheckCircle2 className="w-4 h-4" />}
+                      label="Profile"
+                      value={`${completenessPercent}%`}
+                      valueColor={getScoreColor(completenessPercent)}
+                    />
+                  )}
+                  {totalFundingDisplay && (
+                    <HeroStat icon={<DollarSign className="w-4 h-4" />} label="Funding" value={totalFundingDisplay} />
+                  )}
+                  {hasMeaningfulRevenue && (
+                    <HeroStat icon={<TrendingUp className="w-4 h-4" />} label="Revenue" value={organizationRevenueDisplay} />
+                  )}
                 </div>
               </div>
-            </motion.section>
-          )}
 
-          {/* Financial snapshot (editable); long text uses read more to keep cards even */}
-          {Object.keys(financialData).length > 0 && (
-            <motion.section
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-2xl border border-border/50 bg-muted/40 overflow-hidden"
-            >
-              <div className="flex items-center gap-2 p-5 pb-3 border-b border-border">
-                <DollarSign className="w-5 h-5 text-emerald-500" />
-                <h3 className="text-sm font-semibold text-foreground">Financial snapshot</h3>
+              {/* Action buttons */}
+              <div className="flex items-start gap-2 shrink-0 self-start">
+                <button
+                  onClick={regenerateReadiness}
+                  disabled={regenerating || saving}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                  style={{ background: 'var(--fi-bg-secondary)', color: 'var(--fi-text-secondary)', border: '1px solid var(--fi-border)' }}
+                >
+                  {regenerating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                  <span className="hidden sm:inline">Regenerate</span>
+                </button>
+                <button
+                  onClick={triggerRegenerateWithSave}
+                  disabled={regenerating || saving}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                  style={{ background: 'var(--fi-primary)', color: '#fff' }}
+                >
+                  {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  Save & recalculate
+                </button>
               </div>
-              <div className="p-5 pt-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {Object.entries(financialData).map(([key, val]) => {
-                    if (val === '' || val == null) return null;
-                    const path = `startup_kv.financial_data.${key}`;
-                    const isEditing = editingField === path;
-                    const displayVal = typeof val === 'number' ? String(val) : String(val);
-                    const isLongText = typeof val === 'string' && displayVal.length > 80;
-                    const longTextKeys = ['financial_notes', 'notes', 'description', 'comment'];
-                    const useReadMore = isLongText || longTextKeys.includes(key.toLowerCase());
-                    return (
-                      <div key={key} className="space-y-1.5 p-3 rounded-xl bg-muted/20 border border-border min-w-0 min-h-[4.5rem]">
-                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter block">{key.replace(/_/g, ' ')}</label>
-                        {isEditing ? (
-                          <div className="flex gap-1">
-                            <Input value={editValue} onChange={(e) => setEditValue(e.target.value)} className="bg-muted h-8 text-xs px-2" autoFocus />
-                            <Button size="sm" className="h-8 w-8 p-0" onClick={() => saveExtractionField(path, isNaN(Number(editValue)) ? editValue : Number(editValue))} disabled={saving}><Save className="w-3 h-3" /></Button>
+            </div>
+          </div>
+
+          {/* ── Elevator Pitch ── */}
+          {(() => {
+            const elevatorPitch = str(initDetails.elevator_pitch) || '';
+            const path = 'startup_kv.initial_details.elevator_pitch';
+            const isEditing = editingField === path;
+            return (
+              <div className="mt-4 pt-4 mx-1" style={{ borderTop: '1px solid var(--fi-border)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Rocket className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--fi-primary)' }} />
+                  <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--fi-text-muted)' }}>
+                    Elevator Pitch
+                  </span>
+                  {!isEditing && (
+                    <button
+                      onClick={() => { setEditingField(path); setEditValue(elevatorPitch); }}
+                      className="ml-auto flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md transition-colors"
+                      style={{ color: 'var(--fi-text-muted)', border: '1px solid var(--fi-border)' }}
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      {elevatorPitch ? 'Edit' : 'Add'}
+                    </button>
+                  )}
+                </div>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value.slice(0, 220))}
+                      rows={2}
+                      placeholder="One or two sentences: what you do, for whom, and why it matters..."
+                      className="text-sm resize-none"
+                      style={{ background: 'var(--fi-bg-secondary)', borderColor: 'var(--fi-border)', color: 'var(--fi-text-primary)' }}
+                      autoFocus
+                    />
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>
+                        {editValue.length}/220 characters
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setEditingField(null)}
+                          className="text-xs px-3 py-1.5 rounded-lg"
+                          style={{ color: 'var(--fi-text-muted)', border: '1px solid var(--fi-border)' }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => saveExtractionField(path, editValue.trim())}
+                          disabled={saving || !editValue.trim()}
+                          className="text-xs px-3 py-1.5 rounded-lg font-semibold"
+                          style={{ background: 'var(--fi-primary)', color: '#fff', opacity: (!editValue.trim() || saving) ? 0.6 : 1 }}
+                        >
+                          {saving ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : elevatorPitch ? (
+                  <p className="text-sm leading-relaxed line-clamp-2" style={{ color: 'var(--fi-text-secondary)' }}>
+                    &ldquo;{elevatorPitch}&rdquo;
+                  </p>
+                ) : (
+                  <button
+                    onClick={() => { setEditingField(path); setEditValue(''); }}
+                    className="text-sm italic transition-opacity hover:opacity-100"
+                    style={{ color: 'var(--fi-text-muted)', opacity: 0.5 }}
+                  >
+                    + Add your elevator pitch (1–2 sentences)
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Completion bar (only if < 100%) */}
+          {completenessPercent < 100 && (
+            <div className="px-5 sm:px-6 pb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-semibold" style={{ color: 'var(--fi-text-muted)' }}>
+                  Profile {completenessPercent}% complete
+                </span>
+                <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--fi-bg-tertiary)' }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${completenessPercent}%`, background: getScoreColor(completenessPercent) }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </motion.section>
+
+        {/* ════════ TAB NAVIGATION ════════ */}
+        <div className="mb-6 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+          <TabGroup
+            tabs={tabs}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            variant="underline"
+            size="md"
+          />
+        </div>
+
+        {/* ════════ MAIN CONTENT + SIDEBAR ════════ */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          {/* ── Main content (8/12 on desktop) ── */}
+          <div className="lg:col-span-8 space-y-5">
+            <AnimatePresence mode="wait">
+              {/* ═══ TAB 1: OVERVIEW ═══ */}
+              {activeTab === 'overview' && (
+                <motion.div key="overview" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+                  {/* Summary cards row */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <SummaryCard
+                      accent="var(--fi-primary)"
+                      icon={<FileText className="w-4 h-4" />}
+                      label="One Line Summary"
+                      text={overviewText}
+                      hint="one-line company overview for investors"
+                    />
+                    <SummaryCard
+                      accent="var(--fi-score-good)"
+                      icon={<Lightbulb className="w-4 h-4" />}
+                      label="Solution Summary"
+                      text={canonical?.solution ?? initDetails.solution}
+                      hint="product/solution description for investors"
+                    />
+                    <SummaryCard
+                      accent="var(--fi-score-excellent)"
+                      icon={<TrendingUp className="w-4 h-4" />}
+                      label="Traction Summary"
+                      text={canonical?.traction ?? initDetails.traction ?? initDetails.milestones}
+                      hint="traction and key metrics for investors"
+                    />
+                  </div>
+
+                  {/* Problem statement */}
+                  {(canonical?.problem || initDetails.problem) && (
+                    <motion.div custom={1} variants={cardVariants} initial="hidden" animate="visible" className="fi-card">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="w-4 h-4" style={{ color: 'var(--fi-score-good)' }} />
+                        <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Problem Statement</h3>
+                      </div>
+                      <ExpandableTextBlock text={canonical?.problem ?? initDetails.problem} clampLines={3} />
+                    </motion.div>
+                  )}
+
+                  {/* Key metrics */}
+                  {kpiCards.length > 0 && (
+                    <motion.div custom={2} variants={cardVariants} initial="hidden" animate="visible">
+                      <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--fi-text-primary)' }}>Key Metrics</h3>
+                      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 no-scrollbar">
+                        {kpiCards.map((kpi) => (
+                          <div
+                            key={kpi.kpi_id || kpi.label}
+                            className="fi-card shrink-0 min-w-[160px] max-w-[200px]"
+                          >
+                            <p className="text-[10px] font-semibold uppercase tracking-wider mb-1 line-clamp-2" style={{ color: 'var(--fi-text-muted)' }}>
+                              {kpi.label}
+                            </p>
+                            <p className="text-lg font-bold tabular-nums" style={{ color: 'var(--fi-text-primary)' }}>
+                              {formatKpiValue(kpi.value, kpi.unit)}
+                            </p>
+                            {kpi.unit && kpi.unit !== 'USD' && kpi.unit !== '%' && kpi.unit !== 'Billion USD' && (
+                              <p className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>{kpi.unit}</p>
+                            )}
                           </div>
-                        ) : useReadMore ? (
-                          <div>
-                            <ProfileCardExpandableBody text={displayVal} clampLines={3} emptyPlaceholder="—" />
-                            <button
-                              type="button"
-                              className="inline-flex items-center gap-1 mt-1 text-xs text-muted-foreground hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/50 rounded"
-                              onClick={() => { setEditingField(path); setEditValue(displayVal); }}
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Momentum & Milestones */}
+                  {(canonical?.traction || initDetails.traction || initDetails.milestones) && (
+                    <motion.div custom={3} variants={cardVariants} initial="hidden" animate="visible" className="fi-card">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Rocket className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
+                        <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Momentum & Milestones</h3>
+                      </div>
+                      <ExpandableTextBlock text={(canonical?.traction ?? initDetails.traction) ?? initDetails.milestones} clampLines={4} />
+                    </motion.div>
+                  )}
+
+                  {/* Market (TAM/SAM/SOM) */}
+                  {(initDetails.tam || initDetails.sam || initDetails.som) && (
+                    <motion.div custom={4} variants={cardVariants} initial="hidden" animate="visible" className="fi-card">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Globe className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
+                        <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Market Size</h3>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {(['tam', 'sam', 'som'] as const).map((k) => {
+                          const v = initDetails[k];
+                          if (!v) return null;
+                          return (
+                            <div key={k} className="p-3 rounded-lg" style={{ background: 'var(--fi-bg-secondary)', border: '1px solid var(--fi-border)' }}>
+                              <p className="text-[10px] font-bold uppercase tracking-tight mb-1" style={{ color: 'var(--fi-text-muted)' }}>{k.toUpperCase()}</p>
+                              <p className="text-sm break-words" style={{ color: 'var(--fi-text-primary)' }}>{String(v)}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* ═══ TAB 2: BUSINESS & PRODUCT ═══ */}
+              {activeTab === 'business' && (
+                <motion.div key="business" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <BusinessCard accent="var(--fi-score-good)" icon={<AlertTriangle className="w-4 h-4" />} title="Problem" text={canonical?.problem ?? initDetails.problem} />
+                    <BusinessCard accent="var(--fi-score-excellent)" icon={<Lightbulb className="w-4 h-4" />} title="Solution" text={canonical?.solution ?? initDetails.solution} />
+                    <BusinessCard accent="#3B82F6" icon={<Target className="w-4 h-4" />} title="Unique Value" text={(canonical?.unique_value_proposition ?? initDetails.unique_value_proposition) ?? initDetails.uvp} />
+                    <BusinessCard accent="#8B5CF6" icon={<TrendingUp className="w-4 h-4" />} title="Why Now" text={canonical?.why_now ?? initDetails.why_now} />
+                  </div>
+
+                  {/* Refresh with AI */}
+                  {hasApolloOrExtractionForFill && (
+                    <div className="flex justify-center">
+                      <button
+                        onClick={fillProfileWithAI}
+                        disabled={fillProfileLoading}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-colors"
+                        style={{
+                          background: 'var(--fi-bg-secondary)',
+                          color: 'var(--fi-primary)',
+                          border: '1px solid rgba(16,185,129,0.2)',
+                        }}
+                      >
+                        {fillProfileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                        {businessFieldsEmpty ? 'Fill with AI' : 'Refresh with AI'}
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* ═══ TAB 3: STRATEGY ═══ */}
+              {activeTab === 'strategy' && (
+                <motion.div key="strategy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
+                  {(() => {
+                    // Helper: render bullet list from string (newline/dash-separated) or array
+                    const toBullets = (v: unknown): string[] => {
+                      if (!v) return [];
+                      if (Array.isArray(v)) return v.filter(Boolean).map(String);
+                      const s = String(v).trim();
+                      return s.split(/\n|(?:^|\n)\s*[-•]\s*/m).map((l) => l.replace(/^[-•]\s*/, '').trim()).filter(Boolean);
+                    };
+
+                    // Section definitions: [key in initDetails, label, icon color, icon]
+                    type StrategySec = { key: string; label: string; color: string; isList?: boolean; isObject?: boolean };
+                    const sections: StrategySec[] = [
+                      { key: 'key_strengths',           label: 'Key Strengths',           color: 'var(--fi-score-excellent)', isList: true },
+                      { key: 'founder_story',            label: 'Founder Story',            color: 'var(--fi-primary)' },
+                      { key: 'go_to_market',             label: 'Go-To-Market',             color: '#3B82F6', isList: true },
+                      { key: 'customer_segments',        label: 'Customer Segments',        color: '#8B5CF6', isList: true },
+                      { key: 'target_customers',         label: 'Target Customer Profiles', color: '#8B5CF6', isList: true },
+                      { key: 'value_proposition',        label: 'Value Proposition',        color: 'var(--fi-primary)' },
+                      { key: 'business_model',           label: 'Business Model',           color: '#F59E0B', isList: true },
+                      { key: 'revenue_streams',          label: 'Revenue Streams',          color: '#F59E0B', isList: true },
+                      { key: 'operating_model',          label: 'Operating Model',          color: '#EC4899' },
+                      { key: 'product_differentiation',  label: 'Product Differentiation',  color: '#3B82F6', isList: true },
+                      { key: 'strategic_moat',           label: 'Strategic Moat',           color: 'var(--fi-primary)', isList: true },
+                      { key: 'investor_fit',             label: 'Investor Fit',             color: 'var(--fi-score-excellent)', isList: true },
+                      { key: 'traction_highlights',      label: 'Traction Highlights',      color: 'var(--fi-score-excellent)', isList: true },
+                      { key: 'milestones_next_12_months',label: 'Milestones · Next 12 Months', color: '#3B82F6', isList: true },
+                      { key: 'milestones',               label: 'Key Milestones',           color: '#3B82F6', isList: true },
+                      { key: 'risk_mitigation',          label: 'Risk Mitigation Plan',     color: '#EF4444', isList: true },
+                      { key: 'key_risks',                label: 'Key Risks',                color: '#EF4444', isList: true },
+                      { key: 'capital_use',              label: 'Capital Use Outline',      color: '#F59E0B', isList: true },
+                      { key: 'media_validation',         label: 'Media Validation',         color: '#EC4899', isList: true },
+                      { key: 'readiness_focus_areas',    label: 'Readiness Focus Areas',    color: '#8B5CF6', isList: true },
+                      { key: 'challenge',                label: 'Challenge',                color: '#EF4444' },
+                      { key: 'competitors',              label: 'Competitors',              color: 'var(--fi-text-muted)', isList: true },
+                      { key: 'market_context',           label: 'Market Context',           color: '#3B82F6', isList: true },
+                    ];
+
+                    const rendered = sections.filter((s) => {
+                      const v = initDetails[s.key];
+                      if (!v) return false;
+                      if (Array.isArray(v)) return v.length > 0;
+                      if (typeof v === 'object') return Object.keys(v).length > 0;
+                      return String(v).trim().length > 0;
+                    });
+
+                    if (rendered.length === 0) {
+                      return (
+                        <EmptyState
+                          icon={<Target className="w-10 h-10" />}
+                          title="No strategy data yet"
+                          description="Upload a pitch deck or run AI analysis to extract your go-to-market, strengths, investor fit and more."
+                        />
+                      );
+                    }
+
+                    return rendered.map((sec, idx) => {
+                      const raw = initDetails[sec.key];
+                      const bullets = sec.isList ? toBullets(raw) : [];
+                      const text = !sec.isList ? String(raw ?? '').trim() : '';
+                      return (
+                        <motion.div
+                          key={sec.key}
+                          custom={idx}
+                          variants={cardVariants}
+                          initial="hidden"
+                          animate="visible"
+                          className="fi-card relative overflow-hidden p-0"
+                        >
+                          <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: sec.color }} />
+                          <div className="p-4">
+                            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--fi-text-primary)' }}>
+                              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: sec.color }} />
+                              {sec.label}
+                            </h3>
+                            {sec.isList && bullets.length > 0 ? (
+                              <ul className="space-y-1.5">
+                                {bullets.map((b, i) => (
+                                  <li key={i} className="flex items-start gap-2 text-sm" style={{ color: 'var(--fi-text-secondary)' }}>
+                                    <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: sec.color, opacity: 0.7 }} />
+                                    {b}
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : text ? (
+                              <ExpandableTextBlock text={text} clampLines={4} />
+                            ) : null}
+                          </div>
+                        </motion.div>
+                      );
+                    });
+                  })()}
+                </motion.div>
+              )}
+
+              {/* ═══ TAB 4: FINANCIALS ═══ */}
+              {activeTab === 'financials' && (
+                <motion.div key="financials" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+                  {/* Financial snapshot */}
+                  {Object.keys(financialData).length > 0 && (
+                    <motion.div custom={0} variants={cardVariants} initial="hidden" animate="visible">
+                      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--fi-text-primary)' }}>
+                        <DollarSign className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
+                        Financial Snapshot
+                      </h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {Object.entries(financialData).map(([key, val]) => {
+                          if (val === '' || val == null) return null;
+                          const path = `startup_kv.financial_data.${key}`;
+                          const isEditing = editingField === path;
+                          const displayValStr = String(val);
+                          const isLongText = displayValStr.length > 80;
+                          return (
+                            <div
+                              key={key}
+                              className="fi-card min-h-[4.5rem]"
                             >
-                              <Edit3 className="w-3 h-3" /> Edit
+                              <label className="text-[10px] font-bold uppercase tracking-tighter block mb-1" style={{ color: 'var(--fi-text-muted)' }}>
+                                {key.replace(/_/g, ' ')}
+                              </label>
+                              {isEditing ? (
+                                <div className="flex gap-1">
+                                  <Input
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    className="h-8 text-xs px-2"
+                                    style={{ background: 'var(--fi-bg-secondary)', borderColor: 'var(--fi-border)' }}
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() => saveExtractionField(path, isNaN(Number(editValue)) ? editValue : Number(editValue))}
+                                    disabled={saving}
+                                    className="shrink-0 w-8 h-8 rounded flex items-center justify-center"
+                                    style={{ background: 'var(--fi-primary)', color: '#fff' }}
+                                  >
+                                    <Save className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : isLongText ? (
+                                <div>
+                                  <ExpandableTextBlock text={displayValStr} clampLines={3} />
+                                  <button
+                                    onClick={() => { setEditingField(path); setEditValue(displayValStr); }}
+                                    className="inline-flex items-center gap-1 mt-1 text-xs font-medium"
+                                    style={{ color: 'var(--fi-text-muted)' }}
+                                  >
+                                    <Edit3 className="w-3 h-3" /> Edit
+                                  </button>
+                                </div>
+                              ) : (
+                                <div
+                                  className="flex items-start justify-between gap-2 group cursor-pointer"
+                                  onClick={() => { setEditingField(path); setEditValue(displayValStr); }}
+                                >
+                                  <span className="text-sm font-bold tabular-nums break-words flex-1" style={{ color: 'var(--fi-text-primary)' }}>
+                                    {displayValStr}
+                                  </span>
+                                  <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100 shrink-0 mt-0.5" style={{ color: 'var(--fi-text-muted)' }} />
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Charts */}
+                  {charts.length > 0 && (
+                    <motion.div custom={1} variants={cardVariants} initial="hidden" animate="visible">
+                      <div className="flex items-center gap-2 mb-3">
+                        <BarChart3 className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
+                        <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Charts & Projections</h3>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'var(--fi-bg-tertiary)', color: 'var(--fi-text-muted)' }}>
+                          {charts.length} chart{charts.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {charts.map((chart, idx) => (
+                          <ExtractionChart key={chart.chart_id || idx} chart={chart} index={idx} />
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {Object.keys(financialData).length === 0 && charts.length === 0 && (
+                    <EmptyState
+                      icon={<DollarSign className="w-10 h-10" />}
+                      title="No financial data yet"
+                      description="Upload a pitch deck or data room documents to extract financial projections."
+                    />
+                  )}
+                </motion.div>
+              )}
+
+              {/* ═══ TAB 5: TEAM ═══ */}
+              {activeTab === 'team' && (
+                <motion.div key="team" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--fi-text-primary)' }}>
+                      <Users className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
+                      Founders & Team
+                      {teamMembers.length > 0 && (
+                        <span className="text-[10px] font-normal" style={{ color: 'var(--fi-text-muted)' }}>({teamMembers.length})</span>
+                      )}
+                    </h3>
+                    <button
+                      onClick={() => setAddPersonModalOpen(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                      style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--fi-primary)', border: '1px solid rgba(16,185,129,0.2)' }}
+                    >
+                      <UserPlus className="w-3.5 h-3.5" /> Add
+                    </button>
+                  </div>
+
+                  {teamMembers.length > 0 ? (
+                    <div className="space-y-4">
+                      {/* Featured card for first member (CEO/Founder) */}
+                      {teamMembers.length > 0 && (
+                        <FeaturedTeamCard
+                          key={(teamMembers[0].linkedin_url || teamMembers[0].full_name || 0).toString()}
+                          name={teamMembers[0].full_name}
+                          title={teamMembers[0].title}
+                          location={teamMembers[0].location}
+                          linkedinUrl={teamMembers[0].linkedin_url}
+                          bio={teamMembers[0].headline || teamMembers[0].bio || teamMembers[0].summary}
+                          confidenceScore={teamMembers[0].confidence_score}
+                        />
+                      )}
+                      {/* Grid for remaining members */}
+                      {teamMembers.length > 1 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                          {teamMembers.slice(1).map((f: any, i: number) => (
+                            <TeamCard
+                              key={(f.linkedin_url || f.full_name || i + 1).toString()}
+                              name={f.full_name}
+                              title={f.title}
+                              location={f.location}
+                              linkedinUrl={f.linkedin_url}
+                              bio={f.headline || f.bio || f.summary}
+                              confidenceScore={f.confidence_score}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : Object.keys(founderData).length > 0 ? (
+                    <div className="fi-card">
+                      <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: 'var(--fi-text-muted)' }}>From pitch deck</p>
+                      {Object.entries(founderData).slice(0, 4).map(([k, v]) => (
+                        <div key={k} className="flex flex-col gap-0.5 mb-2">
+                          <span className="text-[10px] font-semibold" style={{ color: 'var(--fi-text-muted)' }}>{k.replace(/_/g, ' ')}</span>
+                          <span className="text-xs break-words" style={{ color: 'var(--fi-text-primary)' }}>
+                            {Array.isArray(v) ? (v as unknown[]).join(', ') || '—' : String(v || '—')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={<Users className="w-10 h-10" />}
+                      title="No team members yet"
+                      description='Click "Add" to add founders and team members from LinkedIn.'
+                    />
+                  )}
+                </motion.div>
+              )}
+
+              {/* ═══ TAB 6: DETAILS ═══ */}
+              {activeTab === 'details' && (
+                <motion.div key="details" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+                  {unifiedFields.length > 0 ? (
+                    <>
+                      {/* Group fields into sections */}
+                      {(() => {
+                        const IDENTITY_LABELS = new Set(['Legal name', 'Founded year', 'Entity type', 'Team size', 'Industry']);
+                        const LOCATION_LABELS = new Set(['HQ city', 'HQ state', 'HQ country', 'Address']);
+                        const ONLINE_LABELS = new Set(['Website', 'LinkedIn URL', 'Phone']);
+                        const FINANCIAL_LABELS = new Set(['Total funding', 'Revenue']);
+                        const TAG_LABELS = new Set(['Keywords', 'Industries']);
+
+                        type SectionDef = { id: string; title: string; icon: React.ReactNode; fields: UnifiedField[] };
+                        const sections: SectionDef[] = [
+                          { id: 'identity', title: 'Identity', icon: <Building2 className="w-4 h-4" />, fields: [] },
+                          { id: 'location', title: 'Location', icon: <MapPin className="w-4 h-4" />, fields: [] },
+                          { id: 'online', title: 'Online', icon: <Globe className="w-4 h-4" />, fields: [] },
+                          { id: 'financial', title: 'Financial', icon: <DollarSign className="w-4 h-4" />, fields: [] },
+                          { id: 'tags', title: 'Tags', icon: <Hash className="w-4 h-4" />, fields: [] },
+                          { id: 'other', title: 'Other Details', icon: <FileText className="w-4 h-4" />, fields: [] },
+                        ];
+
+                        unifiedFields.forEach((field) => {
+                          if (IDENTITY_LABELS.has(field.label)) sections[0].fields.push(field);
+                          else if (LOCATION_LABELS.has(field.label)) sections[1].fields.push(field);
+                          else if (ONLINE_LABELS.has(field.label)) sections[2].fields.push(field);
+                          else if (FINANCIAL_LABELS.has(field.label)) sections[3].fields.push(field);
+                          else if (TAG_LABELS.has(field.label)) sections[4].fields.push(field);
+                          else sections[5].fields.push(field);
+                        });
+
+                        const SECTION_ACCENTS: Record<string, string> = {
+                          identity: 'var(--fi-primary)',
+                          location: '#8B5CF6',
+                          online: '#3B82F6',
+                          financial: '#F59E0B',
+                          tags: '#EC4899',
+                          other: 'var(--fi-text-muted)',
+                        };
+
+                        return sections.filter((s) => s.fields.length > 0).map((section, sIdx) => {
+                          const accent = SECTION_ACCENTS[section.id] || 'var(--fi-primary)';
+                          const isTags = section.id === 'tags';
+
+                          return (
+                            <motion.div
+                              key={section.id}
+                              custom={sIdx}
+                              variants={cardVariants}
+                              initial="hidden"
+                              animate="visible"
+                              className="fi-card relative overflow-hidden p-0"
+                            >
+                              <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: accent }} />
+                              <div className="p-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                  <div style={{ color: accent }}>{section.icon}</div>
+                                  <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>{section.title}</h3>
+                                </div>
+
+                                {isTags ? (
+                                  <div className="space-y-3">
+                                    {section.fields.map((field) => (
+                                      <div key={field.label}>
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--fi-text-muted)' }}>{field.label}</p>
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {field.value.split(', ').filter(Boolean).map((tag) => (
+                                            <span
+                                              key={tag}
+                                              className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-medium"
+                                              style={{ background: `${accent}15`, color: accent, border: `1px solid ${accent}25` }}
+                                            >
+                                              {tag}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                                    {section.fields.map(({ label, value, href, path }) => {
+                                      const isFieldEditing = path && editingField === path;
+                                      const displayValStr = (value || '').trim() || '—';
+                                      return (
+                                        <div key={label} className="py-2 border-b" style={{ borderColor: 'var(--fi-border)' }}>
+                                          <label className="text-[10px] font-semibold uppercase tracking-wider block mb-1" style={{ color: 'var(--fi-text-muted)' }}>
+                                            {label}
+                                          </label>
+                                          {path ? (
+                                            isFieldEditing ? (
+                                              <div className="flex flex-col gap-2">
+                                                <Textarea
+                                                  value={editValue}
+                                                  onChange={(e) => setEditValue(e.target.value)}
+                                                  className="min-h-[80px] w-full resize-y text-sm"
+                                                  style={{ background: 'var(--fi-bg-secondary)', borderColor: 'var(--fi-border)' }}
+                                                  autoFocus
+                                                />
+                                                <div className="flex gap-2">
+                                                  <button
+                                                    onClick={() => saveExtractionField(path, editValue)}
+                                                    disabled={saving}
+                                                    className="px-3 py-1.5 rounded-lg text-xs font-semibold"
+                                                    style={{ background: 'var(--fi-primary)', color: '#fff' }}
+                                                  >
+                                                    <Save className="w-3 h-3" />
+                                                  </button>
+                                                  <button
+                                                    onClick={() => setEditingField(null)}
+                                                    className="px-3 py-1.5 rounded-lg text-xs"
+                                                    style={{ color: 'var(--fi-text-muted)' }}
+                                                  >
+                                                    <X className="w-3 h-3" />
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            ) : (
+                                              <div
+                                                className="flex items-start justify-between gap-2 group cursor-pointer"
+                                                onClick={() => { setEditingField(path); setEditValue(displayValStr); }}
+                                              >
+                                                {href ? (
+                                                  <a
+                                                    href={href.startsWith('http') ? href : `https://${href}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-sm break-all flex-1 min-w-0 hover:underline inline-flex items-center gap-1"
+                                                    style={{ color: 'var(--fi-primary)' }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                  >
+                                                    {section.id === 'online' && <ExternalLink className="w-3 h-3 shrink-0" />}
+                                                    {displayValStr}
+                                                  </a>
+                                                ) : (
+                                                  <span className="text-sm break-words flex-1 min-w-0 font-medium" style={{ color: 'var(--fi-text-primary)' }}>{displayValStr}</span>
+                                                )}
+                                                <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100 shrink-0 mt-0.5" style={{ color: 'var(--fi-text-muted)' }} />
+                                              </div>
+                                            )
+                                          ) : (
+                                            <div>
+                                              {href ? (
+                                                <a
+                                                  href={href.startsWith('http') ? href : `https://${href}`}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="text-sm break-all hover:underline inline-flex items-center gap-1"
+                                                  style={{ color: 'var(--fi-primary)' }}
+                                                >
+                                                  {section.id === 'online' && <ExternalLink className="w-3 h-3 shrink-0" />}
+                                                  {displayValStr}
+                                                </a>
+                                              ) : (
+                                                <span className="text-sm break-words font-medium" style={{ color: 'var(--fi-text-primary)' }}>{displayValStr}</span>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          );
+                        });
+                      })()}
+                    </>
+                  ) : (
+                    <EmptyState
+                      icon={<FileText className="w-10 h-10" />}
+                      title="No details available"
+                      description="Add company details through onboarding or LinkedIn import."
+                    />
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* ── Right Sidebar (4/12 on desktop) ── */}
+          <div className="lg:col-span-4 space-y-4">
+            {/* AI Insights */}
+            <InsightPanel
+              structured={canonical?.ai_insights_structured ?? null}
+              aiInsightsDeduped={canonical?.ai_insights_deduped ?? null}
+              aiSummary={canonical?.ai_summary ?? aiSummary ?? null}
+              defaultExpanded={false}
+              headerAction={
+                <button
+                  onClick={() => extraction && questionnaire && generateAIInsights(extraction, questionnaire).then(() => fetchProfile())}
+                  disabled={aiLoading}
+                  className="p-1.5 rounded-md transition-colors"
+                  style={{ color: 'var(--fi-primary)' }}
+                >
+                  {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                </button>
+              }
+            />
+
+            {/* LinkedIn Re-scrape */}
+            <motion.div
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="fi-card"
+            >
+              <h3 className="text-sm font-semibold flex items-center gap-2 mb-2" style={{ color: 'var(--fi-text-primary)' }}>
+                <Linkedin className="w-4 h-4" style={{ color: '#0A66C2' }} />
+                Refresh from LinkedIn
+              </h3>
+              <p className="text-[11px] mb-2" style={{ color: 'var(--fi-text-muted)' }}>
+                {linkedinForDisplay ? 'Re-scrape to refresh founder & leadership data.' : 'Paste LinkedIn URL to import data.'}
+              </p>
+              <Input
+                placeholder="https://linkedin.com/company/..."
+                value={linkedinUrl}
+                onChange={(e) => setLinkedinUrl(e.target.value)}
+                className="mb-2 h-8 text-xs"
+                style={{ background: 'var(--fi-bg-secondary)', borderColor: 'var(--fi-border)' }}
+              />
+              {(scrapeError || scrapeStatus === 'failed') && (
+                <p className="text-xs mb-2" style={{ color: 'var(--fi-score-need-improvement)' }}>
+                  {extraction?.meta?.linkedin_scrape_error || scrapeError}
+                </p>
+              )}
+              {lastScrapedAt && scrapeStatus === 'success' && (
+                <p className="text-[10px] mb-2" style={{ color: 'var(--fi-score-excellent)' }}>
+                  Last scraped: {new Date(lastScrapedAt).toLocaleString()}
+                </p>
+              )}
+              <button
+                onClick={triggerLinkedInScrape}
+                disabled={scrapeInProgress || !linkedinUrl.trim()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                style={{
+                  background: 'var(--fi-primary)',
+                  color: '#fff',
+                  opacity: scrapeInProgress || !linkedinUrl.trim() ? 0.5 : 1,
+                }}
+              >
+                {scrapeInProgress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                {scrapeInProgress ? 'Scraping...' : 'Re-scrape'}
+              </button>
+            </motion.div>
+
+            {/* Readiness Signals */}
+            {questionnaire && (
+              <motion.div
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="fi-card"
+              >
+                <h3 className="text-sm font-semibold flex items-center gap-2 mb-3" style={{ color: 'var(--fi-text-primary)' }}>
+                  <Globe className="w-4 h-4" style={{ color: '#6366F1' }} />
+                  Readiness Signals
+                </h3>
+                <div className="space-y-3">
+                  {QUESTION_ORDER.map((key) => {
+                    const q = QUESTIONNAIRE[key];
+                    const currentVal = (questionnaireEdits[key] ?? questionnaire[key]) as string | undefined;
+                    const options = q?.options ?? [];
+                    return (
+                      <div key={key} className="space-y-1.5">
+                        <label className="text-[10px] font-semibold uppercase tracking-tight" style={{ color: 'var(--fi-text-muted)' }}>
+                          {q?.question}
+                        </label>
+                        <div className="flex flex-wrap gap-1">
+                          {options.map((o) => (
+                            <button
+                              key={o.value}
+                              onClick={() => setQuestionnaireEdits((p) => ({ ...p, [key]: o.value }))}
+                              className="px-2 py-0.5 rounded-md text-[11px] font-medium transition-all"
+                              style={{
+                                background: currentVal === o.value ? 'var(--fi-primary)' : 'var(--fi-bg-secondary)',
+                                color: currentVal === o.value ? '#fff' : 'var(--fi-text-muted)',
+                                border: `1px solid ${currentVal === o.value ? 'var(--fi-primary)' : 'var(--fi-border)'}`,
+                              }}
+                            >
+                              {o.label}
                             </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-start justify-between gap-2 group cursor-pointer min-h-[2rem]" onClick={() => { setEditingField(path); setEditValue(displayVal); }}>
-                            <span className="text-sm font-mono font-bold text-foreground break-words flex-1 min-w-0">{displayVal}</span>
-                            <Edit3 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 shrink-0 mt-0.5" />
-                          </div>
-                        )}
+                          ))}
+                        </div>
                       </div>
                     );
                   })}
-                </div>
-              </div>
-            </motion.section>
-          )}
-        </div>
-
-        <div className="lg:col-span-4 space-y-5">
-          {/* 1. AI Insights — collapsed by default */}
-          <InsightPanel
-            structured={canonical?.ai_insights_structured ?? null}
-            aiInsightsDeduped={canonical?.ai_insights_deduped ?? null}
-            aiSummary={canonical?.ai_summary ?? aiSummary ?? null}
-            defaultExpanded={false}
-            headerAction={
-              <Button variant="ghost" size="sm" className="text-primary hover:bg-primary/10 h-7 text-xs px-2" onClick={() => extraction && questionnaire && generateAIInsights(extraction, questionnaire).then(() => fetchProfile())} disabled={aiLoading}>
-                {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-              </Button>
-            }
-          />
-
-          {/* 2. LinkedIn re-scrape */}
-          <motion.section
-            initial={{ opacity: 0, x: 12 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="rounded-2xl border border-border/50 bg-muted/40 p-4"
-          >
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-2.5">
-              <Linkedin className="w-4 h-4 text-[#0A66C2]" />
-              Refresh from LinkedIn
-            </h3>
-            <p className="text-[11px] text-muted-foreground mb-2">
-              {linkedinForDisplay ? 'Re-scrape to refresh founder & leadership data.' : 'Paste LinkedIn URL to import data.'}
-            </p>
-            <Input
-              placeholder="https://linkedin.com/company/..."
-              value={linkedinUrl}
-              onChange={(e) => setLinkedinUrl(e.target.value)}
-              className="bg-muted border-border mb-2 h-8 text-xs"
-            />
-            {(scrapeError || scrapeStatus === 'failed') && (
-              <p className="text-xs text-red-400 mb-2">{extraction?.meta?.linkedin_scrape_error || scrapeError}</p>
-            )}
-            {lastScrapedAt && scrapeStatus === 'success' && (
-              <p className="text-[10px] text-emerald-500/90 mb-2">Last scraped: {new Date(lastScrapedAt).toLocaleString()}</p>
-            )}
-            <Button size="sm" className="bg-primary hover:bg-primary/90 h-7 text-xs" onClick={triggerLinkedInScrape} disabled={scrapeInProgress || !linkedinUrl.trim()}>
-              {scrapeInProgress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-              <span className="ml-1.5">{scrapeInProgress ? 'Scraping…' : 'Re-scrape'}</span>
-            </Button>
-          </motion.section>
-
-          {/* 3. Team */}
-          {(extraction || questionnaire) && (
-            <motion.section initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-border/50 bg-muted/40 p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" />
-                  Founders & team
-                  {teamMembers.length > 0 && (
-                    <span className="text-[10px] text-muted-foreground font-normal">({teamMembers.length})</span>
+                  {Object.keys(questionnaireEdits).length > 0 && (
+                    <button
+                      onClick={saveQuestionnaire}
+                      disabled={saving}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                      style={{ background: '#6366F1', color: '#fff' }}
+                    >
+                      {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      Apply changes
+                    </button>
                   )}
-                </h3>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="border-primary/40 text-primary hover:bg-primary/10 h-7 text-xs px-2"
-                  onClick={() => setAddPersonModalOpen(true)}
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  <span className="ml-1.5">Add</span>
-                </Button>
-              </div>
-              {teamMembers.length > 0 ? (
-                <ul className="space-y-2.5 list-none p-0 m-0">
-                  {teamMembers.slice(0, 8).map((f: any, i: number) => (
-                    <TeamMemberCard
-                      key={(f.linkedin_url || f.full_name || i).toString()}
-                      full_name={f.full_name}
-                      title={f.title}
-                      location={f.location}
-                      profile_image_url={f.profile_image_url}
-                      linkedin_url={f.linkedin_url}
-                      index={i}
-                      founder={f}
-                      extraction={extraction}
-                      getToken={getToken}
-                      onImageSynced={fetchProfile}
-                      confidence_score={f.confidence_score}
-                      evidence_links={f.evidence_links}
-                    />
-                  ))}
-                </ul>
-              ) : Object.keys(founderData).length > 0 ? (
-                <div className="rounded-xl border border-dashed border-border p-3 space-y-1.5">
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">From pitch deck</p>
-                  {Object.entries(founderData).slice(0, 4).map(([k, v]) => (
-                    <div key={k} className="flex flex-col gap-0.5">
-                      <span className="text-[10px] font-semibold text-muted-foreground">{k.replace(/_/g, ' ')}</span>
-                      <span className="text-xs text-foreground break-words">{Array.isArray(v) ? (v as unknown[]).join(', ') || '—' : String(v || '—')}</span>
-                    </div>
-                  ))}
                 </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">No team members yet. Click &quot;Add&quot; to add from LinkedIn.</p>
-              )}
-            </motion.section>
-          )}
+              </motion.div>
+            )}
 
-          <AddPersonModal
-            open={addPersonModalOpen}
-            onOpenChange={setAddPersonModalOpen}
-            getToken={getToken}
-            onSuccess={(person, extractionData, status) => {
-              if (extractionData) setExtraction(extractionData as ExtractionData);
-              toast.success(status === 'already_exists' ? 'Already in team list' : 'Person added');
-              fetchProfile();
-            }}
-          />
-
-          {/* 4. Financial Projections & Charts */}
-          {extraction?.charts?.charts && (extraction.charts.charts as unknown[]).length > 0 && (
-            <motion.section
-              initial={{ opacity: 0, x: 12 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="rounded-2xl border border-border/50 bg-muted/40 overflow-hidden"
-            >
-              <div className="flex items-center gap-2 p-4 pb-2.5 border-b border-border">
-                <BarChart3 className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Charts & Projections</h3>
-                <span className="ml-auto text-[10px] text-muted-foreground">
-                  {(extraction.charts.charts as unknown[]).length} chart{(extraction.charts.charts as unknown[]).length !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className="p-3 space-y-3">
-                {(extraction.charts.charts as Array<{
-                  chart_type: string;
-                  chart_title: string;
-                  chart_id?: string;
-                  series: Array<{ name: string; data: Array<{ x: string; y: number }> }>;
-                  unit?: string;
-                  x_axis_label?: string | null;
-                  y_axis_label?: string | null;
-                  insight?: string;
-                  categories?: string[];
-                }>).map((chart, idx) => (
-                  <ExtractionChart key={chart.chart_id || idx} chart={chart} index={idx} />
-                ))}
-              </div>
-            </motion.section>
-          )}
-
-          {/* 5. Readiness questionnaire */}
-          {questionnaire && (
-            <motion.section initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="rounded-2xl border border-border/50 bg-muted/40 p-4">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-                <Globe className="w-4 h-4 text-indigo-400" />
-                Readiness signals
-              </h3>
-              <div className="space-y-3">
-                {QUESTION_ORDER.map((key) => {
-                  const q = QUESTIONNAIRE[key];
-                  const currentVal = (questionnaireEdits[key] ?? questionnaire[key]) as string | undefined;
-                  const options = q?.options ?? [];
-                  return (
-                    <div key={key} className="space-y-1.5">
-                      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-tight">{q?.question}</label>
-                      <div className="flex flex-wrap gap-1">
-                        {options.map((o) => (
-                          <button
-                            key={o.value}
-                            type="button"
-                            onClick={() => setQuestionnaireEdits((p) => ({ ...p, [key]: o.value }))}
-                            className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all ${currentVal === o.value ? 'bg-primary text-primary-foreground' : 'bg-muted/80 text-muted-foreground hover:bg-muted hover:text-foreground border border-border'}`}
-                          >
-                            {o.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-                {Object.keys(questionnaireEdits).length > 0 && (
-                  <Button size="sm" className="w-full bg-indigo-600 hover:bg-indigo-500 h-8 text-xs" onClick={saveQuestionnaire} disabled={saving}>
-                    {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
-                    Apply changes
-                  </Button>
-                )}
-              </div>
-            </motion.section>
-          )}
+          </div>
         </div>
+
+        {/* Add Person Modal */}
+        <AddPersonModal
+          open={addPersonModalOpen}
+          onOpenChange={setAddPersonModalOpen}
+          getToken={getToken}
+          onSuccess={(person, extractionData, status) => {
+            if (extractionData) setExtraction(extractionData as ExtractionData);
+            toast.success(status === 'already_exists' ? 'Already in team list' : 'Person added');
+            fetchProfile();
+          }}
+        />
+      </div>
+    </TooltipProvider>
+  );
+}
+
+
+// ═══════════════════════════════════════════
+// SUB-COMPONENTS
+// ═══════════════════════════════════════════
+
+function HeroStat({ icon, label, value, valueColor }: { icon: React.ReactNode; label: string; value: string; valueColor?: string }) {
+  return (
+    <div
+      className="flex items-center gap-1.5 px-3 py-2 rounded-lg"
+      style={{ background: 'var(--fi-bg-tertiary)', border: '1px solid var(--fi-border)' }}
+    >
+      <div style={{ color: 'var(--fi-primary)', opacity: 0.7 }}>{icon}</div>
+      <div>
+        <p className="text-[10px] font-semibold uppercase" style={{ color: 'var(--fi-text-muted)' }}>{label}</p>
+        <p
+          className="text-sm font-bold leading-tight truncate max-w-[120px]"
+          style={{ color: valueColor || 'var(--fi-text-primary)' }}
+        >
+          {value}
+        </p>
       </div>
     </div>
   );
+}
+
+function SummaryCard({ accent, icon, label, text, hint }: { accent: string; icon: React.ReactNode; label: string; text?: string | null; hint?: string }) {
+  const [summary, setSummary] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const ran = useRef(false);
+
+  useEffect(() => {
+    const raw = (text || '').trim();
+    if (!raw || ran.current) return;
+    ran.current = true;
+
+    if (!isGeminiEnabled()) {
+      setSummary(raw);
+      return;
+    }
+
+    setLoading(true);
+    geminiSummarize(raw, hint)
+      .then((s) => setSummary(s))
+      .catch(() => setSummary(raw))
+      .finally(() => setLoading(false));
+  }, [text, hint]);
+
+  const display = (summary ?? (text || '').trim()) || '—';
+
+  return (
+    <motion.div
+      custom={0}
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      className="fi-card relative overflow-hidden p-0 flex flex-col"
+      style={{ minHeight: '96px' }}
+    >
+      <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: accent }} />
+      <div className="p-4 flex flex-col flex-1">
+        <div className="flex items-center gap-1.5 mb-2">
+          <div style={{ color: accent }}>{icon}</div>
+          <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--fi-text-muted)' }}>{label}</span>
+        </div>
+        {loading ? (
+          <div className="space-y-1.5 mt-1">
+            <div className="fi-skeleton h-3 w-full rounded" />
+            <div className="fi-skeleton h-3 w-4/5 rounded" />
+          </div>
+        ) : (
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--fi-text-secondary)' }}>
+            {display}
+          </p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function BusinessCard({ accent, icon, title, text }: { accent: string; icon: React.ReactNode; title: string; text?: string | null }) {
+  return (
+    <motion.div
+      custom={0}
+      variants={cardVariants}
+      initial="hidden"
+      animate="visible"
+      className="fi-card relative overflow-hidden p-0"
+      style={{ minHeight: '12rem' }}
+    >
+      <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: accent }} />
+      <div className="p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <div style={{ color: accent }}>{icon}</div>
+          <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>{title}</h3>
+        </div>
+        <ExpandableTextBlock text={text} clampLines={4} />
+      </div>
+    </motion.div>
+  );
+}
+
+function ExpandableTextBlock({ text, clampLines = 4, maxExpandedHeight = 200 }: { text?: string | null; clampLines?: number; maxExpandedHeight?: number }) {
+  const [expanded, setExpanded] = useState(false);
+  const content = (text || '').trim() || '—';
+  const needsToggle = content.length > 120;
+
+  return (
+    <div className="flex flex-col min-w-0">
+      {expanded ? (
+        <div className="overflow-y-auto" style={{ maxHeight: maxExpandedHeight }}>
+          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words" style={{ color: 'var(--fi-text-secondary)' }}>
+            {content}
+          </p>
+        </div>
+      ) : (
+        <p
+          className="text-sm leading-relaxed break-words overflow-hidden"
+          style={{
+            color: 'var(--fi-text-secondary)',
+            display: '-webkit-box',
+            WebkitLineClamp: clampLines,
+            WebkitBoxOrient: 'vertical',
+          }}
+        >
+          {content}
+        </p>
+      )}
+      {needsToggle && (
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          className="mt-2 text-xs font-medium self-start inline-flex items-center gap-1"
+          style={{ color: 'var(--fi-primary)' }}
+        >
+          {expanded ? <>Read less <ChevronUp className="w-3.5 h-3.5" /></> : <>Read more <ChevronDown className="w-3.5 h-3.5" /></>}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function getTeamInitials(name?: string): string {
+  if (!name?.trim()) return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts.length >= 2
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : parts[0][0].toUpperCase();
+}
+
+const ROLE_ACCENTS: Record<string, string> = {
+  ceo: '#10B981',
+  founder: '#10B981',
+  'co-founder': '#10B981',
+  cto: '#3B82F6',
+  coo: '#8B5CF6',
+  cfo: '#F59E0B',
+  vp: '#6366F1',
+  director: '#EC4899',
+};
+
+function getRoleAccent(title?: string): string {
+  if (!title) return 'var(--fi-primary)';
+  const lower = title.toLowerCase();
+  for (const [key, color] of Object.entries(ROLE_ACCENTS)) {
+    if (lower.includes(key)) return color;
+  }
+  return 'var(--fi-primary)';
+}
+
+function FeaturedTeamCard({ name, title, location, linkedinUrl, bio, confidenceScore }: {
+  name?: string; title?: string; location?: string; linkedinUrl?: string; bio?: string; confidenceScore?: number;
+}) {
+  const slug = slugFromName(name);
+  const initial = getTeamInitials(name);
+  const accent = getRoleAccent(title);
+
+  return (
+    <Link href={`/startup/founders/${slug}`} className="block group">
+      <motion.div
+        custom={0}
+        variants={cardVariants}
+        initial="hidden"
+        animate="visible"
+        className="fi-card relative overflow-hidden p-0"
+      >
+        <div className="absolute top-0 left-0 right-0 h-1" style={{ background: `linear-gradient(to right, ${accent}, transparent)` }} />
+        <div className="p-5 flex flex-col sm:flex-row gap-4">
+          {/* Avatar with gradient ring */}
+          <div className="shrink-0 self-start">
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center font-bold text-xl"
+              style={{
+                background: `linear-gradient(135deg, ${accent}22, ${accent}08)`,
+                color: accent,
+                boxShadow: `0 0 0 3px ${accent}33, 0 0 0 6px ${accent}11`,
+              }}
+            >
+              {initial}
+            </div>
+          </div>
+          {/* Info */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h4 className="text-base font-bold truncate" style={{ color: 'var(--fi-text-primary)' }}>{name || 'Unknown'}</h4>
+              {linkedinUrl && (
+                <a
+                  href={linkedinUrl.startsWith('http') ? linkedinUrl : `https://${linkedinUrl}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0 p-1 rounded-md transition-colors hover:bg-[rgba(10,102,194,0.1)]"
+                >
+                  <Linkedin className="w-3.5 h-3.5" style={{ color: '#0A66C2' }} />
+                </a>
+              )}
+            </div>
+            {title && (
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold mb-2"
+                style={{ background: `${accent}15`, color: accent, border: `1px solid ${accent}25` }}
+              >
+                {title}
+              </span>
+            )}
+            {location && (
+              <p className="text-xs flex items-center gap-1 mb-1" style={{ color: 'var(--fi-text-muted)' }}>
+                <MapPin className="w-3 h-3" /> {location}
+              </p>
+            )}
+            {bio && (
+              <p className="text-xs leading-relaxed line-clamp-2 mt-1" style={{ color: 'var(--fi-text-secondary)' }}>{bio}</p>
+            )}
+            {confidenceScore != null && confidenceScore > 0 && (
+              <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-medium" style={{ color: accent }}>
+                <CheckCircle2 className="w-3 h-3" /> {(confidenceScore * 100).toFixed(0)}% verified
+              </span>
+            )}
+          </div>
+          {/* Arrow hint */}
+          <div className="shrink-0 self-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <ExternalLink className="w-4 h-4" style={{ color: 'var(--fi-text-muted)' }} />
+          </div>
+        </div>
+      </motion.div>
+    </Link>
+  );
+}
+
+function TeamCard({ name, title, location, linkedinUrl, bio, confidenceScore }: {
+  name?: string; title?: string; location?: string; linkedinUrl?: string; bio?: string; confidenceScore?: number;
+}) {
+  const slug = slugFromName(name);
+  const initial = getTeamInitials(name);
+  const accent = getRoleAccent(title);
+
+  return (
+    <Link href={`/startup/founders/${slug}`} className="block group">
+      <motion.div
+        whileHover={{ y: -2 }}
+        transition={{ duration: 0.15 }}
+        className="fi-card fi-card-interactive p-4 flex flex-col items-center text-center gap-2"
+      >
+        {/* Avatar with gradient ring */}
+        <div
+          className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm"
+          style={{
+            background: `linear-gradient(135deg, ${accent}22, ${accent}08)`,
+            color: accent,
+            boxShadow: `0 0 0 2px ${accent}33, 0 0 0 4px ${accent}11`,
+          }}
+        >
+          {initial}
+        </div>
+        <div className="min-w-0 w-full">
+          <div className="flex items-center justify-center gap-1.5">
+            <p className="text-sm font-semibold truncate" style={{ color: 'var(--fi-text-primary)' }}>
+              {name || 'Unknown'}
+            </p>
+            {linkedinUrl && (
+              <a
+                href={linkedinUrl.startsWith('http') ? linkedinUrl : `https://${linkedinUrl}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="shrink-0 p-0.5 rounded transition-colors hover:bg-[rgba(10,102,194,0.1)]"
+              >
+                <Linkedin className="w-3 h-3" style={{ color: '#0A66C2' }} />
+              </a>
+            )}
+          </div>
+          {title && (
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold mt-1"
+              style={{ background: `${accent}15`, color: accent, border: `1px solid ${accent}25` }}
+            >
+              {title}
+            </span>
+          )}
+          {location && (
+            <p className="text-[11px] mt-1 truncate flex items-center justify-center gap-1" style={{ color: 'var(--fi-text-muted)' }}>
+              <MapPin className="w-2.5 h-2.5" /> {location}
+            </p>
+          )}
+          {bio && (
+            <p className="text-[11px] leading-relaxed line-clamp-2 mt-1" style={{ color: 'var(--fi-text-secondary)' }}>{bio}</p>
+          )}
+          {confidenceScore != null && confidenceScore > 0 && (
+            <span className="inline-flex items-center gap-1 mt-1 text-[10px]" style={{ color: accent }}>
+              <CheckCircle2 className="w-2.5 h-2.5" /> {(confidenceScore * 100).toFixed(0)}%
+            </span>
+          )}
+        </div>
+      </motion.div>
+    </Link>
+  );
+}
+
+function formatKpiValue(value: number | string, unit?: string): string {
+  if (unit === 'USD' || unit === 'Billion USD') {
+    const num = typeof value === 'number' ? value : parseFloat(String(value));
+    if (isNaN(num)) return String(value);
+    if (unit === 'Billion USD') return `$${num}B`;
+    if (num >= 1e6) return `$${(num / 1e6).toFixed(1)}M`;
+    if (num >= 1e3) return `$${(num / 1e3).toFixed(0)}K`;
+    return `$${num.toLocaleString()}`;
+  }
+  if (unit === '%') return `${value}%`;
+  return String(value);
 }

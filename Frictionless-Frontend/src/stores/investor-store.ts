@@ -19,6 +19,10 @@ interface InvestorStore {
   error: string | null;
   filters: InvestorFilters;
   lastFetched: number;
+  /** How many new matches arrived on the last fetch (used to trigger notifications) */
+  newMatchCount: number;
+  /** True when we've received all expected matches (≥ TARGET_MATCHES or pipeline is done) */
+  isFinalSet: boolean;
   /** Timestamp when we first entered generating/matching state (for timeout) */
   pipelineStartedAt: number;
   setFilters: (filters: Partial<InvestorFilters>) => void;
@@ -26,6 +30,8 @@ interface InvestorStore {
   getMatchById: (investorId: string) => InvestorMatchResult | undefined;
   /** Force re-trigger the pipeline (resets timeout and status) */
   retrigger: () => Promise<void>;
+  /** Add a custom investor by name + website */
+  addCustomInvestor: (investorName: string, investorUrl: string) => Promise<{ ok: boolean; match?: InvestorMatchResult; error?: string }>;
 }
 
 // Prevent duplicate concurrent fetches
@@ -33,6 +39,8 @@ let fetchInFlight: Promise<void> | null = null;
 
 // Max time to poll before giving up (3 minutes)
 const PIPELINE_TIMEOUT_MS = 3 * 60 * 1000;
+// Target number of matches — keep polling until we reach this
+const TARGET_MATCHES = 10;
 
 export const useInvestorStore = create<InvestorStore>((set, get) => ({
   matches: [],
@@ -40,6 +48,8 @@ export const useInvestorStore = create<InvestorStore>((set, get) => ({
   loading: false,
   error: null,
   lastFetched: 0,
+  newMatchCount: 0,
+  isFinalSet: false,
   pipelineStartedAt: 0,
   filters: {
     scoreMin: 0,
@@ -58,10 +68,29 @@ export const useInvestorStore = create<InvestorStore>((set, get) => ({
   },
 
   retrigger: async () => {
-    // Reset state so we can poll fresh
-    set({ status: 'idle', error: null, pipelineStartedAt: 0, lastFetched: 0 });
+    set({ status: 'idle', error: null, pipelineStartedAt: 0, lastFetched: 0, isFinalSet: false, newMatchCount: 0 });
     fetchInFlight = null;
     await get().fetchMatches();
+  },
+
+  addCustomInvestor: async (investorName: string, investorUrl: string) => {
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch('/api/investors/add-custom', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ investor_name: investorName, investor_url: investorUrl }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: data.error || 'Failed to add investor' };
+      }
+      // Re-fetch matches to include the new custom investor
+      await get().fetchMatches();
+      return { ok: true, match: data.match };
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    }
   },
 
   fetchMatches: async () => {
@@ -71,10 +100,15 @@ export const useInvestorStore = create<InvestorStore>((set, get) => ({
       return;
     }
 
-    // Stale-while-revalidate: skip if fetched < 15s ago and already ready
     const now = Date.now();
     const state = get();
-    if (state.status === 'ready' && state.matches.length > 0 && now - state.lastFetched < 15_000) {
+
+    // Already have the full final set — only re-fetch if stale (8s)
+    if (state.isFinalSet && now - state.lastFetched < 8_000) {
+      return;
+    }
+    // Have partial results but fetched very recently — throttle to 3s
+    if (state.status === 'ready' && state.matches.length > 0 && !state.isFinalSet && now - state.lastFetched < 3_000) {
       return;
     }
 
@@ -97,7 +131,12 @@ export const useInvestorStore = create<InvestorStore>((set, get) => ({
     const doFetch = async () => {
       try {
         const headers = await getAuthHeaders();
-        const res = await fetch('/api/startup/investors', { headers, cache: 'no-store' });
+        // Fast-path: if we already know the pipeline is running, pass known_status
+        // so the API route skips the slow backend status check and just checks Supabase
+        const currentStatus = get().status;
+        const statusParam = (currentStatus === 'generating' || currentStatus === 'matching')
+          ? `?known_status=${currentStatus}` : '';
+        const res = await fetch(`/api/startup/investors${statusParam}`, { headers, cache: 'no-store' });
         const data = await res.json();
 
         if (!res.ok) {
@@ -106,12 +145,21 @@ export const useInvestorStore = create<InvestorStore>((set, get) => ({
         }
 
         if (data.status === 'generating' || data.status === 'matching') {
-          // Track when we first entered pipeline state (for timeout)
           const current = get();
           const pipelineStartedAt = (current.status === 'generating' || current.status === 'matching')
             ? current.pipelineStartedAt || Date.now()
             : Date.now();
-          set({ status: data.status, matches: data.matches || [], loading: false, pipelineStartedAt });
+          // Even in generating/matching state, surface any partial matches that were written progressively
+          const incomingMatches: InvestorMatchResult[] = data.matches || [];
+          const prev = current.matches;
+          const newCount = incomingMatches.length - prev.length;
+          set({
+            status: data.status,
+            matches: incomingMatches.length > 0 ? incomingMatches : prev,
+            loading: false,
+            pipelineStartedAt,
+            newMatchCount: newCount > 0 ? newCount : 0,
+          });
           return;
         }
 
@@ -127,13 +175,21 @@ export const useInvestorStore = create<InvestorStore>((set, get) => ({
           return;
         }
 
+        // status === 'ready' — we have matches
+        const incomingMatches: InvestorMatchResult[] = data.matches || [];
+        const prev = get().matches;
+        const newCount = incomingMatches.length - prev.length;
+        const isFinalSet = incomingMatches.length >= TARGET_MATCHES;
+
         set({
           status: 'ready',
           loading: false,
-          matches: data.matches || [],
+          matches: incomingMatches,
           error: null,
           lastFetched: Date.now(),
           pipelineStartedAt: 0,
+          newMatchCount: newCount > 0 ? newCount : 0,
+          isFinalSet,
         });
       } catch (err) {
         set({

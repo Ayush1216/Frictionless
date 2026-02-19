@@ -34,15 +34,14 @@ export async function GET(request: NextRequest) {
     const backendUrl = (process.env.FRICTIONLESS_BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '');
 
     // Backend dashboard + score history + data room document count — all in parallel
-    const controller = new AbortController();
-    const backendTimeout = setTimeout(() => controller.abort(), 15_000); // 15s timeout
     const [dashboardRes, scoreHistoryQuery, documentCountRes] = await Promise.all([
       fetch(`${backendUrl}/api/startup-dashboard?org_id=${encodeURIComponent(orgId)}`, {
         cache: 'no-store',
-        signal: controller.signal,
+        signal: AbortSignal.timeout(15_000), // 15 s per attempt
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       }).catch((err) => {
-        console.warn('[bootstrap] backend fetch failed:', err?.name === 'AbortError' ? 'timeout' : err);
+        const isTimeout = err instanceof DOMException && err.name === 'TimeoutError';
+        console.warn('[bootstrap] backend fetch failed:', isTimeout ? 'timeout (15s)' : err?.message ?? err);
         return new Response(JSON.stringify({}), { status: 502 });
       }),
       supabase
@@ -57,7 +56,6 @@ export async function GET(request: NextRequest) {
         .in('category', ['pitch_deck', 'data_room_doc']),
     ]);
 
-    clearTimeout(backendTimeout);
     const dashboardData = await dashboardRes.json().catch(() => ({}));
     const readiness =
       dashboardRes.ok && dashboardData?.readiness

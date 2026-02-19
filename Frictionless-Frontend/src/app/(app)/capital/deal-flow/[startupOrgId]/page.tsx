@@ -58,13 +58,13 @@ function pct(value: number): string {
 
 function getScoreColor(score: number) {
   if (score >= 86) return '#10B981';
-  if (score >= 80) return '#EAB308';
+  if (score >= 81) return '#EAB308';
   return '#EF4444';
 }
 
 function getScoreBarColor(score: number) {
   if (score >= 86) return 'bg-score-excellent';
-  if (score >= 80) return 'bg-score-good';
+  if (score >= 81) return 'bg-score-good';
   return 'bg-score-poor';
 }
 
@@ -315,11 +315,11 @@ export default function StartupDetailPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
-                  <XAxis dataKey="month" tick={{ fill: '#9CA3AF', fontSize: 12 }} axisLine={false} />
-                  <YAxis tick={{ fill: '#9CA3AF', fontSize: 12 }} axisLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
+                  <XAxis dataKey="month" tick={{ fill: 'var(--fi-text-muted)', fontSize: 12 }} axisLine={false} />
+                  <YAxis tick={{ fill: 'var(--fi-text-muted)', fontSize: 12 }} axisLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: '#9CA3AF' }}
+                    labelStyle={{ color: 'var(--fi-text-muted)' }}
                     formatter={(value: number | undefined) => [`$${((value ?? 0) / 1000).toFixed(0)}K`, 'MRR']}
                   />
                   <Area type="monotone" dataKey="mrr" stroke="#3B82F6" strokeWidth={2} fill="url(#mrrGradient)" />
@@ -341,11 +341,11 @@ export default function StartupDetailPage() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
-                  <XAxis dataKey="month" tick={{ fill: '#9CA3AF', fontSize: 12 }} axisLine={false} />
-                  <YAxis tick={{ fill: '#9CA3AF', fontSize: 12 }} axisLine={false} />
+                  <XAxis dataKey="month" tick={{ fill: 'var(--fi-text-muted)', fontSize: 12 }} axisLine={false} />
+                  <YAxis tick={{ fill: 'var(--fi-text-muted)', fontSize: 12 }} axisLine={false} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: 8, fontSize: 12 }}
-                    labelStyle={{ color: '#9CA3AF' }}
+                    labelStyle={{ color: 'var(--fi-text-muted)' }}
                   />
                   <Area type="monotone" dataKey="customers" stroke="#8B5CF6" strokeWidth={2} fill="url(#custGradient)" />
                 </AreaChart>
@@ -373,7 +373,7 @@ export default function StartupDetailPage() {
                     <div className="flex items-center gap-2">
                       <h3 className="font-display font-semibold text-foreground">{f.full_name}</h3>
                       {f.is_primary && (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/20 text-primary">PRIMARY</span>
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary/20 text-primary">PRIMARY</span>
                       )}
                     </div>
                     <p className="text-sm text-primary">{f.title}</p>

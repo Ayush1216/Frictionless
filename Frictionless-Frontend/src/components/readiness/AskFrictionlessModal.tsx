@@ -29,7 +29,6 @@ export function AskFrictionlessModal({ task, categoryName, isOpen, onClose }: As
   // Auto-send initial explanation when modal opens
   useEffect(() => {
     if (isOpen && task && messages.length === 0) {
-      // Check for cached explanation first
       const cached = getCachedExplanation(task.id);
       const context = `Task: "${task.title}"\nCategory: ${categoryName ?? 'General'}\nDescription: ${task.description || 'No description provided.'}\nPriority: ${task.priority}`;
 
@@ -91,22 +90,29 @@ export function AskFrictionlessModal({ task, categoryName, isOpen, onClose }: As
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-4 sm:inset-auto sm:top-[10%] sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-lg sm:max-h-[80vh] z-50 flex flex-col glass-card overflow-hidden"
+            className="fixed inset-4 sm:inset-auto sm:top-[10%] sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-lg sm:max-h-[80vh] z-50 flex flex-col fi-card overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center gap-3 p-4 border-b border-border/50">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Bot className="w-4 h-4 text-primary" />
+            <div
+              className="flex items-center gap-3 p-4"
+              style={{ borderBottom: '1px solid var(--fi-border)' }}
+            >
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: 'rgba(16,185,129,0.08)' }}
+              >
+                <Bot className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-foreground">Ask Frictionless</h3>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Ask Frictionless</h3>
                 {task && (
-                  <p className="text-xs text-muted-foreground truncate">{task.title}</p>
+                  <p className="text-xs truncate" style={{ color: 'var(--fi-text-muted)' }}>{task.title}</p>
                 )}
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="p-2 rounded-lg transition-colors"
+                style={{ color: 'var(--fi-text-muted)' }}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -134,7 +140,11 @@ export function AskFrictionlessModal({ task, categoryName, isOpen, onClose }: As
             </div>
 
             {/* Input */}
-            <form onSubmit={handleSubmit} className="p-4 border-t border-border/50">
+            <form
+              onSubmit={handleSubmit}
+              className="p-4"
+              style={{ borderTop: '1px solid var(--fi-border)' }}
+            >
               <div className="flex items-center gap-2">
                 <input
                   ref={inputRef}
@@ -143,18 +153,24 @@ export function AskFrictionlessModal({ task, categoryName, isOpen, onClose }: As
                   placeholder="Ask a follow-up question..."
                   disabled={isStreaming}
                   className={cn(
-                    'flex-1 px-4 py-2.5 rounded-lg bg-muted border border-border text-sm text-foreground',
-                    'placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors',
+                    'flex-1 px-4 py-2.5 rounded-lg text-sm',
+                    'focus:outline-none transition-colors',
                     isStreaming && 'opacity-50 cursor-not-allowed'
                   )}
+                  style={{
+                    background: 'var(--fi-bg-secondary)',
+                    border: '1px solid var(--fi-border)',
+                    color: 'var(--fi-text-primary)',
+                  }}
                 />
                 <button
                   type="submit"
                   disabled={isStreaming}
                   className={cn(
-                    'p-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors',
+                    'p-2.5 rounded-lg transition-colors',
                     isStreaming && 'opacity-50 cursor-not-allowed'
                   )}
+                  style={{ background: 'var(--fi-primary)', color: '#fff' }}
                 >
                   <Send className="w-4 h-4" />
                 </button>

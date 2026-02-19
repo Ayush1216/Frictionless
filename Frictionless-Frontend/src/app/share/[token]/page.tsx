@@ -138,13 +138,13 @@ const LIGHT: ThemeColors = {
    ================================================================ */
 function getScoreColor(score: number) {
   if (score >= 86) return '#22c55e';
-  if (score >= 80) return '#eab308';
+  if (score >= 81) return '#eab308';
   return '#ef4444';
 }
 
 function getScoreLabel(score: number) {
   if (score >= 86) return 'Excellent';
-  if (score >= 80) return 'Good';
+  if (score >= 81) return 'Good';
   return 'Need Improvement';
 }
 

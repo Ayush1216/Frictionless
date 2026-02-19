@@ -29,7 +29,7 @@ export function getScoreInfo(score: number): ScoreInfo {
       dotClass: 'bg-score-excellent',
     };
   }
-  if (score >= 80) {
+  if (score >= 81) {
     return {
       level: 'good',
       label: 'Good',

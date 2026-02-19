@@ -54,19 +54,19 @@ export function CompletedTasksSection({ onTaskClick, className }: CompletedTasks
       animate={{ opacity: 1, y: 0 }}
       className={cn('space-y-4', className)}
     >
-      <div className="glass-card p-4">
+      <div className="fi-card p-4">
         <button
           type="button"
           onClick={() => setExpanded(!expanded)}
           className="flex w-full items-center justify-between text-left"
         >
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-score-excellent" />
-            <h3 className="text-sm font-display font-semibold text-foreground">
+            <CheckCircle2 className="w-5 h-5" style={{ color: 'var(--fi-score-excellent)' }} />
+            <h3 className="text-sm font-display font-semibold" style={{ color: 'var(--fi-text-primary)' }}>
               Completed Tasks ({completedTasks.length})
             </h3>
             {totalPoints > 0 && (
-              <span className="text-xs font-medium text-muted-foreground">
+              <span className="text-xs font-medium" style={{ color: 'var(--fi-text-muted)' }}>
                 +{totalPoints} pts earned
               </span>
             )}

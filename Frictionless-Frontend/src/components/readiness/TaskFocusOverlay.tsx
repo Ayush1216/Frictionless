@@ -227,14 +227,14 @@ export function TaskFocusOverlay({
                     {task.title}
                   </h2>
                   <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/15">
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/15">
                       {categoryName}
                     </span>
-                    <span className={cn('text-[9px] font-semibold px-1.5 py-0.5 rounded-full border', impact.className)}>
+                    <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded-full border', impact.className)}>
                       {impact.label}
                     </span>
                     {task.potential_points && (
-                      <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-score-excellent/10 text-score-excellent border border-score-excellent/15">
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-score-excellent/10 text-score-excellent border border-score-excellent/15">
                         +{task.potential_points} pts
                       </span>
                     )}

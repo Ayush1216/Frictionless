@@ -17,11 +17,15 @@ export function TrendIndicator({ value, suffix = '', className }: TrendIndicator
     <span
       className={cn(
         'inline-flex items-center gap-1 text-sm font-mono font-medium',
-        isPositive && 'text-score-excellent',
-        isNegative && 'text-score-poor',
-        !isPositive && !isNegative && 'text-muted-foreground',
         className,
       )}
+      style={{
+        color: isPositive
+          ? 'var(--fi-score-excellent)'
+          : isNegative
+            ? 'var(--fi-score-need-improvement)'
+            : 'var(--fi-text-muted)',
+      }}
     >
       {isPositive && <TrendingUp className="w-3.5 h-3.5" />}
       {isNegative && <TrendingDown className="w-3.5 h-3.5" />}

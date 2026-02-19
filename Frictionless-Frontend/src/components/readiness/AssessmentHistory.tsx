@@ -286,7 +286,7 @@ export function AssessmentHistory({ runs = [], scoreHistory }: AssessmentHistory
             />
             <XAxis
               dataKey="timestamp"
-              tick={{ fill: '#9CA3AF', fontSize: 11 }}
+              tick={{ fill: 'var(--fi-text-muted)', fontSize: 11 }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(ts: number) => {
@@ -303,7 +303,7 @@ export function AssessmentHistory({ runs = [], scoreHistory }: AssessmentHistory
             />
             <YAxis
               domain={yDomain}
-              tick={{ fill: '#9CA3AF', fontSize: 11 }}
+              tick={{ fill: 'var(--fi-text-muted)', fontSize: 11 }}
               tickLine={false}
               axisLine={false}
               tickCount={5}

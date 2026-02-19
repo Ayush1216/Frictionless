@@ -35,6 +35,16 @@ const nextConfig = {
         hostname: '*.supabase.in',
         pathname: '/storage/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'zenprospect-production.s3.amazonaws.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.amazonaws.com',
+        pathname: '/**',
+      },
     ],
   },
   // Enable compression

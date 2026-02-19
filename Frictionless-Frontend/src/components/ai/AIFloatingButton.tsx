@@ -33,20 +33,26 @@ export function AIFloatingButton({ onClick, className }: AIFloatingButtonProps) 
             )}
           >
             {/* Subtle blur glow behind the logo */}
-            <div className="absolute inset-[-8px] rounded-full bg-primary/10 blur-xl group-hover:blur-2xl group-hover:bg-primary/15 transition-all duration-300" />
+            <div
+              className="absolute inset-[-8px] rounded-full blur-xl group-hover:blur-2xl transition-all duration-300"
+              style={{ background: 'var(--fi-primary)', opacity: 0.1 }}
+            />
 
-            {/* Frosted glass circle — transparent with blur */}
+            {/* Frosted glass circle */}
             <div
               className={cn(
                 'relative w-14 h-14 rounded-full',
                 'flex items-center justify-center',
-                'backdrop-blur-xl bg-background/60 dark:bg-background/40',
-                'border border-border/50',
-                'shadow-lg shadow-black/10',
-                'group-hover:shadow-xl group-hover:border-primary/30',
+                'backdrop-blur-xl',
+                'shadow-lg',
+                'group-hover:shadow-xl',
                 'transition-all duration-300',
                 'overflow-hidden',
               )}
+              style={{
+                background: 'color-mix(in srgb, var(--fi-bg) 60%, transparent)',
+                border: '1px solid var(--fi-border)',
+              }}
             >
               <Image
                 src="/ai-logo.png"
@@ -58,10 +64,28 @@ export function AIFloatingButton({ onClick, className }: AIFloatingButtonProps) 
             </div>
           </motion.button>
         </TooltipTrigger>
-        <TooltipContent side="left" sideOffset={16} className="hidden sm:block bg-card border-border text-foreground">
+        <TooltipContent
+          side="left"
+          sideOffset={16}
+          className="hidden sm:block"
+          style={{
+            background: 'var(--fi-bg-card)',
+            border: '1px solid var(--fi-border)',
+            color: 'var(--fi-text-primary)',
+          }}
+        >
           <div className="flex items-center gap-2">
             <span>Frictionless Intelligence</span>
-            <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-muted border border-border font-mono">⌘J</kbd>
+            <kbd
+              className="text-[10px] px-1.5 py-0.5 rounded font-mono"
+              style={{
+                background: 'var(--fi-bg-secondary)',
+                border: '1px solid var(--fi-border)',
+                color: 'var(--fi-text-muted)',
+              }}
+            >
+              ⌘J
+            </kbd>
           </div>
         </TooltipContent>
       </Tooltip>

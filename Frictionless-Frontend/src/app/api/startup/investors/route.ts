@@ -54,14 +54,11 @@ export async function GET(request: NextRequest) {
 
     const orgId = await getCurrentUserOrgId(supabase);
     if (!orgId) {
-      console.log('[investors/route] No org_id found for user');
       return NextResponse.json(
         { status: 'error', error: 'No organization found. Please complete your startup profile first.', matches: [] },
         { status: 200 }
       );
     }
-
-    console.log(`[investors/route] Checking matches for org ${orgId} (service_key=${!!process.env.SUPABASE_SERVICE_ROLE_KEY})`);
 
     // --- 1. Check startup_investor_matches directly from Supabase ---
     // Try service-role client first (bypasses RLS), fall back to authenticated client
@@ -76,7 +73,6 @@ export async function GET(request: NextRequest) {
       console.error('[investors/route] Supabase query error:', dbErr.message);
       // If service-role failed (e.g. RLS), retry with authenticated client
       if (sb !== supabase) {
-        console.log('[investors/route] Retrying with authenticated client...');
         const { data: rows2, error: dbErr2 } = await supabase
           .from('startup_investor_matches')
           .select('*')
@@ -84,7 +80,6 @@ export async function GET(request: NextRequest) {
           .order('fit_score_0_to_100', { ascending: false });
 
         if (!dbErr2 && rows2 && rows2.length > 0) {
-          console.log(`[investors/route] Found ${rows2.length} matches via auth client`);
           const matches = rows2.map(normalizeMatch);
           if (matches.length < TARGET_MATCHES) triggerPipeline(orgId);
           return NextResponse.json(
@@ -97,7 +92,6 @@ export async function GET(request: NextRequest) {
     }
 
     if (!dbErr && rows && rows.length > 0) {
-      console.log(`[investors/route] Found ${rows.length} matches in DB — returning immediately`);
       const matches = rows.map(normalizeMatch);
 
       // If fewer than target, trigger more in background (non-blocking)
@@ -111,7 +105,29 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('[investors/route] No matches in DB — checking backend status...');
+    // --- Fast path: if frontend already knows pipeline is running, skip the slow backend status call ---
+    // BUT still check DB directly — matches may have been progressively written since last poll
+    const knownStatus = request.nextUrl.searchParams.get('known_status');
+    if (knownStatus === 'generating' || knownStatus === 'matching') {
+      // Re-query DB with auth client (in case service-role check above failed/was skipped)
+      const { data: fastRows } = await supabase
+        .from('startup_investor_matches')
+        .select('*')
+        .eq('org_id', orgId)
+        .order('fit_score_0_to_100', { ascending: false });
+      if (fastRows && fastRows.length > 0) {
+        const matches = fastRows.map(normalizeMatch);
+        return NextResponse.json(
+          { status: 'ready', matches, match_count: matches.length },
+          { headers: { 'Cache-Control': 'no-store' } }
+        );
+      }
+      // Still nothing in DB — pipeline genuinely in progress
+      return NextResponse.json(
+        { status: knownStatus, matches: [], message: `Pipeline still ${knownStatus}...` },
+        { headers: { 'Cache-Control': 'no-store' } }
+      );
+    }
 
     // --- 2. No matches in DB yet — check backend status & trigger pipeline ---
     const backendBase = BACKEND_URL.replace(/\/$/, '');
@@ -124,7 +140,6 @@ export async function GET(request: NextRequest) {
       );
       const data = await res.json().catch(() => ({}));
       backendStatus = data.status || 'unknown';
-      console.log(`[investors/route] Backend status: ${backendStatus}`);
     } catch (err) {
       backendStatus = 'unreachable';
       console.error(`[investors/route] Backend unreachable at ${backendBase}:`, err instanceof Error ? err.message : err);
@@ -132,11 +147,9 @@ export async function GET(request: NextRequest) {
 
     // If pipeline is already running, relay the status
     if (backendStatus === 'generating') {
-      console.log('[investors/route] Pipeline is generating thesis — relaying status');
       return NextResponse.json({ status: 'generating', matches: [], message: 'Generating thesis profile...' });
     }
     if (backendStatus === 'matching') {
-      console.log('[investors/route] Pipeline is matching — relaying status');
       return NextResponse.json({ status: 'matching', matches: [], message: 'Finding investor matches...' });
     }
 
@@ -151,7 +164,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Backend is reachable but no matches yet — trigger pipeline and report status
-    console.log(`[investors/route] Triggering pipeline for org ${orgId} (backend said: ${backendStatus})`);
     const triggered = await triggerPipelineWithStatus(orgId);
 
     if (!triggered) {
@@ -165,7 +177,6 @@ export async function GET(request: NextRequest) {
 
     // Pipeline was successfully triggered
     const returnStatus = backendStatus === 'no_profile' ? 'generating' : 'matching';
-    console.log(`[investors/route] Pipeline triggered — returning status: ${returnStatus}`);
     return NextResponse.json({
       status: returnStatus,
       matches: [],
@@ -182,15 +193,16 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/** Fire-and-forget: trigger the backend pipeline (used for background top-up) */
+/** Fire-and-forget: trigger the backend pipeline (used for background match top-up) */
 function triggerPipeline(orgId: string) {
   const backendBase = BACKEND_URL.replace(/\/$/, '');
   fetch(`${backendBase}/api/run-investor-pipeline`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ org_id: orgId, max_matches: TARGET_MATCHES }),
-  }).catch((err) => {
-    console.error('[investors/route] triggerPipeline fire-and-forget failed:', err instanceof Error ? err.message : err);
+    body: JSON.stringify({ org_id: orgId, max_matches: 10 }),
+    signal: AbortSignal.timeout(30_000), // 30 s — pipeline accepts and runs async
+  }).catch(() => {
+    // Non-critical: background top-up failed; user already has existing matches
   });
 }
 
@@ -201,11 +213,10 @@ async function triggerPipelineWithStatus(orgId: string): Promise<boolean> {
     const res = await fetch(`${backendBase}/api/run-investor-pipeline`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ org_id: orgId, max_matches: TARGET_MATCHES }),
+      body: JSON.stringify({ org_id: orgId, max_matches: 10 }),
       signal: AbortSignal.timeout(10000),
     });
     const data = await res.json().catch(() => ({}));
-    console.log(`[investors/route] Pipeline trigger response:`, data);
     return res.ok && data.ok !== false;
   } catch (err) {
     console.error('[investors/route] Pipeline trigger failed:', err instanceof Error ? err.message : err);

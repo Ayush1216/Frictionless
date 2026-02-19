@@ -177,11 +177,11 @@ export default function PortfolioPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={stageData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
-                <XAxis dataKey="name" tick={{ fill: '#9CA3AF', fontSize: 11 }} axisLine={false} />
-                <YAxis tick={{ fill: '#9CA3AF', fontSize: 12 }} axisLine={false} allowDecimals={false} />
+                <XAxis dataKey="name" tick={{ fill: 'var(--fi-text-muted)', fontSize: 11 }} axisLine={false} />
+                <YAxis tick={{ fill: 'var(--fi-text-muted)', fontSize: 12 }} axisLine={false} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: '#9CA3AF' }}
+                  labelStyle={{ color: 'var(--fi-text-muted)' }}
                 />
                 <Bar dataKey="count" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
               </BarChart>

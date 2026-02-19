@@ -69,7 +69,6 @@ export async function POST(request: NextRequest) {
     const url = `${BACKEND_URL.replace(/\/$/, '')}/api/run-extraction-pipeline`;
     if (org?.org_type === 'startup' && BACKEND_URL) {
       try {
-        console.log('[onboarding/pitch-deck] Triggering extraction at', url);
         const extRes = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -78,16 +77,11 @@ export async function POST(request: NextRequest) {
         const extData = await extRes.json().catch(() => ({}));
         if (!extRes.ok) {
           console.error('[onboarding/pitch-deck] Extraction trigger failed:', extRes.status, extData);
-        } else {
-          console.log('[onboarding/pitch-deck] Extraction started:', extData);
         }
       } catch (e) {
         console.error('[onboarding/pitch-deck] Extraction trigger failed:', e);
       }
     } else {
-      if (org?.org_type !== 'startup') {
-        console.log('[onboarding/pitch-deck] Skipping extraction: org_type=', org?.org_type);
-      }
       if (!BACKEND_URL) {
         console.warn('[onboarding/pitch-deck] BACKEND_URL not set, skipping extraction');
       }

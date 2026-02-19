@@ -31,10 +31,10 @@ export function RadarChart({
     <div className={cn('w-full', className)} style={{ height: size }}>
       <ResponsiveContainer width="100%" height="100%">
         <RechartsRadar data={data} cx="50%" cy="50%" outerRadius="75%">
-          <PolarGrid stroke="rgba(75,85,99,0.3)" />
+          <PolarGrid stroke="var(--fi-border)" />
           <PolarAngleAxis
             dataKey="dimension"
-            tick={{ fontSize: 10, fill: '#9CA3AF' }}
+            tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }}
           />
           <Radar
             dataKey="score"
@@ -44,6 +44,7 @@ export function RadarChart({
             strokeWidth={2}
             isAnimationActive={true}
             animationDuration={1000}
+            animationEasing="ease-out"
           />
         </RechartsRadar>
       </ResponsiveContainer>

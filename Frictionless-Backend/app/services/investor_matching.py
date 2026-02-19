@@ -4,6 +4,8 @@ Wraps thesis_fit_pipeline_v2.py functions to:
 1. Generate a startup thesis profile from Supabase data.
 2. Run deterministic investor matching against investor_universal_profiles.
 3. Store results in startup_investor_matches.
+4. Generate AI reasoning for each match (Gemini 2.5 Flash Lite) after DB save.
+5. Support adding custom investors by name + URL.
 
 Key tables:
   - startup_thesis_fit_profiles   (jsonb: thesis_profile)
@@ -13,9 +15,11 @@ Key tables:
 import json
 import logging
 import os
+import re
 import sys
 import time
 import traceback
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
 
@@ -424,8 +428,37 @@ def get_startup_thesis_profile(supabase, org_id: str) -> Optional[Dict[str, Any]
     return None
 
 
+def _build_match_row(org_id: str, m: Dict[str, Any], matched_at: str) -> Dict[str, Any]:
+    return {
+        "org_id": org_id,
+        "investor_id": m["investor_id"],
+        "fit_score_0_to_100": m.get("fit_score_0_to_100", 0),
+        "fit_score_if_eligible_0_to_100": m.get("fit_score_if_eligible_0_to_100", 0),
+        "eligible": m.get("eligible", False),
+        "gate_fail_reasons": m.get("gate_fail_reasons", []),
+        "category_breakdown": m.get("category_breakdown", {}),
+        "investor_profile": m.get("investor_profile", {}),
+        "matching_version": m.get("matching_version", "manual_deterministic_v2"),
+        "matched_at": matched_at,
+    }
+
+
+def _upsert_matches_progressive(supabase, org_id: str, matches: List[Dict[str, Any]], matched_at: str) -> None:
+    """Upsert a batch of matches WITHOUT deleting existing ones.
+    Used for progressive writes during scoring so the frontend can show results early.
+    """
+    if not matches:
+        return
+    rows = [_build_match_row(org_id, m, matched_at) for m in matches]
+    try:
+        supabase.table("startup_investor_matches").upsert(rows, on_conflict="org_id,investor_id").execute()
+        _p(f"  [progressive] Upserted {len(rows)} matches to DB")
+    except Exception as e:
+        _p(f"  [progressive] Upsert failed (non-fatal): {e}")
+
+
 def run_investor_matching(
-    supabase, org_id: str, max_matches: int = 10
+    supabase, org_id: str, max_matches: int = 20
 ) -> List[Dict[str, Any]]:
     """Run investor matching for a startup.
 
@@ -495,6 +528,13 @@ def run_investor_matching(
     scored_count = 0
     failed_count = 0
     t_score = time.time()
+    matched_at = now_utc_iso()
+
+    # Progressive write: show top-5 to the frontend after every INTERIM_EVERY investors scored.
+    # This lets the UI display results immediately instead of waiting for all scoring to finish.
+    INTERIM_EVERY = 30
+    INTERIM_TOP_N = 5
+    last_interim_at = 0
 
     with ThreadPoolExecutor(max_workers=10) as pool:
         futures = {
@@ -507,10 +547,17 @@ def run_investor_matching(
             if result is not None:
                 match_results.append(result)
                 scored_count += 1
-                if scored_count % 50 == 0 or (scored_count + failed_count) == total:
-                    pct = int((scored_count + failed_count) / total * 100)
+                done = scored_count + failed_count
+                if done % 50 == 0 or done == total:
+                    pct = int(done / total * 100)
                     best_so_far = max((r.get("fit_score_0_to_100", 0) for r in match_results), default=0)
-                    _p(f"  Progress: {scored_count + failed_count}/{total} ({pct}%) — best score so far: {best_so_far:.1f}")
+                    _p(f"  Progress: {done}/{total} ({pct}%) — best score so far: {best_so_far:.1f}")
+
+                # Progressive DB write so frontend can show early results
+                if scored_count >= INTERIM_TOP_N and (scored_count - last_interim_at) >= INTERIM_EVERY:
+                    interim_top = sorted(match_results, key=lambda r: r.get("fit_score_0_to_100", 0), reverse=True)[:INTERIM_TOP_N]
+                    _upsert_matches_progressive(supabase, org_id, interim_top, matched_at)
+                    last_interim_at = scored_count
             else:
                 failed_count += 1
 
@@ -549,37 +596,26 @@ def run_investor_matching(
              top_matches[0].get("fit_score_0_to_100", 0) if top_matches else 0,
              top_matches[-1].get("fit_score_0_to_100", 0) if top_matches else 0)
 
-    # --- Store results ---
-    _print_section("Step 5: Saving to Database")
-    matched_at = now_utc_iso()
-    rows_to_upsert = []
-    for m in top_matches:
-        rows_to_upsert.append({
-            "org_id": org_id,
-            "investor_id": m["investor_id"],
-            "fit_score_0_to_100": m.get("fit_score_0_to_100", 0),
-            "fit_score_if_eligible_0_to_100": m.get("fit_score_if_eligible_0_to_100", 0),
-            "eligible": m.get("eligible", False),
-            "gate_fail_reasons": m.get("gate_fail_reasons", []),
-            "category_breakdown": m.get("category_breakdown", {}),
-            "investor_profile": m.get("investor_profile", {}),
-            "matching_version": m.get("matching_version", "manual_deterministic_v2"),
-            "matched_at": matched_at,
-        })
+    # --- Store final definitive results ---
+    # Delete ALL old matches for this org (including interim progressive writes),
+    # then write the definitive top-N sorted results.
+    _print_section("Step 5: Saving Final Results to Database")
+    rows_to_upsert = [_build_match_row(org_id, m, matched_at) for m in top_matches]
 
     stored = 0
     try:
-        _p(f"  Deleting old matches for org...")
-        supabase.table("startup_investor_matches").delete().eq("org_id", org_id).execute()
-        _p(f"  Inserting {len(rows_to_upsert)} new matches...")
+        _p(f"  Replacing {len(rows_to_upsert)} matches (delete auto-matches only, preserve custom)...")
+        # Only delete auto-generated matches — preserve user-added custom investors
+        supabase.table("startup_investor_matches").delete().eq(
+            "org_id", org_id
+        ).neq("matching_version", "custom_added_v1").execute()
         supabase.table("startup_investor_matches").upsert(
             rows_to_upsert, on_conflict="org_id,investor_id"
         ).execute()
         stored = len(rows_to_upsert)
         _p(f"  Saved {stored} matches successfully.")
     except Exception as e:
-        _p(f"  Batch upsert failed: {e}")
-        _p(f"  Falling back to one-by-one inserts...")
+        _p(f"  Batch upsert failed: {e} – falling back to one-by-one")
         log.warning("Upsert failed for org %s: %s – falling back to one-by-one", org_id, e)
         for row in rows_to_upsert:
             try:
@@ -600,7 +636,292 @@ def run_investor_matching(
     _p("")
 
     log.info("Stored %d/%d investor matches for org %s", stored, len(top_matches), org_id)
+
+    # --- Generate AI reasoning for saved matches (after DB save so it's non-blocking) ---
+    if stored > 0:
+        _print_section("Step 6: Generating AI Reasoning (Gemini 2.5 Flash Lite)")
+        try:
+            reasoning_count = generate_match_reasonings(supabase, org_id, top_n=min(stored, 10))
+            _p(f"  Reasoning generated for {reasoning_count} matches")
+        except Exception as e:
+            _p(f"  Reasoning generation failed (non-fatal): {e}")
+            log.warning("Reasoning generation failed for org %s: %s", org_id, e)
+
     return top_matches
+
+
+def _generate_reasoning_for_match(
+    startup_profile: Dict[str, Any],
+    match: Dict[str, Any],
+    model: str = "gemini-2.5-flash-lite",
+) -> Optional[str]:
+    """Generate 2-3 sentence AI reasoning for a single investor match using Gemini."""
+    try:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return None
+
+        from google import genai
+        from google.genai import types
+
+        inv = match.get("investor_profile", {})
+        if not isinstance(inv, dict):
+            inv = {}
+        investor_name = inv.get("name") or "This investor"
+        score = match.get("fit_score_0_to_100", 0)
+        eligible = match.get("eligible", False)
+        stages = inv.get("stages") or []
+        sectors = (inv.get("sectors") or [])[:4]
+        breakdown = match.get("category_breakdown") or {}
+
+        startup = startup_profile.get("startup", {})
+        startup_sectors = (startup.get("sectors_normalized") or [])[:3]
+        startup_stage = startup.get("stage_normalized") or ""
+
+        cats = []
+        for key, data in breakdown.items():
+            if isinstance(data, dict):
+                label = key.replace("_", " ").title()
+                max_pt = data.get("max_point", 0) or 0
+                raw_pt = data.get("raw_points", 0) or 0
+                pct = int((raw_pt / max_pt) * 100) if max_pt > 0 else 0
+                cats.append(f"{label}: {pct}%")
+
+        prompt = (
+            f"You are a startup fundraising advisor. In exactly 2-3 sentences explain why "
+            f"{investor_name} is a strong match for this startup. Be specific about the "
+            f"strongest alignment. Do not start with 'Based on' or 'According to'. "
+            f"Write in third person starting with 'This investor...'.\n\n"
+            f"Investor: {investor_name}\n"
+            f"Fit Score: {score:.1f}/100\n"
+            f"Eligible: {'Yes' if eligible else 'No'}\n"
+            f"Investor stages: {', '.join(stages) if stages else 'Not specified'}\n"
+            f"Investor sectors: {', '.join(sectors) if sectors else 'Not specified'}\n"
+            f"Startup stage: {startup_stage}\n"
+            f"Startup sectors: {', '.join(startup_sectors) if startup_sectors else 'Not specified'}\n"
+            f"Category scores: {', '.join(cats)}"
+        )
+
+        client = genai.Client(api_key=api_key)
+        resp = client.models.generate_content(
+            model=model,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.3,
+                max_output_tokens=200,
+            ),
+        )
+        text = (getattr(resp, "text", None) or "").strip()
+        return text if text else None
+    except Exception as e:
+        log.warning("Failed to generate reasoning for investor %s: %s", match.get("investor_id"), e)
+        return None
+
+
+def generate_match_reasonings(supabase, org_id: str, top_n: int = 10) -> int:
+    """Generate AI reasoning for top N matches and store in investor_profile JSONB.
+
+    Call this AFTER matches are saved to DB. Returns count of successful generations.
+    """
+    _p(f"  [Reasoning] Generating AI reasoning for top {top_n} matches...")
+    try:
+        matches = get_investor_matches(supabase, org_id)
+        top_matches = matches[:top_n]
+    except Exception as e:
+        _p(f"  [Reasoning] ERROR fetching matches: {e}")
+        return 0
+
+    startup_profile = get_startup_thesis_profile(supabase, org_id)
+    if not startup_profile:
+        _p("  [Reasoning] No startup profile — skipping")
+        return 0
+
+    successful = 0
+
+    def _generate_and_save(match: Dict[str, Any]) -> bool:
+        reasoning = _generate_reasoning_for_match(startup_profile, match)
+        if not reasoning:
+            return False
+        inv_profile = match.get("investor_profile") or {}
+        if not isinstance(inv_profile, dict):
+            inv_profile = {}
+        inv_profile_updated = {**inv_profile, "ai_reasoning": reasoning}
+        try:
+            supabase.table("startup_investor_matches").update(
+                {"investor_profile": inv_profile_updated}
+            ).eq("org_id", org_id).eq("investor_id", match["investor_id"]).execute()
+            return True
+        except Exception as e:
+            _p(f"  [Reasoning] ERROR saving reasoning for {match.get('investor_id')}: {e}")
+            return False
+
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        futures = [pool.submit(_generate_and_save, m) for m in top_matches]
+        for f in as_completed(futures):
+            try:
+                if f.result():
+                    successful += 1
+            except Exception:
+                pass
+
+    _p(f"  [Reasoning] Generated {successful}/{len(top_matches)} reasonings")
+    return successful
+
+
+def add_custom_investor_match(
+    supabase, org_id: str, investor_name: str, investor_url: str
+) -> Optional[Dict[str, Any]]:
+    """Add a custom investor by scraping their website and matching against startup.
+
+    1. Fetches website text.
+    2. Uses Gemini to extract investor thesis.
+    3. Runs manual_match against startup profile.
+    4. Generates AI reasoning.
+    5. Saves result to startup_investor_matches.
+
+    Returns the match result dict or None on failure.
+    """
+    import requests as _requests
+
+    _p(f"  [AddCustom] {investor_name} | {investor_url}")
+
+    # Step 1: Fetch website content
+    website_text = ""
+    try:
+        resp = _requests.get(
+            investor_url,
+            timeout=10,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; FrictionlessBot/1.0)"},
+        )
+        if resp.status_code == 200:
+            # Strip HTML tags
+            raw = re.sub(r"<[^>]+>", " ", resp.text)
+            website_text = re.sub(r"\s+", " ", raw).strip()[:6000]
+            _p(f"  [AddCustom] Fetched {len(website_text)} chars from website")
+    except Exception as e:
+        _p(f"  [AddCustom] WARNING: Could not fetch website: {e}")
+
+    # Step 2: Use Gemini to infer investor thesis
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        _p("  [AddCustom] ERROR: No GEMINI_API_KEY for thesis inference")
+        return None
+
+    try:
+        from google import genai
+        from google.genai import types
+
+        infer_prompt = (
+            f"You are an expert at analyzing investor profiles. Based on the information below, "
+            f"extract a structured investor thesis profile.\n\n"
+            f"Investor Name: {investor_name}\n"
+            f"Investor URL: {investor_url}\n"
+            f"Website Content: {website_text}\n\n"
+            f"Return a JSON object with exactly these fields:\n"
+            f'{{"investor_name": "{investor_name}", '
+            f'"investor_type": "VC or Angel or Family Office or Corporate or Accelerator", '
+            f'"investor_stages": ["Seed", "Series A"], '
+            f'"investor_sectors": ["HealthTech", "SaaS"], '
+            f'"investor_geography_focus": ["Global", "USA"], '
+            f'"investor_thesis_summary": "brief thesis...", '
+            f'"investor_minimum_check_usd": 50000, '
+            f'"investor_typical_check_usd": 250000, '
+            f'"investor_maximum_check_usd": 1000000, '
+            f'"investor_prefers_b2b": true, '
+            f'"investor_prefers_b2c": false, '
+            f'"investor_lead_or_follow": "both", '
+            f'"investor_hq_city": "New York", '
+            f'"investor_hq_state": "NY", '
+            f'"investor_hq_country": "USA"}}\n\n'
+            f"Return ONLY valid JSON, no markdown, no explanation."
+        )
+
+        client = genai.Client(api_key=api_key)
+        resp = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=infer_prompt,
+            config=types.GenerateContentConfig(temperature=0.1, max_output_tokens=1024),
+        )
+        text = (getattr(resp, "text", None) or "").strip()
+        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s*```$", "", text)
+        start = text.find("{")
+        end = text.rfind("}")
+        if start >= 0 and end > start:
+            inv_data = json.loads(text[start : end + 1])
+        else:
+            raise ValueError("No JSON found in Gemini response")
+        _p(f"  [AddCustom] Thesis inferred: {inv_data.get('investor_type')} | stages={inv_data.get('investor_stages')}")
+    except Exception as e:
+        _p(f"  [AddCustom] WARNING: Thesis inference failed ({e}), using defaults")
+        inv_data = {
+            "investor_name": investor_name,
+            "investor_type": "VC",
+            "investor_stages": ["Seed", "Series A"],
+            "investor_sectors": [],
+            "investor_geography_focus": ["Global"],
+            "investor_thesis_summary": f"{investor_name} invests in early-stage startups.",
+            "investor_prefers_b2b": None,
+            "investor_prefers_b2c": None,
+            "investor_lead_or_follow": "both",
+            "investor_hq_city": None,
+            "investor_hq_state": None,
+            "investor_hq_country": None,
+        }
+
+    # Step 3: Build investor thesis and run matching
+    investor_thesis = infer_investor_heuristic(inv_data)
+    investor_thesis = fill_investor_defaults(investor_thesis)
+
+    startup_profile = get_startup_thesis_profile(supabase, org_id)
+    if not startup_profile:
+        _p("  [AddCustom] No startup profile — cannot match")
+        return None
+
+    # Step 4: Run matching
+    result = manual_match(startup_profile, investor_thesis)
+    custom_id = f"custom_{uuid.uuid4().hex[:12]}"
+    result["investor_id"] = custom_id
+    result["investor_name"] = investor_name
+    result["investor_profile"] = {
+        "id": custom_id,
+        "name": investor_name,
+        "logo_url": None,
+        "city": inv_data.get("investor_hq_city"),
+        "state": inv_data.get("investor_hq_state"),
+        "country": inv_data.get("investor_hq_country"),
+        "website": investor_url,
+        "investor_type": inv_data.get("investor_type", "VC"),
+        "check_min_usd": inv_data.get("investor_minimum_check_usd"),
+        "check_max_usd": inv_data.get("investor_maximum_check_usd"),
+        "check_typical_usd": inv_data.get("investor_typical_check_usd"),
+        "stages": inv_data.get("investor_stages") or [],
+        "sectors": inv_data.get("investor_sectors") or [],
+        "is_custom": True,
+    }
+
+    # Step 5: Generate reasoning
+    reasoning = _generate_reasoning_for_match(startup_profile, result)
+    if reasoning:
+        result["investor_profile"]["ai_reasoning"] = reasoning
+        _p(f"  [AddCustom] Reasoning generated ({len(reasoning)} chars)")
+
+    # Step 6: Save to DB
+    matched_at = now_utc_iso()
+    row = _build_match_row(org_id, result, matched_at)
+    row["matching_version"] = "custom_added_v1"
+
+    try:
+        supabase.table("startup_investor_matches").upsert(
+            row, on_conflict="org_id,investor_id"
+        ).execute()
+        score = result.get("fit_score_0_to_100", 0)
+        _p(f"  [AddCustom] Saved: {investor_name} (score: {score:.1f})")
+    except Exception as e:
+        _p(f"  [AddCustom] ERROR saving to DB: {e}")
+        return None
+
+    return result
 
 
 def get_investor_matches(supabase, org_id: str) -> List[Dict[str, Any]]:

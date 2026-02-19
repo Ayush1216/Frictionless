@@ -27,9 +27,12 @@ function CustomTooltip({ active, payload, label }: Record<string, unknown>) {
   if (!active || !payload || !(payload as Array<Record<string, unknown>>).length) return null;
   const items = payload as Array<{ value: number }>;
   return (
-    <div className="glass-card px-3 py-2 text-xs">
-      <p className="text-muted-foreground mb-1">{label as string}</p>
-      <p className="font-mono font-semibold text-foreground">
+    <div
+      className="fi-card px-3 py-2 text-xs"
+      style={{ padding: '8px 12px' }}
+    >
+      <p className="mb-1" style={{ color: 'var(--fi-text-muted)' }}>{label as string}</p>
+      <p className="font-mono font-semibold" style={{ color: 'var(--fi-text-primary)' }}>
         {items[0].value}
       </p>
     </div>
@@ -54,15 +57,15 @@ export function AnimatedLineChart({
               <stop offset="100%" stopColor={color} stopOpacity={0.0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.2)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--fi-border)" />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 10, fill: '#9CA3AF' }}
+            tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }}
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            tick={{ fontSize: 10, fill: '#9CA3AF' }}
+            tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }}
             tickLine={false}
             axisLine={false}
             domain={['dataMin - 5', 'dataMax + 5']}
@@ -78,6 +81,7 @@ export function AnimatedLineChart({
             activeDot={{ r: 5, fill: color, stroke: '#fff', strokeWidth: 2 }}
             isAnimationActive={true}
             animationDuration={1200}
+            animationEasing="ease-out"
           />
         </AreaChart>
       </ResponsiveContainer>

@@ -122,12 +122,11 @@ export function FileDropzone({
         onClick={() => inputRef.current?.click()}
         whileHover={{ scale: 1.01 }}
         whileTap={{ scale: 0.99 }}
-        className={cn(
-          'relative flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-dashed cursor-pointer transition-colors',
-          isDragging
-            ? 'border-primary bg-primary/10'
-            : 'border-border hover:border-muted-foreground bg-card/50'
-        )}
+        className="relative flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-dashed cursor-pointer transition-colors"
+        style={{
+          borderColor: isDragging ? 'var(--fi-primary)' : 'var(--fi-border)',
+          background: isDragging ? 'rgba(16,185,129,0.08)' : 'var(--fi-bg-card)',
+        }}
       >
         <input
           ref={inputRef}
@@ -138,23 +137,19 @@ export function FileDropzone({
           className="hidden"
         />
         <div
-          className={cn(
-            'w-12 h-12 rounded-xl flex items-center justify-center transition-colors',
-            isDragging ? 'bg-primary/20' : 'bg-muted'
-          )}
+          className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors"
+          style={{ background: isDragging ? 'rgba(16,185,129,0.15)' : 'var(--fi-bg-tertiary)' }}
         >
           <Upload
-            className={cn(
-              'w-6 h-6 transition-colors',
-              isDragging ? 'text-primary' : 'text-muted-foreground'
-            )}
+            className="w-6 h-6 transition-colors"
+            style={{ color: isDragging ? 'var(--fi-primary)' : 'var(--fi-text-muted)' }}
           />
         </div>
         <div className="text-center">
-          <p className="text-sm font-medium text-foreground">
+          <p className="text-sm font-medium" style={{ color: 'var(--fi-text-primary)' }}>
             {isDragging ? 'Drop files here' : 'Drag & drop files here'}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs mt-1" style={{ color: 'var(--fi-text-muted)' }}>
             or click to browse &middot; Max {formatSize(maxSize)}
           </p>
         </div>
@@ -168,13 +163,14 @@ export function FileDropzone({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="flex items-center gap-3 p-3 rounded-lg bg-card/60 border border-border/50"
+            className="flex items-center gap-3 p-3 rounded-lg"
+            style={{ background: 'var(--fi-bg-secondary)', border: '1px solid var(--fi-border)' }}
           >
-            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--fi-bg-tertiary)' }}>
               {uf.complete ? (
-                <CheckCircle2 className="w-4 h-4 text-score-excellent" />
+                <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--fi-score-excellent)' }} />
               ) : (
-                <File className="w-4 h-4 text-muted-foreground" />
+                <File className="w-4 h-4" style={{ color: 'var(--fi-text-muted)' }} />
               )}
             </div>
             <div className="flex-1 min-w-0 space-y-1">

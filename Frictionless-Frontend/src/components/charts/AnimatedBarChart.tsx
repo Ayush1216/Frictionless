@@ -19,7 +19,7 @@ interface AnimatedBarChartProps {
 
 function getBarColor(score: number): string {
   if (score >= 86) return '#10B981'; // Excellent — Green
-  if (score >= 80) return '#EAB308'; // Good — Yellow
+  if (score >= 81) return '#EAB308'; // Good — Yellow
   return '#EF4444';                  // Need Improvement — Red
 }
 
@@ -45,7 +45,10 @@ export function AnimatedBarChart({
             className="space-y-1"
           >
             <div className="flex items-center justify-between">
-              <span className="text-sm font-body text-muted-foreground truncate pr-3">
+              <span
+                className="text-sm font-body truncate pr-3"
+                style={{ color: 'var(--fi-text-secondary)' }}
+              >
                 {cat.name}
               </span>
               <div className="flex items-center gap-2 shrink-0">
@@ -55,7 +58,7 @@ export function AnimatedBarChart({
                 <DeltaIndicator delta={cat.delta} />
               </div>
             </div>
-            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--fi-bg-tertiary)' }}>
               <motion.div
                 className="h-full rounded-full"
                 style={{ backgroundColor: color }}
@@ -74,7 +77,7 @@ export function AnimatedBarChart({
 function DeltaIndicator({ delta }: { delta: number }) {
   if (delta > 0) {
     return (
-      <span className="flex items-center gap-0.5 text-xs font-mono text-score-excellent">
+      <span className="flex items-center gap-0.5 text-xs font-mono" style={{ color: 'var(--fi-score-excellent)' }}>
         <TrendingUp className="w-3 h-3" />
         +{delta}
       </span>
@@ -82,7 +85,7 @@ function DeltaIndicator({ delta }: { delta: number }) {
   }
   if (delta < 0) {
     return (
-      <span className="flex items-center gap-0.5 text-xs font-mono text-score-poor">
+      <span className="flex items-center gap-0.5 text-xs font-mono" style={{ color: 'var(--fi-score-need-improvement)' }}>
         <TrendingDown className="w-3 h-3" />
         {delta}
       </span>

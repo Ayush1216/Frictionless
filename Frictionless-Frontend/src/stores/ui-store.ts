@@ -13,6 +13,8 @@ interface UIStore {
   notificationsOpen: boolean;
   commandPaletteOpen: boolean;
   aiHelperOpen: boolean;
+  intelligenceOpen: boolean;
+  intelligencePrompt: string | null;
   toggleSidebar: () => void;
   collapseSidebar: () => void;
   setTheme: (theme: Theme) => void;
@@ -24,6 +26,10 @@ interface UIStore {
   toggleNotifications: () => void;
   toggleCommandPalette: () => void;
   toggleAIHelper: () => void;
+  toggleIntelligence: () => void;
+  setIntelligenceOpen: (open: boolean) => void;
+  openIntelligenceWithPrompt: (prompt: string) => void;
+  clearIntelligencePrompt: () => void;
 }
 
 export const useUIStore = create<UIStore>()(
@@ -38,6 +44,8 @@ export const useUIStore = create<UIStore>()(
   notificationsOpen: false,
   commandPaletteOpen: false,
   aiHelperOpen: false,
+  intelligenceOpen: false,
+  intelligencePrompt: null,
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   collapseSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setTheme: (theme) => set({ theme }),
@@ -49,6 +57,10 @@ export const useUIStore = create<UIStore>()(
   toggleNotifications: () => set((state) => ({ notificationsOpen: !state.notificationsOpen })),
   toggleCommandPalette: () => set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
   toggleAIHelper: () => set((state) => ({ aiHelperOpen: !state.aiHelperOpen })),
+  toggleIntelligence: () => set((state) => ({ intelligenceOpen: !state.intelligenceOpen })),
+  setIntelligenceOpen: (open) => set({ intelligenceOpen: open }),
+  openIntelligenceWithPrompt: (prompt) => set({ intelligenceOpen: true, intelligencePrompt: prompt }),
+  clearIntelligencePrompt: () => set({ intelligencePrompt: null }),
 }),
     { name: 'ui-store', partialize: (state) => ({ theme: state.theme }) }
   )

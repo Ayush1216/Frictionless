@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Trigger readiness scoring on backend (runs in background)
+    // Trigger readiness scoring on backend (runs asynchronously on backend)
     const backendUrl = process.env.FRICTIONLESS_BACKEND_URL || 'http://localhost:8000';
     const url = `${backendUrl.replace(/\/$/, '')}/api/run-readiness-scoring`;
     try {
@@ -116,14 +116,15 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ org_id: orgId }),
+        signal: AbortSignal.timeout(10_000), // 10 s — backend accepts and queues immediately
       });
-      console.log('[questionnaire] Readiness backend call:', res.status, url);
       if (!res.ok) {
-        const txt = await res.text();
-        console.warn('[questionnaire] Backend error:', res.status, txt?.slice(0, 200));
+        const txt = await res.text().catch(() => '');
+        console.warn('[questionnaire] Backend scoring trigger returned non-OK:', res.status, txt.slice(0, 200));
       }
     } catch (e) {
-      console.warn('[questionnaire] Failed to trigger readiness scoring:', e);
+      const isTimeout = e instanceof DOMException && e.name === 'TimeoutError';
+      console.warn('[questionnaire] Failed to trigger readiness scoring:', isTimeout ? 'timeout (10s)' : e);
     }
 
     return NextResponse.json({ ok: true });

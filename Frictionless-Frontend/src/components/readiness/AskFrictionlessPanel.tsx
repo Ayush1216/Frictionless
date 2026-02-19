@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, CheckCircle2, Loader2, Sparkles, RefreshCw } from 'lucide-react';
+import { X, Send, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
@@ -31,7 +31,10 @@ const FRICTIONLESS_LOGO = '/ai-logo.png';
 
 function FrictionlessAvatar({ size = 26 }: { size?: number }) {
   return (
-    <div className="shrink-0 rounded-md overflow-hidden bg-primary/8 flex items-center justify-center" style={{ width: size, height: size }}>
+    <div
+      className="shrink-0 rounded-md overflow-hidden flex items-center justify-center"
+      style={{ width: size, height: size, background: 'rgba(16,185,129,0.08)' }}
+    >
       <Image src={FRICTIONLESS_LOGO} alt="Frictionless AI" width={size - 6} height={size - 6} className="object-contain" />
     </div>
   );
@@ -75,7 +78,6 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
           })));
         } else {
           setMessages([]);
-          // Auto-send initial message via backend
           await sendInitialMessage(task);
         }
       } catch {
@@ -123,16 +125,11 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
     await getBackendResponse([userMsg], t, initialUserMsg);
   }, [categoryName]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /**
-   * Send message to backend which has full company context (founders, team, profile).
-   * Falls back to frontend streaming if backend fails.
-   */
   const getBackendResponse = useCallback(async (allMessages: ChatMessage[], t: Task, userMessage: string) => {
     setIsStreaming(true);
     setStreamingContent('');
 
     try {
-      // Build history from all previous messages (exclude the current user message)
       const history = allMessages.slice(0, -1).map((m) => ({
         role: m.role,
         content: m.content,
@@ -153,19 +150,19 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
       setStreamingContent('');
       setIsStreaming(false);
 
-      // Check if backend suggests completion
       if (result.suggest_complete) {
         setSuggestComplete(true);
       }
+
+      // Persist messages to DB
+      try {
+        await saveTaskChatMessages(t.id, updatedMessages.map((m) => ({ role: m.role, content: m.content })));
+      } catch { /* non-blocking */ }
     } catch {
-      // Fallback to frontend streaming if backend fails
       await streamResponseFallback(allMessages, t);
     }
   }, []);
 
-  /**
-   * Fallback: frontend-only streaming (no company context).
-   */
   const streamResponseFallback = useCallback(async (allMessages: ChatMessage[], t: Task) => {
     const chatMsgs = [
       { role: 'system' as const, content: `You are "Ask Frictionless", a startup advisor helping complete readiness tasks. Be concise and actionable.` },
@@ -194,7 +191,6 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
     setStreamingContent('');
     setIsStreaming(false);
 
-    // Check if AI suggests completion
     const lower = fullContent.toLowerCase();
     if (lower.includes('mark') && lower.includes('complete') ||
         lower.includes('ready to complete') ||
@@ -202,7 +198,6 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
       setSuggestComplete(true);
     }
 
-    // Save history to server
     try {
       await saveTaskChatMessages(t.id, updatedMessages.map((m) => ({ role: m.role, content: m.content })));
     } catch {
@@ -250,7 +245,6 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
     try {
       const success = await tasksSync.completeTaskViaApi(task.id);
       if (success) {
-        // Generate completion analysis
         setCompletionAnalysis('generating');
         const systemPrompt = `You are a startup advisor. The founder just completed a readiness task. Provide a brief congratulatory analysis (3-4 sentences) of the impact this has on their readiness. Mention the category and potential score improvement. Be encouraging and specific.`;
         const analysisMsg = `I just completed the task: "${task.title}" in the "${categoryName}" category. It was worth ${task.potential_points ?? 'several'} points. Give me a brief analysis of what this means for my readiness.`;
@@ -270,11 +264,7 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
         }
 
         onTaskCompleted?.();
-
-        // Auto-close panel after 4 seconds so user sees the next task
-        setTimeout(() => {
-          onClose();
-        }, 4000);
+        setTimeout(() => { onClose(); }, 4000);
       }
     } catch {
       setCompletionAnalysis('Failed to mark as complete. Please try again.');
@@ -302,20 +292,28 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="fixed top-0 right-0 bottom-0 z-50 w-full sm:w-[420px] lg:w-[440px] flex flex-col bg-background border-l border-border shadow-2xl"
+            className="fixed top-0 right-0 bottom-0 z-50 w-full sm:w-[420px] lg:w-[440px] flex flex-col shadow-2xl"
+            style={{
+              background: 'var(--fi-bg)',
+              borderLeft: '1px solid var(--fi-border)',
+            }}
           >
             {/* Header */}
-            <div className="flex items-center gap-2.5 p-3 border-b border-border/50 shrink-0">
+            <div
+              className="flex items-center gap-2.5 p-3 shrink-0"
+              style={{ borderBottom: '1px solid var(--fi-border)' }}
+            >
               <FrictionlessAvatar size={28} />
               <div className="flex-1 min-w-0">
-                <h3 className="text-xs font-display font-semibold text-foreground">Ask Frictionless</h3>
+                <h3 className="text-xs font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Ask Frictionless</h3>
                 {task && (
-                  <p className="text-[10px] text-muted-foreground truncate">{task.title}</p>
+                  <p className="text-[10px] truncate" style={{ color: 'var(--fi-text-muted)' }}>{task.title}</p>
                 )}
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="p-2 rounded-lg transition-colors"
+                style={{ color: 'var(--fi-text-muted)' }}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -323,19 +321,31 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
 
             {/* Task context strip */}
             {task && (
-              <div className="px-4 py-2 border-b border-border/30 bg-muted/20 shrink-0">
+              <div
+                className="px-4 py-2 shrink-0"
+                style={{ borderBottom: '1px solid var(--fi-border)', background: 'var(--fi-bg-secondary)' }}
+              >
                 <div className="flex items-center gap-2 text-[10px]">
-                  <span className="text-muted-foreground">{categoryName}</span>
-                  <span className="text-muted-foreground/50">|</span>
-                  <span className={cn(
-                    'font-semibold px-1.5 py-0.5 rounded',
-                    task.priority === 'critical' || task.priority === 'high' ? 'bg-score-poor/10 text-score-poor' :
-                    task.priority === 'medium' ? 'bg-score-fair/10 text-score-fair' : 'bg-muted text-muted-foreground'
-                  )}>
+                  <span style={{ color: 'var(--fi-text-muted)' }}>{categoryName}</span>
+                  <span style={{ color: 'var(--fi-text-muted)', opacity: 0.5 }}>|</span>
+                  <span
+                    className="font-semibold px-1.5 py-0.5 rounded"
+                    style={{
+                      background: task.priority === 'critical' || task.priority === 'high'
+                        ? 'rgba(239,68,68,0.08)' : task.priority === 'medium'
+                        ? 'rgba(245,158,11,0.08)' : 'var(--fi-bg-secondary)',
+                      color: task.priority === 'critical' || task.priority === 'high'
+                        ? 'var(--fi-score-need-improvement)' : task.priority === 'medium'
+                        ? 'var(--fi-score-good)' : 'var(--fi-text-muted)',
+                    }}
+                  >
                     {task.priority}
                   </span>
                   {task.potential_points && (
-                    <span className="font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                    <span
+                      className="font-semibold px-1.5 py-0.5 rounded"
+                      style={{ background: 'rgba(16,185,129,0.08)', color: 'var(--fi-primary)' }}
+                    >
                       +{task.potential_points} pts
                     </span>
                   )}
@@ -352,24 +362,34 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden shrink-0"
                 >
-                  <div className="p-4 bg-score-excellent/5 border-b border-score-excellent/20">
+                  <div
+                    className="p-4"
+                    style={{
+                      background: 'rgba(16,185,129,0.04)',
+                      borderBottom: '1px solid rgba(16,185,129,0.15)',
+                    }}
+                  >
                     <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle2 className="w-4 h-4 text-score-excellent" />
-                      <span className="text-xs font-semibold text-score-excellent">Task Completed!</span>
+                      <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--fi-score-excellent)' }} />
+                      <span className="text-xs font-semibold" style={{ color: 'var(--fi-score-excellent)' }}>Task Completed!</span>
                     </div>
                     {completionAnalysis === 'generating' ? (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--fi-text-muted)' }}>
                         <Loader2 className="w-3 h-3 animate-spin" />
                         Analyzing impact...
                       </div>
                     ) : (
-                      <div className={cn("text-xs text-foreground leading-relaxed prose prose-sm max-w-none", theme === 'dark' ? 'prose-invert' : '')}>
+                      <div
+                        className={cn("text-xs leading-relaxed prose prose-sm max-w-none", theme === 'dark' ? 'prose-invert' : '')}
+                        style={{ color: 'var(--fi-text-primary)' }}
+                      >
                         <ReactMarkdown>{completionAnalysis}</ReactMarkdown>
                       </div>
                     )}
                     <button
                       onClick={onClose}
-                      className="mt-2 flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                      className="mt-2 flex items-center gap-1.5 text-xs font-medium hover:underline"
+                      style={{ color: 'var(--fi-primary)' }}
                     >
                       <RefreshCw className="w-3 h-3" />
                       Run new assessment to update score
@@ -383,23 +403,30 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
               {!historyLoaded && (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--fi-primary)' }} />
                 </div>
               )}
 
               {messages.map((msg) => (
                 <div key={msg.id} className={cn('flex gap-2', msg.role === 'user' ? 'flex-row-reverse' : '')}>
                   {msg.role === 'assistant' && <FrictionlessAvatar size={24} />}
-                  <div className={cn(
-                    'max-w-[85%] rounded-xl px-3 py-2 text-xs',
-                    msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                      : 'bg-muted/50 border border-border/50 rounded-tl-sm'
-                  )}>
+                  <div
+                    className={cn(
+                      'max-w-[85%] rounded-xl px-3 py-2 text-xs',
+                      msg.role === 'user' ? 'rounded-tr-sm' : 'rounded-tl-sm'
+                    )}
+                    style={
+                      msg.role === 'user'
+                        ? { background: 'var(--fi-primary)', color: '#fff' }
+                        : { background: 'var(--fi-bg-secondary)', border: '1px solid var(--fi-border)', color: 'var(--fi-text-primary)' }
+                    }
+                  >
                     {msg.role === 'user' ? (
                       <p className="leading-relaxed text-xs">{msg.content}</p>
                     ) : (
-                      <div className={cn("prose prose-sm max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0 [&>p]:text-xs [&>ul]:mb-1 [&>ol]:mb-1 [&>li]:text-xs [&>li]:text-foreground [&>strong]:text-foreground text-foreground", theme === 'dark' ? 'prose-invert' : '')}>
+                      <div className={cn("prose prose-sm max-w-none [&>p]:mb-1 [&>p:last-child]:mb-0 [&>p]:text-xs [&>ul]:mb-1 [&>ol]:mb-1 [&>li]:text-xs", theme === 'dark' ? 'prose-invert' : '')}
+                        style={{ color: 'var(--fi-text-primary)' }}
+                      >
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
                     )}
@@ -411,10 +438,15 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
               {isStreaming && streamingContent && (
                 <div className="flex gap-2">
                   <FrictionlessAvatar size={24} />
-                  <div className="max-w-[85%] rounded-xl px-3 py-2 bg-muted/50 border border-border/50 rounded-tl-sm">
-                    <div className={cn("prose prose-sm max-w-none text-foreground [&>p]:text-xs [&>li]:text-xs [&>strong]:text-foreground", theme === 'dark' ? 'prose-invert' : '')}>
+                  <div
+                    className="max-w-[85%] rounded-xl px-3 py-2 rounded-tl-sm"
+                    style={{ background: 'var(--fi-bg-secondary)', border: '1px solid var(--fi-border)' }}
+                  >
+                    <div className={cn("prose prose-sm max-w-none [&>p]:text-xs [&>li]:text-xs", theme === 'dark' ? 'prose-invert' : '')}
+                      style={{ color: 'var(--fi-text-primary)' }}
+                    >
                       <ReactMarkdown>{streamingContent}</ReactMarkdown>
-                      <span className="inline-block w-0.5 h-3 bg-primary animate-pulse ml-0.5" />
+                      <span className="inline-block w-0.5 h-3 animate-pulse ml-0.5" style={{ background: 'var(--fi-primary)' }} />
                     </div>
                   </div>
                 </div>
@@ -424,12 +456,16 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
               {isStreaming && !streamingContent && (
                 <div className="flex gap-2">
                   <FrictionlessAvatar size={24} />
-                  <div className="px-3 py-2.5 bg-muted/50 border border-border/50 rounded-xl rounded-tl-sm">
+                  <div
+                    className="px-3 py-2.5 rounded-xl rounded-tl-sm"
+                    style={{ background: 'var(--fi-bg-secondary)', border: '1px solid var(--fi-border)' }}
+                  >
                     <div className="flex gap-1">
                       {[0, 1, 2].map((i) => (
                         <motion.div
                           key={i}
-                          className="w-1.5 h-1.5 rounded-full bg-primary/60"
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ background: 'var(--fi-primary)', opacity: 0.6 }}
                           animate={{ y: [0, -3, 0] }}
                           transition={{ repeat: Infinity, duration: 0.6, delay: i * 0.12 }}
                         />
@@ -442,14 +478,18 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
 
             {/* Mark Complete button */}
             {suggestComplete && !completionAnalysis && task?.status !== 'done' && (
-              <div className="px-4 py-3 border-t border-border/30 bg-score-excellent/5 shrink-0">
+              <div
+                className="px-4 py-3 shrink-0"
+                style={{ borderTop: '1px solid var(--fi-border)', background: 'rgba(16,185,129,0.04)' }}
+              >
                 <button
                   onClick={handleMarkComplete}
                   disabled={isCompleting}
                   className={cn(
-                    'w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-score-excellent text-white font-semibold text-sm transition-colors',
-                    isCompleting ? 'opacity-60 cursor-not-allowed' : 'hover:bg-score-excellent/90'
+                    'w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm text-white transition-colors',
+                    isCompleting ? 'opacity-60 cursor-not-allowed' : ''
                   )}
+                  style={{ background: 'var(--fi-score-excellent)' }}
                 >
                   {isCompleting ? (
                     <><Loader2 className="w-4 h-4 animate-spin" /> Completing...</>
@@ -461,7 +501,11 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
             )}
 
             {/* Input */}
-            <form onSubmit={handleSubmit} className="p-2.5 border-t border-border/50 shrink-0">
+            <form
+              onSubmit={handleSubmit}
+              className="p-2.5 shrink-0"
+              style={{ borderTop: '1px solid var(--fi-border)' }}
+            >
               {/* Quick actions */}
               {messages.length <= 2 && !isStreaming && (
                 <div className="flex gap-1 mb-2 overflow-x-auto no-scrollbar">
@@ -470,7 +514,12 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
                       key={q}
                       type="button"
                       onClick={() => handleSend(q)}
-                      className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-medium bg-muted border border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+                      className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors"
+                      style={{
+                        background: 'var(--fi-bg-secondary)',
+                        border: '1px solid var(--fi-border)',
+                        color: 'var(--fi-text-muted)',
+                      }}
                     >
                       {q}
                     </button>
@@ -485,18 +534,24 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
                   rows={1}
                   onKeyDown={handleKeyDown}
                   className={cn(
-                    'flex-1 px-2.5 py-1.5 rounded-lg bg-muted border border-border text-xs text-foreground resize-none',
-                    'placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors max-h-20',
+                    'flex-1 px-2.5 py-1.5 rounded-lg text-xs resize-none',
+                    'focus:outline-none transition-colors max-h-20',
                     isStreaming && 'opacity-50 cursor-not-allowed'
                   )}
+                  style={{
+                    background: 'var(--fi-bg-secondary)',
+                    border: '1px solid var(--fi-border)',
+                    color: 'var(--fi-text-primary)',
+                  }}
                 />
                 <button
                   type="submit"
                   disabled={isStreaming}
                   className={cn(
-                    'p-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shrink-0',
+                    'p-1.5 rounded-lg transition-colors shrink-0',
                     isStreaming && 'opacity-50 cursor-not-allowed'
                   )}
+                  style={{ background: 'var(--fi-primary)', color: '#fff' }}
                 >
                   <Send className="w-3.5 h-3.5" />
                 </button>

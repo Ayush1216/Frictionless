@@ -71,6 +71,7 @@ export default function OnboardingChatPage() {
   const [submittingQuestionnaire, setSubmittingQuestionnaire] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const extractionReadyRef = useRef(false);
 
   useEffect(() => {
     if (!user) return;
@@ -135,28 +136,47 @@ export default function OnboardingChatPage() {
 
   const showThesisStep = step === 'thesis_document';
   const showPitchDeckStep = step === 'pitch_deck';
-  const showWaitingExtractionStep = step === 'waiting_extraction';
   const showQuestionnaireStep = step === 'questionnaire';
   const showCalculatingStep = step === 'calculating';
 
-  const pollExtractionUntilReady = async (token: string) => {
+  /** Poll extraction in background — just tracks readiness in a ref */
+  const pollExtractionInBackground = (token: string) => {
     const poll = async (): Promise<void> => {
-      const res = await fetch('/api/extraction/data', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json().catch(() => ({}));
-      const extractionReady = data.status === 'ready' && data.extraction_data?.ocr_storage_path;
-      if (extractionReady) {
-        addMessage('assistant', AFTER_PITCH_DECK);
-        const firstQ = QUESTIONNAIRE[QUESTION_ORDER[0]];
-        addMessage('assistant', firstQ.question);
-        setStep('questionnaire');
-        setQuestionnaireIndex(0);
-        return;
-      }
-      setTimeout(poll, 3500);
+      try {
+        const res = await fetch('/api/extraction/data', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data.status === 'ready' && data.extraction_data?.ocr_storage_path) {
+          extractionReadyRef.current = true;
+          return;
+        }
+      } catch { /* ignore, will retry */ }
+      setTimeout(poll, 3000);
     };
-    setTimeout(poll, 3000);
+    setTimeout(poll, 2000);
+  };
+
+  /** Wait for extraction to be ready (returns a promise that resolves when done) */
+  const waitForExtraction = (token: string): Promise<void> => {
+    if (extractionReadyRef.current) return Promise.resolve();
+    return new Promise((resolve) => {
+      const check = async () => {
+        try {
+          const res = await fetch('/api/extraction/data', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json().catch(() => ({}));
+          if (data.status === 'ready' && data.extraction_data?.ocr_storage_path) {
+            extractionReadyRef.current = true;
+            resolve();
+            return;
+          }
+        } catch { /* ignore, will retry */ }
+        setTimeout(check, 2000);
+      };
+      check();
+    });
   };
 
   const pollReadinessAndRedirect = async (token: string) => {
@@ -277,8 +297,14 @@ export default function OnboardingChatPage() {
         setUploading(false);
         return;
       }
-      setStep('waiting_extraction');
-      pollExtractionUntilReady(token);
+      // Start extraction polling in background (non-blocking)
+      pollExtractionInBackground(token);
+      // Immediately show questionnaire — don't wait for extraction
+      addMessage('assistant', AFTER_PITCH_DECK);
+      const firstQ = QUESTIONNAIRE[QUESTION_ORDER[0]];
+      addMessage('assistant', firstQ.question);
+      setStep('questionnaire');
+      setQuestionnaireIndex(0);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Upload failed');
     }
@@ -362,20 +388,32 @@ export default function OnboardingChatPage() {
         setSubmittingQuestionnaire(false);
         return;
       }
+
+      const questionnairePayload = {
+        primary_sector,
+        product_status,
+        funding_stage,
+        round_target,
+        entity_type,
+        revenue_model,
+        ...(primary_sector === 'other' && { primary_sector_other: (otherData.primary_sector || '').trim() }),
+        ...(round_target === 'other' && { round_target_other: (otherData.round_target || '').trim() }),
+        ...(entity_type === 'other' && { entity_type_other: (otherData.entity_type || '').trim() }),
+      } as Record<string, string>;
+
+      // If extraction isn't ready yet, wait before submitting
+      // (questionnaire submission triggers readiness scoring which needs extraction data)
+      if (!extractionReadyRef.current) {
+        addMessage('assistant', 'Processing your pitch deck… just a moment.');
+        setStep('calculating');
+        await waitForExtraction(token);
+      }
+
+      // Now extraction is ready — submit questionnaire (triggers readiness scoring)
       const res = await fetch('/api/onboarding/questionnaire', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          primary_sector,
-          product_status,
-          funding_stage,
-          round_target,
-          entity_type,
-          revenue_model,
-          ...(primary_sector === 'other' && { primary_sector_other: (otherData.primary_sector || '').trim() }),
-          ...(round_target === 'other' && { round_target_other: (otherData.round_target || '').trim() }),
-          ...(entity_type === 'other' && { entity_type_other: (otherData.entity_type || '').trim() }),
-        } as Record<string, string>),
+        body: JSON.stringify(questionnairePayload),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -511,14 +549,6 @@ export default function OnboardingChatPage() {
           </div>
         ))}
 
-        {showWaitingExtractionStep && (
-          <div className="flex justify-end">
-            <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 bg-card/50 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-xs">Processing…</span>
-            </div>
-          </div>
-        )}
         {showCalculatingStep && (
           <div className="flex justify-end">
             <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 bg-card/50 text-muted-foreground">
@@ -582,7 +612,7 @@ export default function OnboardingChatPage() {
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className={`border-t border-border/50 p-4 ${showQuestionnaireStep || showCalculatingStep || showWaitingExtractionStep ? 'hidden' : ''}`}>
+      <form onSubmit={handleSubmit} className={`border-t border-border/50 p-4 ${showQuestionnaireStep || showCalculatingStep ? 'hidden' : ''}`}>
         <div className="flex gap-2 items-end">
           {(showPitchDeckStep || showThesisStep) && (
             <>

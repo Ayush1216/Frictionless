@@ -83,8 +83,8 @@ export function InsightPanel({
 
   if (!hasAny && !hasDeduped) {
     return (
-      <div className={cn('rounded-2xl border border-border/50 bg-background/40 p-5', className)}>
-        <p className="text-xs text-muted-foreground">No insights yet. Refresh to generate.</p>
+      <div className={cn('fi-card p-5', className)}>
+        <p className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>No insights yet. Refresh to generate.</p>
       </div>
     );
   }
@@ -97,30 +97,29 @@ export function InsightPanel({
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
-      className={cn(
-        'rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent overflow-hidden flex flex-col',
-        className
-      )}
+      className={cn('fi-card overflow-hidden flex flex-col p-0', className)}
+      style={{ borderColor: 'rgba(16,185,129,0.15)' }}
     >
       {/* Clickable header — always visible */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between gap-2 px-5 py-3.5 hover:bg-muted/10 transition-colors text-left"
+        className="w-full flex items-center justify-between gap-2 px-5 py-3.5 transition-colors text-left"
+        style={{ background: 'transparent' }}
       >
         <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <div className="w-7 h-7 rounded-lg overflow-hidden shrink-0">
             <Image src="/ai-logo.png" alt="AI" width={28} height={28} className="w-full h-full object-contain" />
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-foreground leading-tight">AI Insights</h3>
-            <p className="text-[10px] text-muted-foreground">
+            <h3 className="text-sm font-semibold leading-tight" style={{ color: 'var(--fi-text-primary)' }}>AI Insights</h3>
+            <p className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>
               {insightCount > 0 ? `${insightCount} insights available` : 'AI-powered analysis'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {headerAction && <div onClick={(e) => e.stopPropagation()}>{headerAction}</div>}
-          <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform duration-200', expanded && 'rotate-180')} />
+          <ChevronDown className={cn('w-4 h-4 transition-transform duration-200', expanded && 'rotate-180')} style={{ color: 'var(--fi-text-muted)' }} />
         </div>
       </button>
 
@@ -134,22 +133,22 @@ export function InsightPanel({
             transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="overflow-hidden"
           >
-            <div className="px-5 pb-5 pt-0 space-y-4 border-t border-primary/10">
+            <div className="px-5 pb-5 pt-0 space-y-4" style={{ borderTop: '1px solid var(--fi-border)' }}>
               {summaryText && summaryText.trim().length > 0 && (
                 <div className="pt-3">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Summary</p>
-                  <p className="text-sm text-foreground/90 leading-relaxed">{summaryText.trim()}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'var(--fi-text-muted)' }}>Summary</p>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--fi-text-secondary)' }}>{summaryText.trim()}</p>
                 </div>
               )}
               {finalStrengths.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-primary uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: 'var(--fi-primary)' }}>
                     <CheckCircle2 className="w-3.5 h-3.5" /> Key strengths
                   </p>
                   <ul className="space-y-1">
                     {finalStrengths.map((s, i) => (
-                      <li key={i} className="text-sm text-foreground/90 flex gap-2">
-                        <span className="text-primary shrink-0">•</span>
+                      <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--fi-text-secondary)' }}>
+                        <span className="shrink-0" style={{ color: 'var(--fi-primary)' }}>•</span>
                         <span>{s}</span>
                       </li>
                     ))}
@@ -158,13 +157,13 @@ export function InsightPanel({
               )}
               {finalRisks.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: 'var(--fi-score-good)' }}>
                     <AlertTriangle className="w-3.5 h-3.5" /> Top risks
                   </p>
                   <ul className="space-y-1">
                     {finalRisks.map((r, i) => (
-                      <li key={i} className="text-sm text-foreground/90 flex gap-2">
-                        <span className="text-amber-500 shrink-0">•</span>
+                      <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--fi-text-secondary)' }}>
+                        <span className="shrink-0" style={{ color: 'var(--fi-score-good)' }}>•</span>
                         <span>{r}</span>
                       </li>
                     ))}
@@ -173,13 +172,13 @@ export function InsightPanel({
               )}
               {finalNextActions.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-1.5 flex items-center gap-1.5" style={{ color: 'var(--fi-score-excellent)' }}>
                     <TrendingUp className="w-3.5 h-3.5" /> Suggested next actions
                   </p>
                   <ul className="space-y-1">
                     {finalNextActions.map((a, i) => (
-                      <li key={i} className="text-sm text-foreground/90 flex gap-2">
-                        <span className="text-emerald-500 shrink-0">•</span>
+                      <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--fi-text-secondary)' }}>
+                        <span className="shrink-0" style={{ color: 'var(--fi-score-excellent)' }}>•</span>
                         <span>{a}</span>
                       </li>
                     ))}
@@ -187,10 +186,10 @@ export function InsightPanel({
                 </div>
               )}
               {hasDeduped && finalStrengths.length === 0 && finalRisks.length === 0 && finalNextActions.length === 0 && (
-                <ul className="space-y-1.5 text-sm text-foreground/90 pt-2">
+                <ul className="space-y-1.5 text-sm pt-2" style={{ color: 'var(--fi-text-secondary)' }}>
                   {rawBullets.slice(0, 5).map((line, i) => (
                     <li key={i} className="flex gap-2">
-                      <span className="text-primary shrink-0 font-bold">•</span>
+                      <span className="shrink-0 font-bold" style={{ color: 'var(--fi-primary)' }}>•</span>
                       <span>{line}</span>
                     </li>
                   ))}

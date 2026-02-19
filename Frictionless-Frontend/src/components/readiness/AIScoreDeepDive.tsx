@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Loader2, Target, TrendingUp, AlertTriangle, Clock } from 'lucide-react';
+import { ChevronDown, Loader2, TrendingUp, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '@/lib/utils';
@@ -57,7 +57,6 @@ export function AIScoreDeepDive({
   const strengths = categories.filter((c) => c.score >= 86).length;
   const gaps = categories.filter((c) => c.score < 80).length;
   const topCategory = [...categories].sort((a, b) => b.score - a.score)[0];
-  const weakCategory = [...categories].sort((a, b) => a.score - b.score)[0];
 
   const generateAnalysis = useCallback(async () => {
     const cached = getCachedAnalysis<string>('score-deep-dive', scoreHash);
@@ -119,44 +118,53 @@ export function AIScoreDeepDive({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.08 }}
-      className={cn('glass-card overflow-hidden', className)}
+      className={cn('fi-card overflow-hidden', className)}
     >
       {/* Header bar with Frictionless logo + quick stats */}
       <button
         onClick={handleToggle}
-        className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/20 transition-colors"
+        className="w-full flex items-center gap-3 p-4 text-left transition-colors"
       >
-        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0">
+        <div
+          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(16,185,129,0.1)' }}
+        >
           <Image src="/ai-logo.png" alt="Frictionless" width={20} height={20} />
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-display font-semibold text-foreground">Frictionless Intelligence</h3>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Frictionless Intelligence</h3>
           </div>
           {/* Quick stat chips */}
           <div className="flex items-center gap-2 mt-1">
             {strengths > 0 && (
-              <span className="flex items-center gap-1 text-[10px] font-semibold text-score-excellent bg-score-excellent/8 px-2 py-0.5 rounded-full">
+              <span
+                className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ color: 'var(--fi-score-excellent)', background: 'rgba(16,185,129,0.08)' }}
+              >
                 <TrendingUp className="w-3 h-3" />
                 {strengths} strong
               </span>
             )}
             {gaps > 0 && (
-              <span className="flex items-center gap-1 text-[10px] font-semibold text-score-poor bg-score-poor/8 px-2 py-0.5 rounded-full">
+              <span
+                className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                style={{ color: 'var(--fi-score-need-improvement)', background: 'rgba(239,68,68,0.06)' }}
+              >
                 <AlertTriangle className="w-3 h-3" />
                 {gaps} gaps
               </span>
             )}
             {topCategory && (
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>
                 Best: {topCategory.name} ({topCategory.score}%)
               </span>
             )}
           </div>
         </div>
 
-        <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }} className="text-muted-foreground shrink-0">
+        <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0" style={{ color: 'var(--fi-text-muted)' }}>
           <ChevronDown className="w-4 h-4" />
         </motion.div>
       </button>
@@ -171,33 +179,35 @@ export function AIScoreDeepDive({
             transition={{ duration: 0.25 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-border/30">
+            <div style={{ borderTop: '1px solid var(--fi-border)' }}>
               {/* AI analysis content */}
               <div className="px-4 pb-4 pt-2">
                 {isLoading && !analysis && (
                   <div className="flex items-center gap-2 py-6 justify-center">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <span className="text-sm text-muted-foreground">Analyzing your readiness profile...</span>
+                    <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--fi-primary)' }} />
+                    <span className="text-sm" style={{ color: 'var(--fi-text-muted)' }}>Analyzing your readiness profile...</span>
                   </div>
                 )}
                 {analysis && (
                   <div className={cn(
-                    'pt-2 prose prose-sm max-w-none text-foreground max-h-[400px] overflow-y-auto',
-                    '[&>h2]:text-[13px] [&>h2]:font-display [&>h2]:font-semibold [&>h2]:mt-4 [&>h2]:mb-1.5 [&>h2]:text-foreground [&>h2]:uppercase [&>h2]:tracking-wider',
+                    'pt-2 prose prose-sm max-w-none max-h-[400px] overflow-y-auto',
+                    '[&>h2]:text-[13px] [&>h2]:font-semibold [&>h2]:mt-4 [&>h2]:mb-1.5 [&>h2]:uppercase [&>h2]:tracking-wider',
                     '[&>ol]:space-y-0.5 [&>ul]:space-y-0.5',
-                    '[&>p]:text-[13px] [&>p]:text-muted-foreground [&>p]:leading-relaxed',
+                    '[&>p]:text-[13px] [&>p]:leading-relaxed',
                     '[&>ol>li]:text-[13px] [&>ul>li]:text-[13px]',
-                    '[&_strong]:text-foreground [&_strong]:font-medium',
                     theme === 'dark' ? 'prose-invert' : ''
-                  )}>
+                  )}
+                  style={{ color: 'var(--fi-text-primary)' }}
+                  >
                     <ReactMarkdown>{analysis}</ReactMarkdown>
-                    {isLoading && <span className="inline-block w-0.5 h-3 bg-primary animate-pulse ml-0.5" />}
+                    {isLoading && <span className="inline-block w-0.5 h-3 animate-pulse ml-0.5" style={{ background: 'var(--fi-primary)' }} />}
                   </div>
                 )}
                 {!isLoading && analysis && (
                   <button
                     onClick={(e) => { e.stopPropagation(); generateAnalysis(); }}
-                    className="mt-3 text-xs text-primary font-medium hover:underline"
+                    className="mt-3 text-xs font-medium hover:underline"
+                    style={{ color: 'var(--fi-primary)' }}
                   >
                     Regenerate analysis
                   </button>

@@ -26,13 +26,13 @@ export function CategoryBreakdown({ categories, className }: CategoryBreakdownPr
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.1 }}
-      className={cn('glass-card p-6', className)}
+      className={cn('fi-card p-6', className)}
     >
       <div className="flex items-center justify-between mb-5">
-        <h3 className="text-sm font-body font-medium text-muted-foreground">
+        <h3 className="text-sm font-body font-medium" style={{ color: 'var(--fi-text-secondary)' }}>
           Category Breakdown
         </h3>
-        <span className="text-xs font-mono text-muted-foreground">
+        <span className="text-xs font-mono" style={{ color: 'var(--fi-text-muted)' }}>
           {categories.length} categories
         </span>
       </div>
@@ -42,16 +42,17 @@ export function CategoryBreakdown({ categories, className }: CategoryBreakdownPr
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
-          className="mt-5 pt-4 border-t border-border"
+          className="mt-5 pt-4"
+          style={{ borderTop: '1px solid var(--fi-border)' }}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-score-fair" />
-              <span className="text-sm text-muted-foreground">
-                Focus area: <span className="text-foreground font-medium">{lowestCategory.name}</span>
+              <Zap className="w-4 h-4" style={{ color: 'var(--fi-score-good)' }} />
+              <span className="text-sm" style={{ color: 'var(--fi-text-secondary)' }}>
+                Focus area: <span className="font-medium" style={{ color: 'var(--fi-text-primary)' }}>{lowestCategory.name}</span>
               </span>
             </div>
-            <button className="text-xs font-medium text-primary hover:text-chart-5 transition-colors">
+            <button className="text-xs font-medium transition-colors" style={{ color: 'var(--fi-primary)' }}>
               Improve
             </button>
           </div>

@@ -32,13 +32,13 @@ const DIMENSION_LABELS: Record<string, string> = {
 
 function getScoreColor(score: number) {
   if (score >= 86) return 'text-score-excellent';
-  if (score >= 80) return 'text-score-good';
+  if (score >= 81) return 'text-score-good';
   return 'text-score-poor';
 }
 
 function getScoreBarColor(score: number) {
   if (score >= 86) return 'bg-score-excellent';
-  if (score >= 80) return 'bg-score-good';
+  if (score >= 81) return 'bg-score-good';
   return 'bg-score-poor';
 }
 

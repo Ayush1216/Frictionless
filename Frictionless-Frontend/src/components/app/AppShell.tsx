@@ -11,6 +11,7 @@ import { NotificationCenter } from './NotificationCenter';
 import { BreadcrumbNav } from './BreadcrumbNav';
 import { AIFloatingButton } from '@/components/ai/AIFloatingButton';
 import { AIHelperPanel } from '@/components/ai/AIHelperPanel';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useUIStore } from '@/stores/ui-store';
 import { useIsMobile } from '@/lib/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
@@ -54,10 +55,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Mobile TopBar — hidden on onboarding chat */}
         {isMobile && !isOnboardingChat && <TopBar />}
 
-        {/* Desktop breadcrumb — onboarding chat gets static "home > onboarding > chat" with no links */}
+        {/* Desktop breadcrumb + controls */}
         {!isMobile && !isOnboardingChat && (
-          <div className="px-6 pt-4">
+          <div className="flex items-center justify-between px-6 pt-4">
             <BreadcrumbNav />
+            <div className="flex items-center gap-2">
+              <ThemeToggle size="sm" />
+            </div>
           </div>
         )}
         {/* Page content with animated transitions */}

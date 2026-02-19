@@ -26,13 +26,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No organization found' }, { status: 403 });
     }
 
-    const { data: org, error: orgError } = await supabase
+    const { data: org } = await supabase
       .from('organizations')
       .select('org_type')
       .eq('id', orgId)
       .single();
-
-    console.log('[onboarding/website] org_id=%s org_type=%s orgError=%s', orgId, org?.org_type, orgError?.message ?? null);
 
     const { error } = await supabase
       .from('organizations')
@@ -46,7 +44,6 @@ export async function POST(request: NextRequest) {
     // Startups: call backend to enrich org via Apollo and store in Supabase (required before pitch deck)
     if (org?.org_type === 'startup') {
       const url = `${BACKEND_URL.replace(/\/$/, '')}/api/enrich-organization`;
-      console.log('[onboarding/website] Calling Apollo enrichment at', url);
       if (!BACKEND_URL) {
         return NextResponse.json(
           { error: 'Backend not configured. Please set FRICTIONLESS_BACKEND_URL.' },
@@ -65,7 +62,6 @@ export async function POST(request: NextRequest) {
           console.error('[onboarding/website] Apollo enrichment failed:', res.status, errData);
           return NextResponse.json({ error: msg }, { status: res.status >= 400 ? res.status : 502 });
         }
-        console.log('[onboarding/website] Apollo enrichment succeeded');
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Backend unreachable';
         console.error('[onboarding/website] Backend fetch failed:', e);
@@ -74,8 +70,6 @@ export async function POST(request: NextRequest) {
           { status: 502 }
         );
       }
-    } else {
-      console.log('[onboarding/website] Skipping Apollo (org_type=%s, not startup)', org?.org_type);
     }
 
     return NextResponse.json({ ok: true });

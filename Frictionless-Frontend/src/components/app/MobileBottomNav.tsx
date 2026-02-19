@@ -40,7 +40,7 @@ interface NavItem {
 
 const startupBottomNav: NavItem[] = [
   { label: 'Home', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Readiness', href: '/startup/readiness', icon: Gauge },
+  { label: 'Frictionless', href: '/startup/readiness', icon: Gauge },
   { label: 'AI', href: '/startup/chat', icon: Bot },
   { label: 'Investors', href: '/startup/investors', icon: Handshake },
 ];

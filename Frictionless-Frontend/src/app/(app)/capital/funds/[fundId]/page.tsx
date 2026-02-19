@@ -184,11 +184,11 @@ export default function FundDetailPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" />
-                <XAxis dataKey="year" tick={{ fill: '#9CA3AF', fontSize: 12 }} axisLine={false} />
-                <YAxis tick={{ fill: '#9CA3AF', fontSize: 12 }} axisLine={false} tickFormatter={(v) => fmt(v)} />
+                <XAxis dataKey="year" tick={{ fill: 'var(--fi-text-muted)', fontSize: 12 }} axisLine={false} />
+                <YAxis tick={{ fill: 'var(--fi-text-muted)', fontSize: 12 }} axisLine={false} tickFormatter={(v) => fmt(v)} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#111827', border: '1px solid #374151', borderRadius: 8, fontSize: 12 }}
-                  labelStyle={{ color: '#9CA3AF' }}
+                  labelStyle={{ color: 'var(--fi-text-muted)' }}
                   formatter={(value: number | undefined) => [fmt(value ?? 0), 'Deployed']}
                 />
                 <Area type="monotone" dataKey="deployed" stroke="#3B82F6" strokeWidth={2} fill="url(#deployGrad)" />

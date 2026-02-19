@@ -5,10 +5,7 @@ import { cn } from '@/lib/utils';
 function Bone({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <div
-      className={cn(
-        'rounded-lg bg-muted/60 animate-pulse skeleton-shimmer',
-        className
-      )}
+      className={cn('fi-skeleton rounded-lg', className)}
       style={style}
     />
   );
@@ -46,7 +43,8 @@ export function CardSkeleton({ count = 3 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="p-4 rounded-xl bg-card/50 border border-muted/50 space-y-3"
+          className="p-4 rounded-xl space-y-3"
+          style={{ background: 'var(--fi-bg-card)', border: '1px solid var(--fi-border)' }}
         >
           <div className="flex items-center justify-between">
             <Bone className="h-5 w-40" />
@@ -70,7 +68,8 @@ export function ListSkeleton({ rows = 5 }: { rows?: number }) {
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-3 p-3 rounded-lg bg-card/30"
+          className="flex items-center gap-3 p-3 rounded-lg"
+          style={{ background: 'var(--fi-bg-secondary)' }}
         >
           <Bone className="h-5 w-5 rounded flex-shrink-0" />
           <Bone className="h-4 flex-1" />
@@ -84,7 +83,7 @@ export function ListSkeleton({ rows = 5 }: { rows?: number }) {
 
 export function ChartSkeleton() {
   return (
-    <div className="p-6 rounded-xl bg-card/50 border border-muted/50">
+    <div className="p-6 rounded-xl" style={{ background: 'var(--fi-bg-card)', border: '1px solid var(--fi-border)' }}>
       <div className="flex items-center justify-between mb-6">
         <Bone className="h-5 w-32" />
         <Bone className="h-8 w-24 rounded-lg" />

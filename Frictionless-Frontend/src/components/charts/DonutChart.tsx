@@ -39,6 +39,7 @@ export function DonutChart({
             isAnimationActive={true}
             animationDuration={1000}
             animationBegin={200}
+            animationEasing="ease-out"
           >
             {data.map((entry, index) => (
               <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
@@ -49,12 +50,12 @@ export function DonutChart({
       {(centerLabel || centerValue) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {centerValue && (
-            <span className="font-mono font-bold text-foreground text-lg">
+            <span className="font-mono font-bold text-lg" style={{ color: 'var(--fi-text-primary)' }}>
               {centerValue}
             </span>
           )}
           {centerLabel && (
-            <span className="text-xs text-muted-foreground">{centerLabel}</span>
+            <span className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>{centerLabel}</span>
           )}
         </div>
       )}

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { AskButton } from '@/components/ui/AskButton';
 import { ReadinessTaskCard } from './ReadinessTaskCard';
 import type { Task, TaskGroup } from '@/types/database';
 
@@ -14,6 +14,9 @@ interface RecommendedActionsSectionProps {
   onFilterChange: (category: string) => void;
   onAskTask: (task: Task) => void;
   completedCount: number;
+  onAskAI?: (prompt: string) => void;
+  aiDescriptions?: Record<string, string>;
+  aiDescriptionsLoading?: boolean;
 }
 
 export function RecommendedActionsSection({
@@ -23,6 +26,9 @@ export function RecommendedActionsSection({
   onFilterChange,
   onAskTask,
   completedCount,
+  onAskAI,
+  aiDescriptions,
+  aiDescriptionsLoading,
 }: RecommendedActionsSectionProps) {
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
@@ -40,7 +46,6 @@ export function RecommendedActionsSection({
         }
       }
     }
-    // Include ungrouped tasks
     const groupedIds = new Set(taskGroups.flatMap((g) => g.tasks.map((t) => t.id)));
     const ungrouped = tasks.filter((t) => !groupedIds.has(t.id));
     if (ungrouped.length > 0) {
@@ -60,7 +65,7 @@ export function RecommendedActionsSection({
     categoryMap.forEach((value, key) => {
       cats.push({ key, label: key, count: value.tasks.length });
     });
-    return cats.sort((a, b) => b.count - a.count);
+    return cats;
   }, [categoryMap]);
 
   // Filter tasks
@@ -76,7 +81,7 @@ export function RecommendedActionsSection({
     return group?.category ?? 'Other';
   };
 
-  // Sort by priority: critical > high > medium > low, then by potential_points
+  // Sort by priority then potential_points
   const sortedTasks = useMemo(() => {
     const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
     return [...filteredTasks].sort((a, b) => {
@@ -90,7 +95,7 @@ export function RecommendedActionsSection({
   const totalTasks = tasks.length + completedCount;
   const progressPct = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
 
-  // Auto-expand first task when the currently expanded task disappears (completed)
+  // Auto-expand first task when the currently expanded task disappears
   useEffect(() => {
     if (expandedTaskId && !sortedTasks.some((t) => t.id === expandedTaskId)) {
       setExpandedTaskId(sortedTasks[0]?.id ?? null);
@@ -109,64 +114,80 @@ export function RecommendedActionsSection({
         animate={{ opacity: 1, y: 0 }}
         className="mb-4"
       >
-        <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="w-5 h-5 text-primary" />
-          <h2 className="text-base font-display font-semibold text-foreground">
-            Recommended Actions
-          </h2>
+        <div className="flex items-center gap-3 mb-1">
+          <div className="flex items-center gap-2 flex-1">
+            <Sparkles className="w-5 h-5" style={{ color: 'var(--fi-primary)' }} />
+            <h2 className="text-base font-semibold" style={{ color: 'var(--fi-text-primary)' }}>
+              Recommended actions to improve your readiness
+            </h2>
+          </div>
+          <AskButton onClick={() => onAskAI?.(`Analyze my recommended readiness tasks and help me prioritize. I have ${tasks.length} tasks with ${completedCount} completed. Which tasks should I focus on first for maximum impact on my fundraising readiness?`)} size="sm" variant="outline" />
         </div>
-        <p className="text-xs text-muted-foreground">
-          Informed by founders, operators, investors — with AI guidance
+        <p className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>
+          Informed by experienced founders, operators, and investors — with AI guidance on every task.
         </p>
 
         {/* Progress bar */}
         <div className="flex items-center gap-3 mt-3">
-          <span className="text-sm font-medium text-foreground tabular-nums">
-            {completedCount} of {totalTasks} tasks
+          <span className="text-sm font-medium tabular-nums" style={{ color: 'var(--fi-text-primary)' }}>
+            <span style={{ color: 'var(--fi-score-excellent)' }}>{completedCount}</span>
+            {' '}of {totalTasks} tasks completed
           </span>
-          <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+          <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--fi-bg-tertiary)' }}>
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-primary to-score-excellent"
+              className="h-full rounded-full"
+              style={{ background: 'var(--fi-primary)' }}
               initial={{ width: 0 }}
               animate={{ width: `${progressPct}%` }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
             />
           </div>
-          <span className="text-xs font-semibold text-muted-foreground tabular-nums">{progressPct}%</span>
+          <span className="text-xs font-semibold tabular-nums" style={{ color: 'var(--fi-text-muted)' }}>
+            {progressPct}%
+          </span>
         </div>
       </motion.div>
 
-      {/* Category filter chips */}
+      {/* Category filter pills */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3 -mx-1 px-1">
         <button
           onClick={() => onFilterChange('all')}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors shrink-0',
-            filterCategory === 'all'
-              ? 'bg-primary/10 text-primary border-primary/30'
-              : 'bg-muted/30 text-muted-foreground border-border hover:text-foreground'
-          )}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-colors"
+          style={{
+            background: filterCategory === 'all' ? 'rgba(16,185,129,0.1)' : 'var(--fi-bg-secondary)',
+            color: filterCategory === 'all' ? 'var(--fi-primary)' : 'var(--fi-text-muted)',
+            border: `1px solid ${filterCategory === 'all' ? 'var(--fi-primary)' : 'var(--fi-border)'}`,
+          }}
         >
-          All {totalTasks - completedCount}
+          All
+          <span className="tabular-nums">{totalTasks - completedCount}</span>
         </button>
         {categories.map((cat) => (
           <button
             key={cat.key}
             onClick={() => onFilterChange(cat.key)}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors shrink-0',
-              filterCategory === cat.key
-                ? 'bg-primary/10 text-primary border-primary/30'
-                : 'bg-muted/30 text-muted-foreground border-border hover:text-foreground'
-            )}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-colors"
+            style={{
+              background: filterCategory === cat.key ? 'rgba(16,185,129,0.1)' : 'var(--fi-bg-secondary)',
+              color: filterCategory === cat.key ? 'var(--fi-primary)' : 'var(--fi-text-muted)',
+              border: `1px solid ${filterCategory === cat.key ? 'var(--fi-primary)' : 'var(--fi-border)'}`,
+            }}
           >
-            {cat.label} {cat.count}
+            {cat.label}
+            <span className="tabular-nums">{cat.count}</span>
           </button>
         ))}
       </div>
 
-      {/* Task cards — single column, blur non-expanded */}
-      <div className="space-y-2">
+      {/* Task cards */}
+      <div className="space-y-2 relative">
+        {/* Click-outside overlay to close expanded task */}
+        {expandedTaskId && (
+          <div
+            className="fixed inset-0 z-10"
+            onClick={() => setExpandedTaskId(null)}
+          />
+        )}
         {sortedTasks.length > 0 ? (
           sortedTasks.map((task) => {
             const isExpanded = expandedTaskId === task.id;
@@ -174,10 +195,14 @@ export function RecommendedActionsSection({
             return (
               <div
                 key={task.id}
-                className={cn(
-                  'transition-all duration-300',
-                  hasExpanded && !isExpanded && 'opacity-30 blur-[1px] pointer-events-none'
-                )}
+                className="transition-all duration-300"
+                style={{
+                  opacity: hasExpanded && !isExpanded ? 0.35 : 1,
+                  filter: hasExpanded && !isExpanded ? 'blur(1px)' : 'none',
+                  position: 'relative',
+                  zIndex: isExpanded ? 20 : 1,
+                }}
+                onClick={hasExpanded && !isExpanded ? () => setExpandedTaskId(null) : undefined}
               >
                 <ReadinessTaskCard
                   task={task}
@@ -185,13 +210,15 @@ export function RecommendedActionsSection({
                   onAsk={onAskTask}
                   isExpanded={isExpanded}
                   onToggleExpand={handleToggleExpand}
+                  aiDescription={aiDescriptions?.[task.id]}
+                  aiDescriptionLoading={aiDescriptionsLoading && !aiDescriptions?.[task.id]}
                 />
               </div>
             );
           })
         ) : (
-          <div className="glass-card p-8 text-center">
-            <p className="text-xs text-muted-foreground">
+          <div className="fi-card p-8 text-center">
+            <p className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>
               {filterCategory === 'all'
                 ? 'No tasks available. Run an assessment to generate tasks.'
                 : `No tasks in "${filterCategory}".`}

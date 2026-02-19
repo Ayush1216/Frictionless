@@ -3,17 +3,19 @@ export function ThemeScript() {
     <script
       dangerouslySetInnerHTML={{
         __html: `(function() {
-  const key = 'ui-store';
+  var key = 'ui-store';
   try {
-    const stored = localStorage.getItem(key);
+    var stored = localStorage.getItem(key);
     if (stored) {
-      const parsed = JSON.parse(stored);
-      const theme = parsed?.state?.theme;
+      var parsed = JSON.parse(stored);
+      var theme = parsed?.state?.theme;
+      var root = document.documentElement;
       if (theme === 'light') {
-        document.documentElement.classList.add('light');
+        root.classList.add('light');
       } else {
-        document.documentElement.classList.remove('light');
+        root.classList.remove('light');
       }
+      root.setAttribute('data-theme', theme || 'dark');
     }
   } catch (e) {}
 })();`,

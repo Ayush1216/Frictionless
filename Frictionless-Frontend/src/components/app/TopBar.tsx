@@ -20,7 +20,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const pathTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
-  '/startup/readiness': 'Readiness Score',
+  '/startup/readiness': 'Frictionless Score',
   '/startup/investors': 'Investors',
   '/startup/chat': 'AI Chat',
   '/startup/tasks': 'Tasks',
@@ -109,7 +109,7 @@ export function TopBar() {
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center">
+            <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}

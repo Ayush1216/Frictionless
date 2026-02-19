@@ -318,7 +318,15 @@ export interface Document {
 // Chat
 // ---------------------------------------------------------------------------
 
-export type ChatMessageRole = 'user' | 'assistant' | 'system';
+export type ChatMessageRole = 'user' | 'assistant' | 'system' | 'system-card';
+
+export interface ChatAttachment {
+  name: string;
+  storage_path: string;
+  mime_type: string;
+  file_size?: number;
+  status?: 'uploading' | 'processing' | 'ready' | 'error';
+}
 
 export interface ChatThread {
   id: string;
@@ -326,6 +334,7 @@ export interface ChatThread {
   created_at: string;
   updated_at: string;
   message_count: number;
+  pinned?: boolean;
 }
 
 export interface ChatMessage {
@@ -333,7 +342,8 @@ export interface ChatMessage {
   thread_id: string;
   role: ChatMessageRole;
   content: string;
-  attachments?: string[];
+  attachments?: ChatAttachment[];
+  metadata?: Record<string, unknown>;
   created_at: string;
 }
 

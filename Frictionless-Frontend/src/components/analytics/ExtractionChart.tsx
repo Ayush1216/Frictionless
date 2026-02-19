@@ -34,7 +34,33 @@ interface ExtractionChartConfig {
   categories?: string[];
 }
 
-const CHART_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#8B5CF6', '#06B6D4', '#EC4899'];
+const CHART_COLORS = [
+  'var(--fi-chart-1, #3B82F6)',
+  'var(--fi-primary, #10B981)',
+  'var(--fi-chart-3, #F59E0B)',
+  'var(--fi-chart-4, #8B5CF6)',
+  'var(--fi-chart-5, #06B6D4)',
+  'var(--fi-chart-6, #EC4899)',
+];
+
+/** Resolved hex colors for Recharts (which cannot consume CSS vars in SVG fills) */
+function resolveColor(cssVar: string): string {
+  if (typeof window === 'undefined') {
+    const match = cssVar.match(/, (#[0-9A-Fa-f]{3,8})\)$/);
+    return match?.[1] ?? '#3B82F6';
+  }
+  const el = document.documentElement;
+  const varName = cssVar.match(/var\((--[^,)]+)/)?.[1];
+  if (!varName) return '#3B82F6';
+  const resolved = getComputedStyle(el).getPropertyValue(varName).trim();
+  if (resolved) return resolved;
+  const fallback = cssVar.match(/, (#[0-9A-Fa-f]{3,8})\)$/);
+  return fallback?.[1] ?? '#3B82F6';
+}
+
+function getResolvedColors(): string[] {
+  return CHART_COLORS.map(resolveColor);
+}
 
 function formatValue(value: number, unit?: string): string {
   if (unit === 'USD' || unit === 'Billion USD') {
@@ -56,8 +82,11 @@ function ChartTooltip({
   if (!active || !payload || !(payload as Array<Record<string, unknown>>).length) return null;
   const items = payload as Array<{ value: number; name: string; color: string }>;
   return (
-    <div className="glass-card px-3 py-2 text-xs">
-      <p className="text-muted-foreground mb-1">{label as string}</p>
+    <div
+      className="fi-card px-3 py-2 text-xs"
+      style={{ background: 'var(--fi-bg-card)', border: '1px solid var(--fi-border)' }}
+    >
+      <p className="mb-1" style={{ color: 'var(--fi-text-muted)' }}>{label as string}</p>
       {items.map((item, i) => (
         <p key={i} className="font-mono font-semibold" style={{ color: item.color }}>
           {item.name}: {formatValue(item.value, unit as string)}
@@ -108,20 +137,22 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
   const xAxisAngle = hasLongLabels ? -30 : 0;
   const bottomMargin = hasLongLabels ? 50 : 20;
 
+  const colors = getResolvedColors();
+
   if (chart.chart_type === 'pie') {
     const pieData = (series[0]?.data ?? []).map((d, i) => ({
       name: d.x,
       value: d.y,
-      color: CHART_COLORS[i % CHART_COLORS.length],
+      color: colors[i % colors.length],
     }));
     return (
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: index * 0.05 }}
-        className="rounded-2xl border border-border/50 bg-card p-5"
+        className="fi-card p-5"
       >
-        <h3 className="text-sm font-display font-semibold text-foreground mb-4">{chart.chart_title}</h3>
+        <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--fi-text-primary)' }}>{chart.chart_title}</h3>
         <div className="w-full" style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
@@ -132,7 +163,7 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
                 outerRadius="70%"
                 innerRadius="30%"
                 label={({ name, percent }) => `${truncateLabel(name ?? '', 16)} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                labelLine={{ stroke: '#9CA3AF', strokeWidth: 1 }}
+                labelLine={{ stroke: 'var(--fi-text-muted)', strokeWidth: 1 }}
                 dataKey="value"
                 isAnimationActive
                 animationDuration={1000}
@@ -146,13 +177,13 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
               <Legend
                 verticalAlign="bottom"
                 height={36}
-                formatter={(value: string) => <span className="text-xs text-muted-foreground">{value}</span>}
+                formatter={(value: string) => <span className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>{value}</span>}
               />
             </PieChart>
           </ResponsiveContainer>
         </div>
         {chart.insight && (
-          <p className="text-xs text-muted-foreground mt-2 border-t border-border/40 pt-2">
+          <p className="text-xs mt-2 pt-2" style={{ color: 'var(--fi-text-muted)', borderTop: '1px solid var(--fi-border)' }}>
             {chart.insight}
           </p>
         )}
@@ -166,17 +197,17 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: index * 0.05 }}
-        className="rounded-2xl border border-border/50 bg-card p-5"
+        className="fi-card p-5"
       >
-        <h3 className="text-sm font-display font-semibold text-foreground mb-4">{chart.chart_title}</h3>
-        {chart.x_axis_label && <p className="text-[10px] text-muted-foreground mb-1">{chart.x_axis_label}</p>}
+        <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--fi-text-primary)' }}>{chart.chart_title}</h3>
+        {chart.x_axis_label && <p className="text-[10px] mb-1" style={{ color: 'var(--fi-text-muted)' }}>{chart.x_axis_label}</p>}
         <div className="w-full" style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={rechartsData} margin={{ top: 8, right: 16, bottom: bottomMargin, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.15)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--fi-border)" />
               <XAxis
                 dataKey="x"
-                tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }}
                 tickLine={false}
                 axisLine={false}
                 angle={xAxisAngle}
@@ -185,7 +216,7 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
                 tickFormatter={(v: string) => truncateLabel(v)}
               />
               <YAxis
-                tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }}
                 tickLine={false}
                 axisLine={false}
                 width={55}
@@ -200,9 +231,9 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
                   key={s.name}
                   type="monotone"
                   dataKey={s.name}
-                  stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                  stroke={colors[i % colors.length]}
                   strokeWidth={2}
-                  dot={{ r: 4, fill: CHART_COLORS[i % CHART_COLORS.length] }}
+                  dot={{ r: 4, fill: colors[i % colors.length] }}
                   isAnimationActive
                   animationDuration={1000}
                 />
@@ -211,7 +242,7 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
           </ResponsiveContainer>
         </div>
         {chart.insight && (
-          <p className="text-xs text-muted-foreground mt-2 border-t border-border/40 pt-2">
+          <p className="text-xs mt-2 pt-2" style={{ color: 'var(--fi-text-muted)', borderTop: '1px solid var(--fi-border)' }}>
             {chart.insight}
           </p>
         )}
@@ -225,17 +256,17 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
-      className="rounded-2xl border border-border/50 bg-card p-5"
+      className="fi-card p-5"
     >
-      <h3 className="text-sm font-display font-semibold text-foreground mb-4">{chart.chart_title}</h3>
-      {chart.x_axis_label && <p className="text-[10px] text-muted-foreground mb-1">{chart.x_axis_label}</p>}
+      <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--fi-text-primary)' }}>{chart.chart_title}</h3>
+      {chart.x_axis_label && <p className="text-[10px] mb-1" style={{ color: 'var(--fi-text-muted)' }}>{chart.x_axis_label}</p>}
       <div className="w-full" style={{ height: 280 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rechartsData} margin={{ top: 8, right: 16, bottom: bottomMargin, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.15)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--fi-border)" />
             <XAxis
               dataKey="x"
-              tick={{ fontSize: 10, fill: '#9CA3AF' }}
+              tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }}
               tickLine={false}
               axisLine={false}
               angle={xAxisAngle}
@@ -244,7 +275,7 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
               tickFormatter={(v: string) => truncateLabel(v)}
             />
             <YAxis
-              tick={{ fontSize: 10, fill: '#9CA3AF' }}
+              tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }}
               tickLine={false}
               axisLine={false}
               width={55}
@@ -258,7 +289,7 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
               <Bar
                 key={s.name}
                 dataKey={s.name}
-                fill={CHART_COLORS[i % CHART_COLORS.length]}
+                fill={colors[i % colors.length]}
                 radius={[4, 4, 0, 0]}
                 isAnimationActive
                 animationDuration={1000}
@@ -268,7 +299,7 @@ export function ExtractionChart({ chart, index = 0 }: { chart: ExtractionChartCo
         </ResponsiveContainer>
       </div>
       {chart.insight && (
-        <p className="text-xs text-muted-foreground mt-2 border-t border-border/40 pt-2">
+        <p className="text-xs mt-2 pt-2" style={{ color: 'var(--fi-text-muted)', borderTop: '1px solid var(--fi-border)' }}>
           {chart.insight}
         </p>
       )}

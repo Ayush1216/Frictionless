@@ -117,7 +117,6 @@ function searchPages(query: string): PageEntry[] {
   if (!query.trim()) return [];
   const q = query.toLowerCase().trim();
 
-  // If it's a nav intent, extract the core target for better matching
   const searchTerm = isNavigationIntent(q) ? extractNavTarget(q) : q;
   if (!searchTerm) return [];
 
@@ -139,18 +138,6 @@ function searchPages(query: string): PageEntry[] {
     .sort((a, b) => b.score - a.score)
     .map((r) => r.page)
     .slice(0, 5);
-}
-
-// ---------------------------------------------------------------------------
-// Frictionless sparkle icon for header
-// ---------------------------------------------------------------------------
-function FrictionlessSparkle({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <path d="M12 2L14.09 8.26L20 12L14.09 15.74L12 22L9.91 15.74L4 12L9.91 8.26L12 2Z" fill="currentColor" />
-      <path d="M18.5 3.5V6.5M20 5H17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -239,19 +226,16 @@ If the user asks about navigation, tell them which page to visit.`;
     e.preventDefault();
     if (!query.trim()) return;
 
-    // If there are matched pages and query is a clear navigation intent, auto-navigate
     if (matchedPages.length > 0 && isNavigationIntent(query)) {
       handleNavigate(matchedPages[0].href);
       return;
     }
 
-    // Short queries with page matches — navigate directly
     if (matchedPages.length > 0 && query.trim().length <= 25) {
       handleNavigate(matchedPages[0].href);
       return;
     }
 
-    // Otherwise, treat as AI query
     handleAIQuery(query.trim());
   }, [query, matchedPages, handleNavigate, handleAIQuery]);
 
@@ -285,13 +269,15 @@ If the user asks about navigation, tell them which page to visit.`;
             transition={{ type: 'spring', damping: 25, stiffness: 300, mass: 0.8 }}
             className={cn(
               'fixed z-50',
-              // Desktop: bottom-right near the FAB
               'sm:right-8 sm:bottom-28 sm:w-[420px] sm:max-h-[70vh]',
-              // Mobile: bottom sheet
               'max-sm:bottom-0 max-sm:left-0 max-sm:right-0 max-sm:max-h-[85vh]',
-              'bg-card border border-border/60 rounded-2xl max-sm:rounded-b-none shadow-2xl',
+              'rounded-2xl max-sm:rounded-b-none shadow-2xl',
               'flex flex-col overflow-hidden',
             )}
+            style={{
+              background: 'var(--fi-bg-card)',
+              border: '1px solid var(--fi-border)',
+            }}
           >
             {/* Header */}
             <div className="flex items-center gap-3 px-5 pt-4 pb-3">
@@ -299,14 +285,23 @@ If the user asks about navigation, tell them which page to visit.`;
                 <Image src="/ai-logo.png" alt="Frictionless" width={36} height={36} className="w-full h-full object-contain" />
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-base font-semibold text-foreground">Frictionless Intelligence</h2>
-                <p className="text-[11px] text-muted-foreground truncate">
+                <h2
+                  className="text-base font-semibold"
+                  style={{ color: 'var(--fi-text-primary)' }}
+                >
+                  Frictionless Intelligence
+                </h2>
+                <p
+                  className="text-[11px] truncate"
+                  style={{ color: 'var(--fi-text-muted)' }}
+                >
                   AI-Powered Assistant &middot; {pathname?.split('/').pop() || 'Dashboard'}
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="p-2 rounded-lg transition-colors"
+                style={{ color: 'var(--fi-text-muted)' }}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -315,7 +310,10 @@ If the user asks about navigation, tell them which page to visit.`;
             {/* Search / Query input */}
             <form onSubmit={handleSubmit} className="px-5 pb-3">
               <div className="relative">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+                <Search
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4"
+                  style={{ color: 'var(--fi-text-muted)', opacity: 0.5 }}
+                />
                 <input
                   ref={inputRef}
                   type="text"
@@ -324,26 +322,22 @@ If the user asks about navigation, tell them which page to visit.`;
                     setQuery(e.target.value);
                     if (mode === 'ai') setMode('search');
                   }}
-                  placeholder="Search pages, ask AI anything..."
-                  className={cn(
-                    'w-full pl-10 pr-12 py-3 rounded-xl text-sm',
-                    'bg-muted/50 border border-border/50',
-                    'placeholder:text-muted-foreground/40',
-                    'focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40',
-                    'transition-all',
-                  )}
+                  placeholder="Search pages, ask anything..."
+                  className="w-full pl-10 pr-12 py-3 rounded-xl text-sm focus:outline-none transition-all"
+                  style={{
+                    background: 'var(--fi-bg-secondary)',
+                    border: '1px solid var(--fi-border)',
+                    color: 'var(--fi-text-primary)',
+                  }}
                 />
                 <button
                   type="submit"
                   disabled={!query.trim() || aiLoading}
-                  className={cn(
-                    'absolute right-2 top-1/2 -translate-y-1/2',
-                    'w-8 h-8 rounded-lg flex items-center justify-center',
-                    'transition-all',
-                    query.trim()
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                      : 'bg-muted text-muted-foreground',
-                  )}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+                  style={{
+                    background: query.trim() ? 'var(--fi-primary)' : 'var(--fi-bg-secondary)',
+                    color: query.trim() ? '#fff' : 'var(--fi-text-muted)',
+                  }}
                 >
                   {aiLoading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -363,15 +357,24 @@ If the user asks about navigation, tell them which page to visit.`;
                   animate={{ opacity: 1, y: 0 }}
                   className="mb-4"
                 >
-                  <div className="rounded-xl bg-gradient-to-br from-primary/5 via-purple-500/5 to-cyan-500/5 border border-primary/10 p-4">
+                  <div
+                    className="rounded-xl p-4"
+                    style={{
+                      background: 'rgba(16,185,129,0.04)',
+                      border: '1px solid rgba(16,185,129,0.12)',
+                    }}
+                  >
                     <div className="flex items-center gap-2 mb-2">
-                      <Sparkles className="w-3.5 h-3.5 text-primary" />
-                      <span className="text-xs font-semibold text-primary">AI Response</span>
-                      {aiLoading && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
+                      <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--fi-primary)' }} />
+                      <span className="text-xs font-semibold" style={{ color: 'var(--fi-primary)' }}>AI Response</span>
+                      {aiLoading && <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--fi-primary)' }} />}
                     </div>
-                    <div className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                    <div
+                      className="text-sm leading-relaxed whitespace-pre-wrap"
+                      style={{ color: 'var(--fi-text-primary)' }}
+                    >
                       {aiResponse || (
-                        <span className="text-muted-foreground italic">Thinking...</span>
+                        <span style={{ color: 'var(--fi-text-muted)', fontStyle: 'italic' }}>Thinking...</span>
                       )}
                     </div>
                   </div>
@@ -380,7 +383,8 @@ If the user asks about navigation, tell them which page to visit.`;
                   {!aiLoading && aiResponse && (
                     <button
                       onClick={() => { setMode('search'); setQuery(''); setAiResponse(''); }}
-                      className="mt-2 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                      className="mt-2 text-xs flex items-center gap-1 transition-colors"
+                      style={{ color: 'var(--fi-text-muted)' }}
                     >
                       <ArrowRight className="w-3 h-3 rotate-180" />
                       Back to search
@@ -392,7 +396,12 @@ If the user asks about navigation, tell them which page to visit.`;
               {/* Search results */}
               {mode === 'search' && matchedPages.length > 0 && (
                 <div className="mb-4">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Pages</p>
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-wider mb-2"
+                    style={{ color: 'var(--fi-text-muted)' }}
+                  >
+                    Pages
+                  </p>
                   <div className="space-y-1">
                     {matchedPages.map((page) => {
                       const Icon = page.icon;
@@ -400,16 +409,20 @@ If the user asks about navigation, tell them which page to visit.`;
                         <button
                           key={page.href}
                           onClick={() => handleNavigate(page.href)}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors text-left group"
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left group"
+                          style={{ background: 'transparent' }}
                         >
-                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <Icon className="w-4 h-4 text-primary" />
+                          <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ background: 'rgba(16,185,129,0.08)' }}
+                          >
+                            <Icon className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground">{page.label}</p>
-                            <p className="text-xs text-muted-foreground truncate">{page.description}</p>
+                            <p className="text-sm font-medium" style={{ color: 'var(--fi-text-primary)' }}>{page.label}</p>
+                            <p className="text-xs truncate" style={{ color: 'var(--fi-text-muted)' }}>{page.description}</p>
                           </div>
-                          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary shrink-0 group-hover:translate-x-0.5 transition-all" />
+                          <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-all" style={{ color: 'var(--fi-text-muted)', opacity: 0.4 }} />
                         </button>
                       );
                     })}
@@ -426,23 +439,27 @@ If the user asks about navigation, tell them which page to visit.`;
                 >
                   <button
                     onClick={() => handleAIQuery(query)}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-primary/5 to-purple-500/5 border border-primary/15 hover:border-primary/30 transition-all group text-left"
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group text-left"
+                    style={{
+                      background: 'rgba(16,185,129,0.04)',
+                      border: '1px solid rgba(16,185,129,0.12)',
+                    }}
                   >
                     <div
                       className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: 'linear-gradient(135deg, #6366F1, #8B5CF6)' }}
+                      style={{ background: 'var(--fi-primary)' }}
                     >
                       <Sparkles className="w-4 h-4 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground">
-                        Ask AI: &ldquo;{query}&rdquo;
+                      <p className="text-sm font-medium" style={{ color: 'var(--fi-text-primary)' }}>
+                        Ask: &ldquo;{query}&rdquo;
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>
                         Get an AI-powered answer from Frictionless
                       </p>
                     </div>
-                    <Send className="w-4 h-4 text-primary/50 group-hover:text-primary shrink-0" />
+                    <Send className="w-4 h-4 shrink-0" style={{ color: 'var(--fi-primary)', opacity: 0.5 }} />
                   </button>
                 </motion.div>
               )}
@@ -450,7 +467,10 @@ If the user asks about navigation, tell them which page to visit.`;
               {/* Quick actions (when no query) */}
               {mode === 'search' && !query.trim() && (
                 <>
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                  <p
+                    className="text-[11px] font-semibold uppercase tracking-wider mb-2"
+                    style={{ color: 'var(--fi-text-muted)' }}
+                  >
                     Quick actions
                   </p>
                   <div className="space-y-1 mb-4">
@@ -460,16 +480,19 @@ If the user asks about navigation, tell them which page to visit.`;
                         <button
                           key={action.label}
                           onClick={() => handleQuickAction(action)}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/60 transition-colors text-left group"
+                          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left group"
                         >
-                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <Icon className="w-4 h-4 text-primary" />
+                          <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ background: 'rgba(16,185,129,0.08)' }}
+                          >
+                            <Icon className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-foreground">{action.label}</p>
-                            <p className="text-xs text-muted-foreground">{action.description}</p>
+                            <p className="text-sm font-medium" style={{ color: 'var(--fi-text-primary)' }}>{action.label}</p>
+                            <p className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>{action.description}</p>
                           </div>
-                          <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-primary shrink-0 group-hover:translate-x-0.5 transition-all" />
+                          <ArrowRight className="w-3.5 h-3.5 shrink-0 transition-all" style={{ color: 'var(--fi-text-muted)', opacity: 0.4 }} />
                         </button>
                       );
                     })}
@@ -479,7 +502,11 @@ If the user asks about navigation, tell them which page to visit.`;
                   <Link
                     href="/startup/chat"
                     onClick={onClose}
-                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-border/50 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-all"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium transition-all"
+                    style={{
+                      border: '1px solid var(--fi-border)',
+                      color: 'var(--fi-text-muted)',
+                    }}
                   >
                     <Bot className="w-4 h-4" />
                     Open full AI chat
@@ -489,14 +516,29 @@ If the user asks about navigation, tell them which page to visit.`;
             </div>
 
             {/* Footer with keyboard shortcut hint */}
-            <div className="px-5 py-2.5 border-t border-border/40 bg-muted/20 flex items-center justify-between">
-              <span className="text-[10px] text-muted-foreground">
+            <div
+              className="px-5 py-2.5 flex items-center justify-between"
+              style={{
+                borderTop: '1px solid var(--fi-border)',
+                background: 'var(--fi-bg-secondary)',
+              }}
+            >
+              <span className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>
                 Frictionless Intelligence
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground">Press</span>
-                <kbd className="text-[10px] px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-muted-foreground">Enter</kbd>
-                <span className="text-[10px] text-muted-foreground">to send</span>
+                <span className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>Press</span>
+                <kbd
+                  className="text-[10px] px-1.5 py-0.5 rounded font-mono"
+                  style={{
+                    background: 'var(--fi-bg)',
+                    border: '1px solid var(--fi-border)',
+                    color: 'var(--fi-text-muted)',
+                  }}
+                >
+                  Enter
+                </kbd>
+                <span className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>to send</span>
               </div>
             </div>
           </motion.div>

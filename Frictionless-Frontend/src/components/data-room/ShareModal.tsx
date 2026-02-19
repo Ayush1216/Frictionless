@@ -197,7 +197,7 @@ export function ShareModal({ open, onOpenChange, fileName, getToken, shareType =
                       className="shrink-0"
                     >
                       {copied ? (
-                        <Check className="w-4 h-4 text-score-excellent" />
+                        <Check className="w-4 h-4" style={{ color: 'var(--fi-score-excellent)' }} />
                       ) : (
                         <Copy className="w-4 h-4" />
                       )}

@@ -27,7 +27,7 @@ export function getScoreStyle(score: number): ScoreStyle {
       bgColor: 'bg-emerald-500/10',
       borderColor: 'border-emerald-500/20',
     };
-  if (score >= 80)
+  if (score >= 81)
     return {
       label: 'Good',
       variantColor: '#EAB308',

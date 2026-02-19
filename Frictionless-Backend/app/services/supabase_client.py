@@ -594,18 +594,26 @@ def get_task_by_id(supabase: Client, task_id: str) -> dict | None:
 
 
 def get_task_and_org_id(supabase: Client, task_id: str) -> tuple[dict | None, str | None]:
-    """Get task row and its org_id. Returns (task_row, org_id) or (None, None)."""
-    r = supabase.table("tasks").select("id, group_id, subcategory_name, title, status, submitted_value").eq("id", task_id).execute()
+    """Get task row and its org_id in a single query via foreign-key join.
+    Returns (task_row, org_id) or (None, None).
+    """
+    r = supabase.table("tasks").select(
+        "id, group_id, subcategory_name, title, status, submitted_value, task_groups(org_id)"
+    ).eq("id", task_id).execute()
     rows = r.data or []
     if not rows:
         return None, None
-    task = rows[0]
-    group_id = task.get("group_id")
-    if not group_id:
-        return task, None
-    gr = supabase.table("task_groups").select("org_id").eq("id", group_id).execute()
-    g_rows = gr.data or []
-    org_id = g_rows[0].get("org_id") if g_rows else None
+    row = rows[0]
+    # Extract nested join result (Supabase returns dict or list depending on relationship type)
+    group_data = row.get("task_groups")
+    if isinstance(group_data, dict):
+        org_id = group_data.get("org_id")
+    elif isinstance(group_data, list) and group_data:
+        org_id = group_data[0].get("org_id")
+    else:
+        org_id = None
+    # Return task dict without the nested join key
+    task = {k: v for k, v in row.items() if k != "task_groups"}
     return task, org_id
 
 

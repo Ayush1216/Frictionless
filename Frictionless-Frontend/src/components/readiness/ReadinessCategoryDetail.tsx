@@ -28,9 +28,24 @@ function getItemSeverity(item: RubricItem): 'full' | 'partial' | 'missing' {
 
 function getSeverityConfig(severity: 'full' | 'partial' | 'missing') {
   switch (severity) {
-    case 'full': return { label: 'Complete', badgeClass: 'bg-score-excellent/10 text-score-excellent', icon: CheckCircle2, borderClass: 'border-l-score-excellent' };
-    case 'partial': return { label: 'Partial', badgeClass: 'bg-score-fair/10 text-score-fair', icon: AlertTriangle, borderClass: 'border-l-score-fair' };
-    case 'missing': return { label: 'Missing', badgeClass: 'bg-score-poor/10 text-score-poor', icon: AlertCircle, borderClass: 'border-l-score-poor' };
+    case 'full': return {
+      label: 'Complete',
+      icon: CheckCircle2,
+      color: 'var(--fi-score-excellent)',
+      bgColor: 'var(--fi-score-excellent-bg)',
+    };
+    case 'partial': return {
+      label: 'Partial',
+      icon: AlertTriangle,
+      color: 'var(--fi-score-good)',
+      bgColor: 'var(--fi-score-good-bg)',
+    };
+    case 'missing': return {
+      label: 'Missing',
+      icon: AlertCircle,
+      color: 'var(--fi-score-need-improvement)',
+      bgColor: 'var(--fi-score-need-improvement-bg)',
+    };
   }
 }
 
@@ -128,26 +143,32 @@ export function ReadinessCategoryDetail({ category, onViewTasks }: ReadinessCate
       initial={{ opacity: 0, x: 8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.2 }}
-      className="flex-1 min-w-0 flex flex-col glass-card overflow-hidden"
+      className="flex-1 min-w-0 flex flex-col fi-card overflow-hidden"
     >
       {/* Category header — fixed */}
-      <div className="p-4 border-b border-border/50 shrink-0">
+      <div
+        className="p-4 shrink-0"
+        style={{ borderBottom: '1px solid var(--fi-border)' }}
+      >
         <div className="flex items-center gap-3 flex-wrap">
-          <h2 className="text-base font-display font-semibold text-foreground">{category.name}</h2>
+          <h2 className="text-base font-display font-semibold" style={{ color: 'var(--fi-text-primary)' }}>{category.name}</h2>
           <div className="flex items-center gap-2">
-            <div className={cn('w-2.5 h-2.5 rounded-full', scoreInfo.dotClass)} />
-            <span className={cn('text-base font-bold tabular-nums', scoreInfo.textClass)}>{category.score}%</span>
-            <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', scoreInfo.bgClass, scoreInfo.textClass)}>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: scoreInfo.color }} />
+            <span className="text-base font-bold tabular-nums" style={{ color: scoreInfo.color }}>{category.score}%</span>
+            <span
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: `${scoreInfo.color}15`, color: scoreInfo.color }}
+            >
               {scoreInfo.label}
             </span>
           </div>
-          <div className="ml-auto flex items-center gap-2 text-[10px] text-muted-foreground">
+          <div className="ml-auto flex items-center gap-2 text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>
             <span>{scoredItems.length} scored</span>
-            {missingItems.length > 0 && <span className="text-score-poor">{missingItems.length} missing</span>}
+            {missingItems.length > 0 && <span style={{ color: 'var(--fi-score-need-improvement)' }}>{missingItems.length} missing</span>}
           </div>
         </div>
         {/* Score bar */}
-        <div className="h-1.5 rounded-full bg-muted mt-2.5 overflow-hidden">
+        <div className="h-1.5 rounded-full mt-2.5 overflow-hidden" style={{ background: 'var(--fi-bg-tertiary)' }}>
           <motion.div
             className="h-full rounded-full"
             style={{ backgroundColor: scoreInfo.color }}
@@ -174,20 +195,33 @@ export function ReadinessCategoryDetail({ category, onViewTasks }: ReadinessCate
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.02 }}
-              className={cn('rounded-lg border border-border/50 bg-muted/20 p-3 border-l-2', config.borderClass)}
+              className="rounded-lg p-3 border-l-2"
+              style={{
+                border: '1px solid var(--fi-border)',
+                borderLeftWidth: '2px',
+                borderLeftColor: config.color,
+                background: 'color-mix(in srgb, var(--fi-bg-tertiary) 20%, transparent)',
+              }}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-xs text-foreground flex-1 leading-snug">{item.Question ?? 'Unnamed item'}</p>
+                <p className="text-xs flex-1 leading-snug" style={{ color: 'var(--fi-text-primary)' }}>{item.Question ?? 'Unnamed item'}</p>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded-full', config.badgeClass)}>
+                  <span
+                    className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                    style={{ backgroundColor: config.bgColor, color: config.color }}
+                  >
                     {config.label}
                   </span>
-                  <span className={cn(
-                    'text-xs font-bold tabular-nums',
-                    severity === 'full' ? 'text-score-excellent' :
-                    severity === 'partial' ? 'text-score-fair' :
-                    'text-score-poor'
-                  )}>
+                  <span
+                    className="text-xs font-bold tabular-nums"
+                    style={{
+                      color: severity === 'full'
+                        ? 'var(--fi-score-excellent)'
+                        : severity === 'partial'
+                        ? 'var(--fi-score-good)'
+                        : 'var(--fi-score-need-improvement)'
+                    }}
+                  >
                     {pts}/{max}
                   </span>
                 </div>
@@ -195,14 +229,17 @@ export function ReadinessCategoryDetail({ category, onViewTasks }: ReadinessCate
 
               {/* Evidence & Reasoning */}
               {(item.Value || item.Reasoning) && (
-                <div className="mt-2 pl-3 border-l-2 border-border/40 space-y-1">
+                <div
+                  className="mt-2 pl-3 space-y-1"
+                  style={{ borderLeft: '2px solid var(--fi-border)' }}
+                >
                   {item.Value && (
-                    <p className="text-[11px] text-foreground/70 leading-relaxed">&ldquo;{item.Value}&rdquo;</p>
+                    <p className="text-[11px] leading-relaxed" style={{ color: 'var(--fi-text-primary)', opacity: 0.7 }}>&ldquo;{item.Value}&rdquo;</p>
                   )}
                   {item.Reasoning && (
                     <div className="flex items-start gap-1.5">
-                      <Lightbulb className="w-3 h-3 text-primary/60 shrink-0 mt-0.5" />
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">{item.Reasoning}</p>
+                      <Lightbulb className="w-3 h-3 shrink-0 mt-0.5" style={{ color: 'var(--fi-primary)', opacity: 0.6 }} />
+                      <p className="text-[11px] leading-relaxed" style={{ color: 'var(--fi-text-muted)' }}>{item.Reasoning}</p>
                     </div>
                   )}
                 </div>
@@ -213,16 +250,20 @@ export function ReadinessCategoryDetail({ category, onViewTasks }: ReadinessCate
 
         {/* Missing items */}
         {missingItems.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-border/30">
+          <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--fi-border)' }}>
             <div className="flex items-center gap-2 mb-2">
-              <AlertCircle className="w-3.5 h-3.5 text-score-poor" />
-              <span className="text-xs font-semibold text-score-poor">Missing Items ({missingItems.length})</span>
+              <AlertCircle className="w-3.5 h-3.5" style={{ color: 'var(--fi-score-need-improvement)' }} />
+              <span className="text-xs font-semibold" style={{ color: 'var(--fi-score-need-improvement)' }}>Missing Items ({missingItems.length})</span>
             </div>
             {missingItems.map((item, i) => (
-              <div key={i} className="flex items-center gap-2 py-1.5 px-3 rounded-md bg-score-poor/5 mb-1">
-                <div className="w-1 h-1 rounded-full bg-score-poor shrink-0" />
-                <p className="text-xs text-muted-foreground flex-1">{item.Question ?? 'Unnamed item'}</p>
-                <span className="text-[10px] font-semibold text-score-poor tabular-nums">0/{(item.maximum_points as number) ?? 0}</span>
+              <div
+                key={i}
+                className="flex items-center gap-2 py-1.5 px-3 rounded-md mb-1"
+                style={{ background: 'var(--fi-score-need-improvement-bg)' }}
+              >
+                <div className="w-1 h-1 rounded-full shrink-0" style={{ background: 'var(--fi-score-need-improvement)' }} />
+                <p className="text-xs flex-1" style={{ color: 'var(--fi-text-muted)' }}>{item.Question ?? 'Unnamed item'}</p>
+                <span className="text-[10px] font-semibold tabular-nums" style={{ color: 'var(--fi-score-need-improvement)' }}>0/{(item.maximum_points as number) ?? 0}</span>
               </div>
             ))}
           </div>
@@ -237,18 +278,28 @@ export function ReadinessCategoryDetail({ category, onViewTasks }: ReadinessCate
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="overflow-hidden border-t border-primary/20 shrink-0"
+            className="overflow-hidden shrink-0"
+            style={{ borderTop: '1px solid color-mix(in srgb, var(--fi-primary) 20%, transparent)' }}
           >
-            <div className="bg-primary/[0.02] relative">
+            <div className="relative" style={{ background: 'color-mix(in srgb, var(--fi-primary) 2%, transparent)' }}>
               {/* Plan header with close */}
-              <div className="flex items-center gap-2 px-4 pt-3 pb-2 sticky top-0 bg-inherit z-10">
-                <div className="w-1 h-4 rounded-full bg-primary shrink-0" />
-                <CalendarDays className="w-3.5 h-3.5 text-primary" />
-                <span className="text-[11px] font-semibold text-foreground flex-1">30-Day Improvement Plan</span>
-                {isLoadingPlan && <Loader2 className="w-3 h-3 animate-spin text-primary" />}
+              <div className="flex items-center gap-2 px-4 pt-3 pb-2 sticky top-0 z-10" style={{ background: 'inherit' }}>
+                <div className="w-1 h-4 rounded-full shrink-0" style={{ background: 'var(--fi-primary)' }} />
+                <CalendarDays className="w-3.5 h-3.5" style={{ color: 'var(--fi-primary)' }} />
+                <span className="text-[11px] font-semibold flex-1" style={{ color: 'var(--fi-text-primary)' }}>30-Day Improvement Plan</span>
+                {isLoadingPlan && <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--fi-primary)' }} />}
                 <button
                   onClick={() => setShowPlan(false)}
-                  className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  className="p-1 rounded-md transition-colors"
+                  style={{ color: 'var(--fi-text-muted)' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--fi-text-primary)';
+                    e.currentTarget.style.background = 'var(--fi-bg-tertiary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = 'var(--fi-text-muted)';
+                    e.currentTarget.style.background = 'transparent';
+                  }}
                   title="Hide plan"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -260,18 +311,24 @@ export function ReadinessCategoryDetail({ category, onViewTasks }: ReadinessCate
                 {actionPlan ? (
                   <div className={cn(
                     'prose prose-sm max-w-none text-xs leading-relaxed',
-                    '[&>h2]:text-[11px] [&>h2]:font-semibold [&>h2]:mt-3 [&>h2]:mb-1.5 [&>h2]:text-foreground [&>h2]:flex [&>h2]:items-center [&>h2]:gap-1.5',
-                    '[&>ol]:space-y-1 [&>ol]:pl-4 [&>ol>li]:text-xs [&>ol>li]:text-muted-foreground [&>ol>li]:leading-relaxed',
-                    '[&>p]:text-xs [&>p]:text-muted-foreground [&>p]:leading-relaxed',
-                    '[&>ul]:space-y-1 [&>ul]:pl-4 [&>ul>li]:text-xs [&>ul>li]:text-muted-foreground',
-                    '[&_strong]:text-foreground [&_strong]:font-medium',
+                    '[&>h2]:text-[11px] [&>h2]:font-semibold [&>h2]:mt-3 [&>h2]:mb-1.5 [&>h2]:flex [&>h2]:items-center [&>h2]:gap-1.5',
+                    '[&>ol]:space-y-1 [&>ol]:pl-4 [&>ol>li]:text-xs [&>ol>li]:leading-relaxed',
+                    '[&>p]:text-xs [&>p]:leading-relaxed',
+                    '[&>ul]:space-y-1 [&>ul]:pl-4 [&>ul>li]:text-xs',
+                    '[&_strong]:font-medium',
                     theme === 'dark' ? 'prose-invert' : ''
-                  )}>
+                  )}
+                  style={{
+                    '--tw-prose-body': 'var(--fi-text-muted)',
+                    '--tw-prose-headings': 'var(--fi-text-primary)',
+                    '--tw-prose-bold': 'var(--fi-text-primary)',
+                  } as React.CSSProperties}
+                  >
                     <ReactMarkdown>{actionPlan}</ReactMarkdown>
-                    {isLoadingPlan && <span className="inline-block w-0.5 h-3 bg-primary animate-pulse ml-0.5" />}
+                    {isLoadingPlan && <span className="inline-block w-0.5 h-3 animate-pulse ml-0.5" style={{ background: 'var(--fi-primary)' }} />}
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground py-6 justify-center">
+                  <div className="flex items-center gap-2 text-xs py-6 justify-center" style={{ color: 'var(--fi-text-muted)' }}>
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     Generating plan...
                   </div>
@@ -283,10 +340,20 @@ export function ReadinessCategoryDetail({ category, onViewTasks }: ReadinessCate
       </AnimatePresence>
 
       {/* Buttons — fixed at bottom */}
-      <div className="p-3 border-t border-border/50 shrink-0 flex gap-2">
+      <div className="p-3 shrink-0 flex gap-2" style={{ borderTop: '1px solid var(--fi-border)' }}>
         <button
           onClick={() => onViewTasks(category.name)}
-          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/15 transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+          style={{
+            background: 'color-mix(in srgb, var(--fi-primary) 10%, transparent)',
+            color: 'var(--fi-primary)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'color-mix(in srgb, var(--fi-primary) 15%, transparent)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'color-mix(in srgb, var(--fi-primary) 10%, transparent)';
+          }}
         >
           View Improvement Tasks
           <ArrowDown className="w-3 h-3" />
@@ -297,12 +364,35 @@ export function ReadinessCategoryDetail({ category, onViewTasks }: ReadinessCate
             else { generateActionPlan(); }
           }}
           disabled={isLoadingPlan}
-          className={cn(
-            'flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors border',
-            showPlan
-              ? 'bg-primary/5 text-primary border-primary/20 hover:bg-primary/10'
-              : 'bg-muted/50 text-muted-foreground border-border hover:text-foreground hover:bg-muted'
-          )}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors"
+          style={showPlan
+            ? {
+                background: 'color-mix(in srgb, var(--fi-primary) 5%, transparent)',
+                color: 'var(--fi-primary)',
+                border: '1px solid color-mix(in srgb, var(--fi-primary) 20%, transparent)',
+              }
+            : {
+                background: 'color-mix(in srgb, var(--fi-bg-tertiary) 50%, transparent)',
+                color: 'var(--fi-text-muted)',
+                border: '1px solid var(--fi-border)',
+              }
+          }
+          onMouseEnter={(e) => {
+            if (showPlan) {
+              e.currentTarget.style.background = 'color-mix(in srgb, var(--fi-primary) 10%, transparent)';
+            } else {
+              e.currentTarget.style.color = 'var(--fi-text-primary)';
+              e.currentTarget.style.background = 'var(--fi-bg-tertiary)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (showPlan) {
+              e.currentTarget.style.background = 'color-mix(in srgb, var(--fi-primary) 5%, transparent)';
+            } else {
+              e.currentTarget.style.color = 'var(--fi-text-muted)';
+              e.currentTarget.style.background = 'color-mix(in srgb, var(--fi-bg-tertiary) 50%, transparent)';
+            }
+          }}
         >
           <CalendarDays className="w-3 h-3" />
           {showPlan ? (

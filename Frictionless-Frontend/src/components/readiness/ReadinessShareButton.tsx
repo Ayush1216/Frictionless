@@ -1,16 +1,23 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Share2, Copy, Check, Loader2, Download, Link2, X, Calendar } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Share2, Copy, Check, Loader2, Download, Link2, Calendar, FileText } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { ScoreGauge } from '@/components/ui/ScoreGauge';
+import { getScoreColor } from '@/lib/scores';
 import { supabase } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { useTaskStore } from '@/stores/task-store';
 import { useReadinessStore } from '@/stores/readiness-store';
 import { streamChat, isAIEnabled } from '@/lib/ai/openai-client';
 import { isGeminiEnabled, geminiAnalyze } from '@/lib/ai/gemini-client';
-import { getPrompt } from '@/lib/ai/prompts';
 import type { ParsedRubricCategory } from '@/lib/readiness-rubric';
 
 interface ReadinessShareButtonProps {
@@ -99,6 +106,9 @@ export function ReadinessShareButton({
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [expiresHours, setExpiresHours] = useState(168);
+
+  const topCategories = [...categories].sort((a, b) => b.score - a.score).slice(0, 5);
+  const progressPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   const handleCreateLink = useCallback(async () => {
     if (isCreating) return;
@@ -210,93 +220,211 @@ export function ReadinessShareButton({
   };
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/15 transition-colors border border-primary/20"
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <button
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+          style={{
+            background: 'rgba(16,185,129,0.1)',
+            color: 'var(--fi-primary)',
+            border: '1px solid rgba(16,185,129,0.2)',
+          }}
+        >
+          <Share2 className="w-3.5 h-3.5" />
+          Share Report
+        </button>
+      </DialogTrigger>
+
+      <DialogContent
+        className="sm:max-w-[520px] p-0 gap-0 overflow-hidden"
+        style={{
+          background: 'var(--fi-bg-card)',
+          border: '1px solid var(--fi-border)',
+        }}
       >
-        <Share2 className="w-3.5 h-3.5" />
-        Share Report
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -4, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            className="absolute right-0 top-full mt-2 w-[340px] z-50 glass-card p-4 shadow-xl border border-border"
+        <DialogHeader className="px-5 pt-5 pb-3">
+          <DialogTitle
+            className="flex items-center gap-2 text-sm font-semibold"
+            style={{ color: 'var(--fi-text-primary)' }}
           >
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-foreground">Share Readiness Report</h4>
-              <button onClick={() => setIsOpen(false)} className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            <FileText className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
+            Share Frictionless Report
+          </DialogTitle>
+          <DialogDescription className="text-[11px]" style={{ color: 'var(--fi-text-muted)' }}>
+            Generate a comprehensive report with AI insights, category breakdown, and improvement tasks.
+          </DialogDescription>
+        </DialogHeader>
 
-            <p className="text-[11px] text-muted-foreground mb-3">
-              Generate a comprehensive report with AI insights, category breakdown, rubric details, tasks, and company profile.
-            </p>
-
-            <div className="flex items-center gap-2 mb-3">
-              <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              <span className="text-[11px] text-muted-foreground">Expires:</span>
-              <div className="flex gap-1 flex-1">
-                {EXPIRY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setExpiresHours(opt.value)}
-                    className={cn(
-                      'px-2 py-1 rounded text-[10px] font-semibold transition-colors',
-                      expiresHours === opt.value ? 'bg-primary/15 text-primary' : 'bg-muted/50 text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+        {/* Report preview */}
+        <div className="px-5 pb-4">
+          <div
+            className="rounded-lg p-4"
+            style={{
+              background: 'var(--fi-bg-secondary)',
+              border: '1px solid var(--fi-border)',
+            }}
+          >
+            {/* Score + category preview */}
+            <div className="flex items-start gap-4">
+              <ScoreGauge score={overallScore} size="sm" showLabel={false} animated={false} />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="text-sm font-bold tabular-nums" style={{ color: getScoreColor(overallScore) }}>
+                    {overallScore}%
+                  </span>
+                  <span className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>
+                    Overall Frictionless
+                  </span>
+                </div>
+                {/* Top categories mini bars */}
+                <div className="space-y-1">
+                  {topCategories.map((cat) => (
+                    <div key={cat.key} className="flex items-center gap-2">
+                      <span
+                        className="text-[10px] w-20 truncate"
+                        style={{ color: 'var(--fi-text-muted)' }}
+                      >
+                        {cat.name}
+                      </span>
+                      <div
+                        className="flex-1 h-1 rounded-full overflow-hidden"
+                        style={{ background: 'var(--fi-bg-tertiary)' }}
+                      >
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${cat.score}%`,
+                            background: getScoreColor(cat.score),
+                          }}
+                        />
+                      </div>
+                      <span
+                        className="text-[10px] tabular-nums w-7 text-right font-medium"
+                        style={{ color: getScoreColor(cat.score) }}
+                      >
+                        {cat.score}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {shareUrl ? (
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-border text-[10px] font-mono text-foreground truncate">
-                    <Link2 className="w-3 h-3 shrink-0 text-primary" />
-                    <span className="truncate">{shareUrl}</span>
-                  </div>
-                  <button onClick={handleCopy} className="shrink-0 p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/15 transition-colors">
-                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={handleCopy} className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-                    <Copy className="w-3 h-3" /> Copy Link
-                  </button>
-                  <button onClick={handleOpenPDF} className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold bg-muted/50 border border-border text-foreground hover:bg-muted transition-colors">
-                    <Download className="w-3 h-3" /> Open & PDF
-                  </button>
-                </div>
+            {/* Task progress */}
+            <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--fi-border)' }}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>
+                  Task Progress
+                </span>
+                <span className="text-[10px] font-semibold tabular-nums" style={{ color: 'var(--fi-text-secondary)' }}>
+                  {completedTasks}/{totalTasks} ({progressPct}%)
+                </span>
               </div>
-            ) : (
-              <button
-                onClick={handleCreateLink}
-                disabled={isCreating}
-                className={cn(
-                  'w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold transition-colors',
-                  isCreating ? 'bg-primary/50 text-primary-foreground cursor-not-allowed' : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                )}
+              <div
+                className="h-1.5 rounded-full overflow-hidden"
+                style={{ background: 'var(--fi-bg-tertiary)' }}
               >
-                {isCreating ? (
-                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating with AI...</>
-                ) : (
-                  <><Share2 className="w-3.5 h-3.5" /> Generate Share Link</>
-                )}
-              </button>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${progressPct}%`,
+                    background: 'var(--fi-primary)',
+                  }}
+                />
+              </div>
+            </div>
+
+            <p className="text-[10px] mt-2" style={{ color: 'var(--fi-text-muted)' }}>
+              Report includes: AI executive summary, investor verdict, category details, rubric items, and improvement tasks.
+            </p>
+          </div>
+        </div>
+
+        {/* Expiry options */}
+        <div className="px-5 pb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Calendar className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--fi-text-muted)' }} />
+            <span className="text-[11px]" style={{ color: 'var(--fi-text-muted)' }}>Link expires:</span>
+            <div className="flex gap-1 flex-1">
+              {EXPIRY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setExpiresHours(opt.value)}
+                  className="px-2 py-1 rounded text-[10px] font-semibold transition-colors"
+                  style={{
+                    background: expiresHours === opt.value ? 'rgba(16,185,129,0.1)' : 'var(--fi-bg-secondary)',
+                    color: expiresHours === opt.value ? 'var(--fi-primary)' : 'var(--fi-text-muted)',
+                    border: expiresHours === opt.value ? '1px solid rgba(16,185,129,0.3)' : '1px solid transparent',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Actions */}
+          {shareUrl ? (
+            <div className="space-y-2">
+              {/* URL display */}
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-mono truncate"
+                style={{
+                  background: 'var(--fi-bg-secondary)',
+                  border: '1px solid var(--fi-border)',
+                  color: 'var(--fi-text-secondary)',
+                }}
+              >
+                <Link2 className="w-3 h-3 shrink-0" style={{ color: 'var(--fi-primary)' }} />
+                <span className="truncate">{shareUrl}</span>
+              </div>
+              {/* Action buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleCopy}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors"
+                  style={{
+                    background: 'var(--fi-primary)',
+                    color: '#fff',
+                  }}
+                >
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? 'Copied!' : 'Copy Link'}
+                </button>
+                <button
+                  onClick={handleOpenPDF}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors"
+                  style={{
+                    background: 'var(--fi-bg-secondary)',
+                    color: 'var(--fi-text-primary)',
+                    border: '1px solid var(--fi-border)',
+                  }}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Download PDF
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={handleCreateLink}
+              disabled={isCreating}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold transition-colors"
+              style={{
+                background: isCreating ? 'rgba(16,185,129,0.5)' : 'var(--fi-primary)',
+                color: '#fff',
+                cursor: isCreating ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {isCreating ? (
+                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating with AI...</>
+              ) : (
+                <><Share2 className="w-3.5 h-3.5" /> Generate Share Link</>
+              )}
+            </button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

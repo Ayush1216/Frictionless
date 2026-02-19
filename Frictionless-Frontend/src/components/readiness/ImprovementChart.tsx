@@ -83,16 +83,19 @@ export function ImprovementChart({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
-        className="glass-card p-6 lg:p-8"
+        className="fi-card p-6 lg:p-8"
       >
         <div className="flex flex-col items-center text-center py-6">
-          <div className="w-12 h-12 rounded-xl bg-score-excellent/15 flex items-center justify-center mb-3">
-            <Sparkles className="w-6 h-6 text-score-excellent" />
+          <div
+            className="w-12 h-12 rounded-xl flex items-center justify-center mb-3"
+            style={{ background: 'var(--fi-score-excellent-bg)' }}
+          >
+            <Sparkles className="w-6 h-6" style={{ color: 'var(--fi-score-excellent)' }} />
           </div>
-          <h3 className="text-lg font-display font-semibold text-foreground">
+          <h3 className="text-lg font-display font-semibold" style={{ color: 'var(--fi-text-primary)' }}>
             All Data Complete
           </h3>
-          <p className="text-sm text-muted-foreground mt-1 max-w-sm">
+          <p className="text-sm mt-1 max-w-sm" style={{ color: 'var(--fi-text-muted)' }}>
             You have no missing data items. Your score reflects your full readiness profile.
           </p>
         </div>
@@ -105,20 +108,27 @@ export function ImprovementChart({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.3 }}
-      className="glass-card p-4 lg:p-6"
+      className="fi-card p-4 lg:p-6"
     >
       {/* Header: one task with highest potential */}
       <div className="flex items-start justify-between mb-5">
         <div>
-          <h3 className="text-sm font-display font-semibold text-foreground">
+          <h3 className="text-sm font-display font-semibold" style={{ color: 'var(--fi-text-primary)' }}>
             Score Improvement Potential
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <p className="text-xs mt-0.5" style={{ color: 'var(--fi-text-muted)' }}>
             Fix 1 item to improve your score
           </p>
         </div>
         {topItem && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-score-excellent/10 text-xs text-score-excellent font-semibold border border-score-excellent/30">
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+            style={{
+              background: 'var(--fi-score-excellent-bg)',
+              color: 'var(--fi-score-excellent)',
+              border: '1px solid rgba(34, 197, 94, 0.3)',
+            }}
+          >
             <TrendingUp className="w-3.5 h-3.5" />
             +{topItem.impact}
           </div>
@@ -126,15 +136,19 @@ export function ImprovementChart({
       </div>
 
       {/* Current → Projected score bar */}
-      <div className="flex items-center gap-4 mb-5 p-3 rounded-lg bg-card/50 border border-border/30">
+      <div
+        className="flex items-center gap-4 mb-5 p-3 rounded-lg"
+        style={{ background: 'var(--fi-bg-secondary)', border: '1px solid var(--fi-border)' }}
+      >
         <div className="text-center shrink-0">
-          <p className="text-xs text-muted-foreground">Current</p>
-          <p className="text-xl font-bold text-foreground tabular-nums">{currentScore}</p>
+          <p className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>Current</p>
+          <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--fi-text-primary)' }}>{currentScore}</p>
         </div>
         <div className="flex-1 flex items-center gap-2 min-w-0">
-          <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+          <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--fi-bg-tertiary)' }}>
             <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-primary to-score-excellent"
+              className="h-full rounded-full"
+              style={{ background: 'linear-gradient(90deg, var(--fi-primary), var(--fi-score-excellent))' }}
               initial={{ width: `${currentScore}%` }}
               animate={{ width: `${projectedScore}%` }}
               transition={{ duration: 1.5, ease: 'easeOut' }}
@@ -142,8 +156,8 @@ export function ImprovementChart({
           </div>
         </div>
         <div className="text-center shrink-0">
-          <p className="text-xs text-score-excellent">Projected</p>
-          <p className="text-xl font-bold text-score-excellent tabular-nums">
+          <p className="text-xs" style={{ color: 'var(--fi-score-excellent)' }}>Projected</p>
+          <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--fi-score-excellent)' }}>
             {Math.round(animatedProjected)}
           </p>
         </div>
@@ -152,16 +166,17 @@ export function ImprovementChart({
       {/* Single task: from rubric (lowest category → highest impact) or fallback */}
       {topItem && (
         <div className="space-y-2">
-          <p className="text-xs text-muted-foreground">{topItem.item}</p>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
+          <p className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>{topItem.item}</p>
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--fi-bg-tertiary)' }}>
             <motion.div
-              className="h-full rounded-full bg-primary"
+              className="h-full rounded-full"
+              style={{ background: 'var(--fi-primary)' }}
               initial={{ width: 0 }}
               animate={{ width: `${barFillPercent}%` }}
               transition={{ duration: 0.8, delay: 0.2, ease: 'easeOut' }}
             />
           </div>
-          <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
+          <div className="flex justify-between text-[10px] font-mono" style={{ color: 'var(--fi-text-muted)' }}>
             <span>0</span>
             <span>0.25</span>
             <span>0.5</span>

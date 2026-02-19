@@ -143,27 +143,30 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
             className={cn(
               'fixed z-50 right-0 top-0 flex flex-col',
-              'bg-card border-l border-border',
+              'border-l',
               // Use dvh so panel stays above browser/OS UI (e.g. taskbar)
               'h-dvh max-h-dvh',
               // Desktop: 40% width, Mobile: full screen
               'w-full sm:w-[480px] lg:w-[40%]'
             )}
+            style={{ background: 'var(--fi-bg-card)', borderColor: 'var(--fi-border)' }}
           >
             {chatFullPanel ? (
               <>
-                <div className="flex items-center justify-between flex-shrink-0 px-4 py-3 border-b border-border">
+                <div className="flex items-center justify-between flex-shrink-0 px-4 py-3" style={{ borderBottom: '1px solid var(--fi-border)' }}>
                   <button
                     onClick={() => setChatFullPanel(false)}
-                    className="flex items-center gap-2 text-sm font-medium text-foreground hover:text-muted-foreground"
+                    className="flex items-center gap-2 text-sm font-medium"
+                    style={{ color: 'var(--fi-text-primary)' }}
                   >
                     <ChevronLeft className="w-4 h-4" />
                     Back
                   </button>
-                  <span className="text-sm font-semibold text-foreground">Chat with AI</span>
+                  <span className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Chat with AI</span>
                   <button
                     onClick={onClose}
-                    className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
+                    className="p-2 rounded-lg transition-colors"
+                    style={{ color: 'var(--fi-text-muted)' }}
                     title="Close panel"
                   >
                     <X className="w-5 h-5" />
@@ -182,16 +185,17 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
               {/* Header */}
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-xl font-display font-bold text-foreground">
+                  <h2 className="text-xl font-display font-bold" style={{ color: 'var(--fi-text-primary)' }}>
                     {task.title}
                   </h2>
-                  <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                  <p className="text-sm mt-1.5 leading-relaxed" style={{ color: 'var(--fi-text-muted)' }}>
                     {task.description}
                   </p>
                 </div>
                 <button
                   onClick={onClose}
-                  className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+                  className="p-2 rounded-lg transition-colors flex-shrink-0"
+                  style={{ color: 'var(--fi-text-muted)' }}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -203,30 +207,32 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                 style={{ gridTemplateColumns: '1fr 1fr', gridTemplateAreas: '"status impact" "due-date category"' }}
               >
                 <div className="relative" style={{ gridArea: 'status' }}>
-                  <label className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 block">
+                  <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--fi-text-muted)' }}>
                     Status
                   </label>
                   <button
                     onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                    className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-muted border border-border hover:border-border transition-colors"
+                    className="flex items-center gap-2 w-full px-3 py-2 rounded-lg transition-colors"
+                    style={{ background: 'var(--fi-bg-tertiary)', border: '1px solid var(--fi-border)' }}
                   >
                     <StatusChip status={task.status} />
-                    <ChevronDown className="w-3.5 h-3.5 text-muted-foreground ml-auto" />
+                    <ChevronDown className="w-3.5 h-3.5 ml-auto" style={{ color: 'var(--fi-text-muted)' }} />
                   </button>
                   {showStatusDropdown && (
                     <motion.div
                       initial={{ opacity: 0, y: -5 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="absolute top-full left-0 mt-1 w-full bg-muted border border-border rounded-lg shadow-xl z-10 overflow-hidden"
+                      className="absolute top-full left-0 mt-1 w-full rounded-lg shadow-xl z-10 overflow-hidden"
+                      style={{ background: 'var(--fi-bg-tertiary)', border: '1px solid var(--fi-border)' }}
                     >
                       {statusOptions.map((opt) => (
                         <button
                           key={opt.value}
                           onClick={() => handleStatusChange(opt.value)}
-                          className={cn(
-                            'w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted transition-colors',
-                            task.status === opt.value && 'bg-muted/30'
-                          )}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors"
+                          style={{
+                            background: task.status === opt.value ? 'var(--fi-bg-secondary)' : 'transparent',
+                          }}
                         >
                           <StatusChip status={opt.value} />
                         </button>
@@ -236,63 +242,68 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                 </div>
 
                 <div style={{ gridArea: 'impact' }}>
-                  <label className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 block">
+                  <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--fi-text-muted)' }}>
                     Impact
                   </label>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border">
-                    <span className={cn(
-                      'text-sm font-medium capitalize',
-                      (task.priority === 'critical' || task.priority === 'high') ? 'text-red-400' :
-                      task.priority === 'medium' ? 'text-yellow-400' :
-                      task.priority === 'low' ? 'text-green-400' :
-                      'text-muted-foreground'
-                    )}>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'var(--fi-bg-tertiary)', border: '1px solid var(--fi-border)' }}>
+                    <span
+                      className="text-sm font-medium capitalize"
+                      style={{
+                        color: (task.priority === 'critical' || task.priority === 'high') ? 'var(--fi-score-need-improvement)' :
+                          task.priority === 'medium' ? 'var(--fi-score-good)' :
+                          task.priority === 'low' ? 'var(--fi-score-excellent)' :
+                          'var(--fi-text-muted)',
+                      }}
+                    >
                       {task.priority}
                     </span>
                   </div>
                 </div>
 
                 <div style={{ gridArea: 'due-date' }}>
-                  <label className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 block">
+                  <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--fi-text-muted)' }}>
                     Due Date
                   </label>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-sm">
-                    <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-foreground">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--fi-bg-tertiary)', border: '1px solid var(--fi-border)' }}>
+                    <Calendar className="w-3.5 h-3.5" style={{ color: 'var(--fi-text-muted)' }} />
+                    <span style={{ color: 'var(--fi-text-primary)' }}>
                       {task.due_date ? format(parseISO(task.due_date), 'MMM d, yyyy') : 'None'}
                     </span>
                   </div>
                 </div>
 
                 <div style={{ gridArea: 'category' }}>
-                  <label className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1.5 block">
+                  <label className="text-[11px] font-medium uppercase tracking-wider mb-1.5 block" style={{ color: 'var(--fi-text-muted)' }}>
                     Category
                   </label>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted border border-border text-sm">
-                    <Tag className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-foreground truncate">{group?.category ?? '—'}</span>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm" style={{ background: 'var(--fi-bg-tertiary)', border: '1px solid var(--fi-border)' }}>
+                    <Tag className="w-3.5 h-3.5" style={{ color: 'var(--fi-text-muted)' }} />
+                    <span className="truncate" style={{ color: 'var(--fi-text-primary)' }}>{group?.category ?? '—'}</span>
                   </div>
                 </div>
               </div>
 
               {/* Potential points */}
               {typeof task.potential_points === 'number' && task.potential_points > 0 && task.status !== 'done' && (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-score-excellent/10 text-score-excellent text-sm font-semibold border border-score-excellent/20">
+                <div
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold"
+                  style={{ background: 'var(--fi-score-excellent-bg)', color: 'var(--fi-score-excellent)', border: '1px solid color-mix(in srgb, var(--fi-score-excellent) 20%, transparent)' }}
+                >
                   <span>+{task.potential_points} pts</span>
-                  <span className="text-xs font-normal text-muted-foreground">if completed</span>
+                  <span className="text-xs font-normal" style={{ color: 'var(--fi-text-muted)' }}>if completed</span>
                 </div>
               )}
 
               {/* Badges */}
               <div className="flex items-center gap-2 flex-wrap">
                 {task.requires_rescore && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-chart-5/10 text-chart-5 border border-chart-5/20">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold" style={{ background: 'var(--fi-score-good-bg)', color: 'var(--fi-score-good)', border: '1px solid color-mix(in srgb, var(--fi-score-good) 20%, transparent)' }}>
                     <RefreshCw className="w-3 h-3" />
                     Requires Rescore
                   </span>
                 )}
                 {task.completion_source && (
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold bg-accent/10 text-accent border border-accent/20">
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold" style={{ background: 'color-mix(in srgb, var(--fi-primary) 10%, transparent)', color: 'var(--fi-primary)', border: '1px solid color-mix(in srgb, var(--fi-primary) 20%, transparent)' }}>
                     <Sparkles className="w-3 h-3" />
                     {task.completion_source === 'ai_file_upload' ? 'AI File Upload' :
                      task.completion_source === 'ai_chat' ? 'AI Chat' : 'Manual'}
@@ -301,7 +312,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
               </div>
 
               {/* Tabs */}
-              <div className="flex border-b border-border">
+              <div className="flex" style={{ borderBottom: '1px solid var(--fi-border)' }}>
                 {[
                   { id: 'ai' as const, label: 'AI Completion', icon: Sparkles },
                   { id: 'comments' as const, label: 'Comments', icon: MessageSquare },
@@ -310,12 +321,11 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={cn(
-                      'flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
-                      activeTab === tab.id
-                        ? 'border-primary text-primary'
-                        : 'border-transparent text-muted-foreground hover:text-foreground'
-                    )}
+                    className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px"
+                    style={{
+                      borderColor: activeTab === tab.id ? 'var(--fi-primary)' : 'transparent',
+                      color: activeTab === tab.id ? 'var(--fi-primary)' : 'var(--fi-text-muted)',
+                    }}
                   >
                     <tab.icon className="w-3.5 h-3.5" />
                     {tab.label}
@@ -329,7 +339,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                   <motion.div key="ai" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     {hasExtractions ? (
                       <div className="space-y-4">
-                        <p className="text-xs text-muted-foreground">AI analysis results from file upload:</p>
+                        <p className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>AI analysis results from file upload:</p>
                         <AIExtractionCard
                           extractions={demoExtractions}
                           onAcceptAll={() => {}}
@@ -344,8 +354,8 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                       />
                     ) : (
                       <div className="text-center py-8">
-                        <FileText className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                        <p className="text-sm text-muted-foreground">Task is already complete</p>
+                        <FileText className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--fi-text-muted)' }} />
+                        <p className="text-sm" style={{ color: 'var(--fi-text-muted)' }}>Task is already complete</p>
                       </div>
                     )}
                   </motion.div>
@@ -363,10 +373,10 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
 
                 {activeTab === 'history' && (
                   <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <h4 className="text-sm font-semibold text-foreground mb-3">Activity Timeline</h4>
+                    <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--fi-text-primary)' }}>Activity Timeline</h4>
                     <div className="space-y-3">
                       {events.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No activity yet</p>
+                        <p className="text-sm" style={{ color: 'var(--fi-text-muted)' }}>No activity yet</p>
                       ) : (
                         events.map((event) => {
                           const desc = EVENT_DESCRIPTIONS[event.event_type] ?? event.event_type;
@@ -377,12 +387,12 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                           return (
                             <div key={event.id} className="flex gap-3">
                               <div className="flex flex-col items-center">
-                                <div className="w-2 h-2 rounded-full bg-primary mt-2" />
-                                <div className="flex-1 w-px bg-border mt-1" />
+                                <div className="w-2 h-2 rounded-full mt-2" style={{ background: 'var(--fi-primary)' }} />
+                                <div className="flex-1 w-px mt-1" style={{ background: 'var(--fi-border)' }} />
                               </div>
                               <div className="pb-4">
-                                <p className="text-sm text-foreground">{desc}{detail}</p>
-                                <p className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                                <p className="text-sm" style={{ color: 'var(--fi-text-primary)' }}>{desc}{detail}</p>
+                                <p className="text-[11px] mt-0.5 flex items-center gap-1" style={{ color: 'var(--fi-text-muted)' }}>
                                   <Clock className="w-3 h-3" />
                                   {format(parseISO(event.created_at), 'MMM d, h:mm a')}
                                 </p>

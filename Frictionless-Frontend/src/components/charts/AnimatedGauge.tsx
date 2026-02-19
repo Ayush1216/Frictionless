@@ -14,13 +14,13 @@ interface AnimatedGaugeProps {
 
 function getScoreColor(score: number): string {
   if (score >= 86) return '#10B981'; // green
-  if (score >= 80) return '#EAB308'; // yellow
+  if (score >= 81) return '#EAB308'; // yellow
   return '#EF4444'; // red
 }
 
 function getScoreBadge(score: number): string {
   if (score >= 86) return 'Excellent';
-  if (score >= 80) return 'Good';
+  if (score >= 81) return 'Good';
   return 'Need Improvement';
 }
 

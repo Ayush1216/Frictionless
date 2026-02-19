@@ -35,7 +35,7 @@ function formatCurrency(value: number): string {
 
 function getScoreColorClass(score: number) {
   if (score >= 86) return 'text-score-excellent';
-  if (score >= 80) return 'text-score-good';
+  if (score >= 81) return 'text-score-good';
   return 'text-score-poor';
 }
 
@@ -47,7 +47,7 @@ function MiniGauge({ score }: { score: number }) {
   const color =
     score >= 86
       ? '#10B981'
-      : score >= 80
+      : score >= 81
         ? '#EAB308'
         : '#EF4444';
 
@@ -92,7 +92,7 @@ function StartupCard({ startup, index, isNew }: { startup: DummyStartup; index: 
                 {startup.org.name}
               </h3>
               {isNew && (
-                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/20 text-primary border border-primary/30">
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary/20 text-primary border border-primary/30">
                   NEW
                 </span>
               )}

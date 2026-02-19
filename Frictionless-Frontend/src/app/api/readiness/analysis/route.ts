@@ -56,15 +56,18 @@ export async function GET(request: NextRequest) {
       recommendations: ['Fill in key profile sections', 'Upload your pitch deck', 'Complete the readiness questionnaire'],
     };
 
-    // Optionally insert into cache for next time (fire-and-forget)
+    // Cache placeholder so subsequent requests are served from DB
     const modelVersion = 'placeholder-v1';
-    void supabase.from('ai_analysis_cache').insert({
+    const { error: cacheErr } = await supabase.from('ai_analysis_cache').insert({
       org_id: effectiveOrgId,
       analysis_type: 'readiness_insight',
       input_hash: dataHash,
       model_version: modelVersion,
       result_jsonb: placeholder,
     });
+    if (cacheErr) {
+      // Non-critical: duplicate key or RLS issue — safe to ignore
+    }
 
     return NextResponse.json({
       status: 'generated',

@@ -69,7 +69,9 @@ from app.services.activity import log_activity, get_activity_events
 from app.services.share import create_share_link, validate_share_link, revoke_share_link, get_share_links
 from app.services.team import invite_member, accept_invite, get_team_members, get_pending_invites, update_member_role, revoke_invite
 from app.services.investor_matching import (
+    add_custom_investor_match,
     generate_startup_thesis_profile,
+    generate_match_reasonings,
     get_investor_matches,
     get_startup_thesis_profile,
     run_investor_matching,
@@ -174,12 +176,21 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Frictionless Backend", lifespan=lifespan)
 
+_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "https://*.vercel.app",
+]
+# Allow additional origins via env (comma-separated)
+_extra_origins = os.getenv("ALLOWED_ORIGINS", "")
+if _extra_origins:
+    _ALLOWED_ORIGINS.extend(o.strip() for o in _extra_origins.split(",") if o.strip())
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://*.vercel.app"],
+    allow_origins=_ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
 
 
@@ -1664,6 +1675,12 @@ class TriggerMatchingRequest(BaseModel):
     max_matches: int = 10
 
 
+class AddCustomInvestorRequest(BaseModel):
+    org_id: str
+    investor_name: str
+    investor_url: str
+
+
 @app.post("/api/generate-thesis-profile")
 async def generate_thesis_profile_endpoint(
     body: GenerateThesisRequest, background_tasks: BackgroundTasks
@@ -1885,6 +1902,62 @@ async def run_investor_pipeline_endpoint(
     return {"ok": True, "status": "generating", "message": "Investor pipeline started"}
 
 
+@app.post("/api/investors/add-custom")
+async def add_custom_investor_endpoint(body: AddCustomInvestorRequest):
+    """Add a custom investor by name + website URL.
+
+    1. Fetches website content.
+    2. Uses Gemini to infer investor thesis.
+    3. Runs deterministic matching against startup thesis profile.
+    4. Generates AI reasoning.
+    5. Saves to startup_investor_matches.
+    Returns the match result.
+    """
+    investor_name = (body.investor_name or "").strip()
+    investor_url = (body.investor_url or "").strip()
+
+    if not investor_name:
+        raise HTTPException(status_code=400, detail="investor_name is required")
+    if not investor_url:
+        raise HTTPException(status_code=400, detail="investor_url is required")
+    if not investor_url.startswith(("http://", "https://")):
+        investor_url = "https://" + investor_url
+
+    _log(f"[POST add-custom-investor] org={body.org_id} name={investor_name} url={investor_url}")
+
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase not configured")
+
+    # Check if startup has a thesis profile; if not, trigger generation first
+    profile = get_startup_thesis_profile(supabase, body.org_id)
+    if not profile:
+        _log(f"[add-custom-investor] No thesis profile for {body.org_id} — generating...")
+        try:
+            generate_startup_thesis_profile(supabase, body.org_id, use_llm=True)
+        except Exception as exc:
+            _log(f"[add-custom-investor] Thesis generation failed: {exc}")
+            raise HTTPException(
+                status_code=500,
+                detail="Could not generate startup thesis profile. Complete onboarding first.",
+            )
+
+    try:
+        result = add_custom_investor_match(supabase, body.org_id, investor_name, investor_url)
+    except Exception as exc:
+        _log(f"[add-custom-investor] ERROR: {exc}")
+        log.exception("add_custom_investor_match failed for org %s: %s", body.org_id, exc)
+        raise HTTPException(status_code=500, detail=f"Investor matching failed: {exc}")
+
+    if result is None:
+        raise HTTPException(
+            status_code=500,
+            detail="Could not match investor. Check backend logs for details.",
+        )
+
+    return {"ok": True, "match": result}
+
+
 # ---------------------------------------------------------------------------
 # Diagnostic endpoint — test the pipeline components without running anything
 # ---------------------------------------------------------------------------
@@ -1908,7 +1981,7 @@ async def investor_pipeline_diagnostics(org_id: str = ""):
     openai_key = os.getenv("OPENAI_API_KEY", "")
     # Strip quotes that dotenv may or may not have stripped
     openai_key_clean = openai_key.strip().strip('"').strip("'")
-    checks["openai_api_key"] = f"{'OK' if openai_key_clean.startswith('sk-') else 'MISSING/INVALID'} (len={len(openai_key_clean)}, starts={openai_key_clean[:10]}...)"
+    checks["openai_api_key"] = f"{'OK' if openai_key_clean.startswith('sk-') else 'MISSING/INVALID'} (len={len(openai_key_clean)})"
     checks["openai_model"] = os.getenv("OPENAI_MODEL", "gpt-4o-mini (default)")
 
     # 3. Quick OpenAI test call

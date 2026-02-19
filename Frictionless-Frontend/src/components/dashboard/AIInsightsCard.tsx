@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, AlertCircle, ArrowRight, ChevronDown } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowRight, ChevronDown, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -81,25 +81,27 @@ export function AIInsightsCard({
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.15 }}
-        className={cn(
-          'glass-card p-6 bg-gradient-to-br from-accent/5 to-primary/5',
-          className,
-        )}
+        className={cn('fi-card p-6', className)}
+        style={{ background: 'var(--fi-bg-card)' }}
       >
         <div className="flex items-center gap-3 mb-3">
-          <div className="p-2 rounded-xl bg-primary/15">
-            <Sparkles className="w-5 h-5 text-primary" />
+          <div
+            className="p-2 rounded-xl"
+            style={{ background: 'rgba(16,185,129,0.1)' }}
+          >
+            <Sparkles className="w-5 h-5" style={{ color: 'var(--fi-primary)' }} />
           </div>
-          <h3 className="text-base font-display font-semibold gradient-text">
+          <h3 className="text-base font-semibold" style={{ color: 'var(--fi-primary)' }}>
             AI Insights
           </h3>
         </div>
-        <p className="text-sm text-muted-foreground leading-relaxed">
+        <p className="text-sm leading-relaxed" style={{ color: 'var(--fi-text-muted)' }}>
           Run your first readiness assessment to unlock AI-powered insights about your startup.
         </p>
         <Link
           href="/startup/readiness"
-          className="inline-flex items-center gap-1.5 mt-4 text-sm font-medium text-primary hover:text-chart-5 transition-colors"
+          className="inline-flex items-center gap-1.5 mt-4 text-sm font-medium transition-colors"
+          style={{ color: 'var(--fi-primary)' }}
         >
           Run Assessment
           <ArrowRight className="w-3.5 h-3.5" />
@@ -115,23 +117,23 @@ export function AIInsightsCard({
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.15 }}
-        className={cn(
-          'glass-card ai-insight-glow p-6 bg-gradient-to-br from-accent/5 to-primary/5',
-          className,
-        )}
+        className={cn('fi-card p-6 relative overflow-hidden', className)}
       >
-        {/* Neon top border */}
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-accent to-chart-5 rounded-t-xl" />
+        {/* Accent top border */}
+        <div
+          className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl"
+          style={{ background: 'linear-gradient(90deg, var(--fi-primary), var(--fi-chart-3, #F59E0B))' }}
+        />
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <Loader2 className="w-5 h-5 animate-spin text-primary" />
-            <span className="text-sm text-muted-foreground">Generating AI insights…</span>
+            <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--fi-primary)' }} />
+            <span className="text-sm" style={{ color: 'var(--fi-text-muted)' }}>Generating AI insights...</span>
           </div>
           {/* Shimmer skeleton */}
           <div className="space-y-2">
-            <div className="h-3 rounded bg-muted/50 skeleton-shimmer w-full" />
-            <div className="h-3 rounded bg-muted/50 skeleton-shimmer w-4/5" />
-            <div className="h-3 rounded bg-muted/50 skeleton-shimmer w-3/5" />
+            <div className="h-3 rounded w-full" style={{ background: 'var(--fi-bg-secondary)' }} />
+            <div className="h-3 rounded w-4/5" style={{ background: 'var(--fi-bg-secondary)' }} />
+            <div className="h-3 rounded w-3/5" style={{ background: 'var(--fi-bg-secondary)' }} />
           </div>
         </div>
       </motion.div>
@@ -145,10 +147,10 @@ export function AIInsightsCard({
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.15 }}
-        className={cn('glass-card p-6 bg-gradient-to-br from-accent/5 to-primary/5', className)}
+        className={cn('fi-card p-6', className)}
       >
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <AlertCircle className="w-5 h-5 text-score-fair" />
+        <div className="flex items-center gap-3" style={{ color: 'var(--fi-text-muted)' }}>
+          <AlertCircle className="w-5 h-5" style={{ color: 'var(--fi-score-good)' }} />
           <span className="text-sm">AI insights temporarily unavailable.</span>
         </div>
       </motion.div>
@@ -168,33 +170,36 @@ export function AIInsightsCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.15 }}
-      className={cn(
-        'glass-card ai-insight-glow bg-gradient-to-br from-accent/5 to-primary/5 relative overflow-hidden',
-        className,
-      )}
+      className={cn('fi-card relative overflow-hidden', className)}
     >
-      {/* Neon top border */}
-      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-accent to-chart-5 rounded-t-xl" />
+      {/* Accent top border */}
+      <div
+        className="absolute top-0 left-0 right-0 h-[3px] rounded-t-xl"
+        style={{ background: 'linear-gradient(90deg, var(--fi-primary), var(--fi-chart-3, #F59E0B))' }}
+      />
 
       {/* Header — always visible, clickable to expand */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 p-5 text-left hover:bg-muted/10 transition-colors"
+        className="w-full flex items-center gap-3 p-5 text-left transition-colors"
       >
         <div className="w-8 h-8 rounded-xl overflow-hidden shrink-0">
           <Image src="/ai-logo.png" alt="Frictionless Intelligence" width={32} height={32} className="w-full h-full object-contain" />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-base font-display font-semibold gradient-text">
+          <h3 className="text-base font-semibold" style={{ color: 'var(--fi-primary)' }}>
             AI Insights
           </h3>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>
             {analysis?.status === 'cached' && analysis.cached_at
               ? `Updated ${new Date(analysis.cached_at).toLocaleDateString()}`
               : 'Based on your current profile'}
           </p>
         </div>
-        <ChevronDown className={cn('w-4 h-4 text-muted-foreground transition-transform', expanded && 'rotate-180')} />
+        <ChevronDown
+          className={cn('w-4 h-4 transition-transform', expanded && 'rotate-180')}
+          style={{ color: 'var(--fi-text-muted)' }}
+        />
       </button>
 
       {/* Expandable content */}
@@ -210,7 +215,7 @@ export function AIInsightsCard({
             <div className="px-5 pb-5 pt-0 space-y-4">
               {/* AI Summary */}
               {analysis?.insights && (
-                <p className="text-sm text-foreground/90 leading-relaxed">
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--fi-text-secondary)' }}>
                   {analysis.insights}
                 </p>
               )}
@@ -220,13 +225,16 @@ export function AIInsightsCard({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {analysis?.strengths?.length ? (
                     <div>
-                      <h4 className="text-[11px] font-semibold text-score-excellent uppercase tracking-wider mb-2">
+                      <h4
+                        className="text-[11px] font-semibold uppercase tracking-wider mb-2"
+                        style={{ color: 'var(--fi-score-excellent)' }}
+                      >
                         Strengths
                       </h4>
                       <ul className="space-y-1">
                         {analysis.strengths.slice(0, 3).map((s, i) => (
-                          <li key={i} className="text-sm text-foreground/80 flex gap-2">
-                            <span className="text-score-excellent mt-0.5">•</span>
+                          <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--fi-text-secondary)' }}>
+                            <span className="mt-0.5" style={{ color: 'var(--fi-score-excellent)' }}>&#x2022;</span>
                             <span className="line-clamp-2">{s}</span>
                           </li>
                         ))}
@@ -235,13 +243,16 @@ export function AIInsightsCard({
                   ) : null}
                   {analysis?.risks?.length ? (
                     <div>
-                      <h4 className="text-[11px] font-semibold text-score-fair uppercase tracking-wider mb-2">
+                      <h4
+                        className="text-[11px] font-semibold uppercase tracking-wider mb-2"
+                        style={{ color: 'var(--fi-score-good)' }}
+                      >
                         Areas to Improve
                       </h4>
                       <ul className="space-y-1">
                         {analysis.risks.slice(0, 3).map((r, i) => (
-                          <li key={i} className="text-sm text-foreground/80 flex gap-2">
-                            <span className="text-score-fair mt-0.5">•</span>
+                          <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--fi-text-secondary)' }}>
+                            <span className="mt-0.5" style={{ color: 'var(--fi-score-good)' }}>&#x2022;</span>
                             <span className="line-clamp-2">{r}</span>
                           </li>
                         ))}
@@ -253,24 +264,27 @@ export function AIInsightsCard({
 
               {/* Score Prediction Bar */}
               {projectedScore > currentScore && (
-                <div className="pt-3 border-t border-border/50">
+                <div className="pt-3" style={{ borderTop: '1px solid var(--fi-border)' }}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted-foreground">Score Projection</span>
+                    <span className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>Score Projection</span>
                     <span className="text-xs font-mono">
-                      <span className="text-foreground font-medium">{Math.round(currentScore)}</span>
-                      <span className="text-muted-foreground mx-1">→</span>
-                      <span className="text-primary font-medium">{projectedScore}</span>
+                      <span className="font-medium" style={{ color: 'var(--fi-text-primary)' }}>{Math.round(currentScore)}</span>
+                      <span className="mx-1" style={{ color: 'var(--fi-text-muted)' }}>&rarr;</span>
+                      <span className="font-medium" style={{ color: 'var(--fi-primary)' }}>{projectedScore}</span>
                     </span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-1.5 rounded-full overflow-hidden"
+                    style={{ background: 'var(--fi-bg-tertiary)' }}
+                  >
                     <div className="h-full rounded-full relative" style={{ width: `${projectedPct}%` }}>
                       <div
-                        className="absolute inset-y-0 left-0 rounded-full bg-primary"
-                        style={{ width: `${(progressPct / projectedPct) * 100}%` }}
+                        className="absolute inset-y-0 left-0 rounded-full"
+                        style={{ width: `${(progressPct / projectedPct) * 100}%`, background: 'var(--fi-primary)' }}
                       />
                       <div
-                        className="absolute inset-y-0 right-0 rounded-full bg-primary/30"
-                        style={{ width: `${((projectedPct - progressPct) / projectedPct) * 100}%` }}
+                        className="absolute inset-y-0 right-0 rounded-full"
+                        style={{ width: `${((projectedPct - progressPct) / projectedPct) * 100}%`, background: 'var(--fi-primary)', opacity: 0.3 }}
                       />
                     </div>
                   </div>

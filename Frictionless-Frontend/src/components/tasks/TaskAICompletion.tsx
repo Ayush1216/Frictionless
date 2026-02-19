@@ -19,7 +19,6 @@ const demoExtractions: AIExtraction[] = [
   { field: 'Share Classes', value: 'Common + Series Seed Preferred', confidence: 0.78 },
 ];
 
-/** First message from the AI when chat has no history — so the AI starts the conversation. */
 const INITIAL_AI_MESSAGE =
   "Hi! I'm here to help you complete this task. You can describe what you've done so far, ask how to complete it, or attach a document (e.g. proof or supporting file) using the paperclip. What would you like to do?";
 
@@ -34,11 +33,8 @@ interface ChatMessage {
 interface TaskAICompletionProps {
   taskId: string;
   className?: string;
-  /** When true, render only chat UI and fill the side panel (used when panel is in full-panel chat mode). */
   chatFullPanel?: boolean;
-  /** Call when user opens "Chat with AI" so the panel can switch to full-panel chat. */
   onChatFullPanel?: () => void;
-  /** Call when user exits full-panel chat (e.g. Back). */
   onExitFullPanel?: () => void;
 }
 
@@ -97,7 +93,6 @@ export function TaskAICompletion({
     }
   }, [taskId]);
 
-  // Load history when opening inline chat (step === 'chat') so persisted messages show
   useEffect(() => {
     if (step === 'chat' && !chatFullPanel && chatMessages.length === 0) {
       loadChatMessages();
@@ -111,7 +106,6 @@ export function TaskAICompletion({
     }
   }, [chatFullPanel, loadChatMessages]);
 
-  // Show "Mark as complete" when reopening: task has submitted_value, or last assistant message says they can mark complete (e.g. after upload)
   useEffect(() => {
     if (!chatFullPanel || task?.status === 'done') return;
     if (task?.submitted_value) {
@@ -137,14 +131,23 @@ export function TaskAICompletion({
     const msg = chatInput.trim();
     if (!msg || chatLoading) return;
     setChatInput('');
-    setChatMessages((prev) => [...prev, { role: 'user', content: msg }]);
+    const userMsg: ChatMessage = { role: 'user', content: msg };
+    setChatMessages((prev) => [...prev, userMsg]);
     setChatLoading(true);
     try {
       const history = chatMessages.map((m) => ({ role: m.role, content: m.content }));
       const { reply, suggest_complete, submitted_value } = await chatWithTaskAI(taskId, msg, history);
-      setChatMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+      const assistantMsg: ChatMessage = { role: 'assistant', content: reply };
+      setChatMessages((prev) => [...prev, assistantMsg]);
       setSuggestComplete(suggest_complete);
       if (submitted_value) setLastSubmittedValue(submitted_value);
+
+      // Persist messages to DB
+      try {
+        await saveTaskChatMessages(taskId, [
+          ...chatMessages, userMsg, assistantMsg,
+        ].map((m) => ({ role: m.role, content: m.content })));
+      } catch { /* non-blocking */ }
     } catch {
       setChatMessages((prev) => [
         ...prev,
@@ -194,7 +197,6 @@ export function TaskAICompletion({
           { role: 'assistant', content: assistantContent },
         ]);
         setSuggestComplete(true);
-        // Persist to chat history so it's there if user doesn't click Mark as complete
         try {
           await saveTaskChatMessages(taskId, [
             { role: 'user', content: userContent },
@@ -232,17 +234,21 @@ export function TaskAICompletion({
           <button
             type="button"
             onClick={handleNewChat}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-transparent hover:border-border transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            style={{ color: 'var(--fi-text-muted)', border: '1px solid transparent' }}
             title="Start a new chat"
           >
             <MessageCircle className="w-3.5 h-3.5" />
             New chat
           </button>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto rounded-lg border border-border p-3 space-y-2 flex flex-col">
+        <div
+          className="flex-1 min-h-0 overflow-y-auto rounded-lg p-3 space-y-2 flex flex-col"
+          style={{ border: '1px solid var(--fi-border)' }}
+        >
           {loadingHistory ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <Loader2 className="w-6 h-6 animate-spin" style={{ color: 'var(--fi-primary)' }} />
             </div>
           ) : (
             <>
@@ -251,14 +257,16 @@ export function TaskAICompletion({
                   key={i}
                   className={cn(
                     'text-sm rounded-lg px-3 py-2 flex-shrink-0',
-                    m.role === 'user'
-                      ? 'bg-primary/15 ml-4 text-foreground'
-                      : 'bg-muted mr-4 text-foreground'
+                    m.role === 'user' ? 'ml-4' : 'mr-4'
                   )}
+                  style={{
+                    background: m.role === 'user' ? 'rgba(16,185,129,0.08)' : 'var(--fi-bg-secondary)',
+                    color: 'var(--fi-text-primary)',
+                  }}
                 >
                   <div>{m.content}</div>
                   {m.created_at && (
-                    <div className="text-[10px] text-muted-foreground mt-1 opacity-70">
+                    <div className="text-[10px] mt-1" style={{ color: 'var(--fi-text-muted)', opacity: 0.7 }}>
                       {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   )}
@@ -279,7 +287,11 @@ export function TaskAICompletion({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={chatLoading}
-            className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-50"
+            className="p-2 rounded-lg disabled:opacity-50 transition-colors"
+            style={{
+              border: '1px solid var(--fi-border)',
+              color: 'var(--fi-text-muted)',
+            }}
             title="Upload proof document (adds to Data Room and updates score)"
           >
             <Paperclip className="w-4 h-4" />
@@ -289,12 +301,18 @@ export function TaskAICompletion({
             onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChatSend()}
             placeholder="Type your message or attach a document..."
-            className="flex-1 px-3 py-2 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+            className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none"
+            style={{
+              background: 'var(--fi-bg-secondary)',
+              border: '1px solid var(--fi-border)',
+              color: 'var(--fi-text-primary)',
+            }}
           />
           <button
             onClick={handleChatSend}
             disabled={chatLoading || !chatInput.trim()}
-            className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            style={{ background: 'var(--fi-primary)', color: '#fff' }}
           >
             {chatLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -306,7 +324,11 @@ export function TaskAICompletion({
         {suggestComplete && completeTaskViaApi && task?.status !== 'done' && (
           <button
             onClick={handleMarkCompleteFromChat}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-score-excellent/20 text-score-excellent font-medium text-sm hover:bg-score-excellent/30 transition-colors flex-shrink-0 mt-2"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors flex-shrink-0 mt-2"
+            style={{
+              background: 'rgba(16,185,129,0.12)',
+              color: 'var(--fi-score-excellent)',
+            }}
           >
             <PartyPopper className="w-4 h-4" />
             Mark task complete
@@ -319,8 +341,8 @@ export function TaskAICompletion({
   return (
     <div className={cn('space-y-4', className)}>
       <div className="flex items-center gap-2 mb-2">
-        <Sparkles className="w-4 h-4 text-accent" />
-        <h4 className="text-sm font-semibold text-foreground">Complete with AI</h4>
+        <Sparkles className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
+        <h4 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Complete with AI</h4>
       </div>
 
       <AnimatePresence mode="wait">
@@ -336,11 +358,15 @@ export function TaskAICompletion({
               initial={{ scale: 0 }}
               animate={{ scale: [0, 1.2, 1] }}
               transition={{ duration: 0.5 }}
-              className="flex flex-col items-center gap-3 bg-card/90 backdrop-blur-xl border border-score-excellent/30 rounded-2xl p-8 shadow-xl"
+              className="flex flex-col items-center gap-3 backdrop-blur-xl rounded-2xl p-8 shadow-xl"
+              style={{
+                background: 'color-mix(in srgb, var(--fi-bg-card) 90%, transparent)',
+                border: '1px solid rgba(16,185,129,0.2)',
+              }}
             >
-              <PartyPopper className="w-12 h-12 text-score-excellent" />
-              <p className="text-lg font-display font-bold text-foreground">Task Complete!</p>
-              <p className="text-sm text-muted-foreground">Score rescore queued</p>
+              <PartyPopper className="w-12 h-12" style={{ color: 'var(--fi-score-excellent)' }} />
+              <p className="text-lg font-bold" style={{ color: 'var(--fi-text-primary)' }}>Task Complete!</p>
+              <p className="text-sm" style={{ color: 'var(--fi-text-muted)' }}>Score rescore queued</p>
             </motion.div>
           </motion.div>
         )}
@@ -350,21 +376,26 @@ export function TaskAICompletion({
           <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
             <TaskFileUpload onFileSelect={handleFileSelect} />
             <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-muted" />
-              <span className="text-xs text-muted-foreground font-medium">or</span>
-              <div className="flex-1 h-px bg-muted" />
+              <div className="flex-1 h-px" style={{ background: 'var(--fi-border)' }} />
+              <span className="text-xs font-medium" style={{ color: 'var(--fi-text-muted)' }}>or</span>
+              <div className="flex-1 h-px" style={{ background: 'var(--fi-border)' }} />
             </div>
             <button
               onClick={handleChatClick}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-muted border border-border text-sm font-medium text-foreground hover:bg-muted hover:border-primary/20 transition-all"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all"
+              style={{
+                background: 'var(--fi-bg-secondary)',
+                border: '1px solid var(--fi-border)',
+                color: 'var(--fi-text-primary)',
+              }}
             >
-              <MessageSquare className="w-4 h-4 text-primary" />
+              <MessageSquare className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
               Chat with AI
             </button>
           </motion.div>
         )}
 
-        {/* Chat with AI - expands to fill container */}
+        {/* Chat with AI */}
         {step === 'chat' && (
           <motion.div
             key="chat"
@@ -374,29 +405,35 @@ export function TaskAICompletion({
             className="flex flex-col min-h-[320px] sm:min-h-[400px]"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-foreground">Chat with AI</span>
+              <span className="text-sm font-medium" style={{ color: 'var(--fi-text-primary)' }}>Chat with AI</span>
               <button
                 onClick={() => setStep('idle')}
-                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1.5 rounded-lg transition-colors"
+                style={{ color: 'var(--fi-text-muted)' }}
                 title="Close chat"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex-1 min-h-[240px] overflow-y-auto rounded-lg bg-muted/50 border border-border p-3 space-y-2">
+            <div
+              className="flex-1 min-h-[240px] overflow-y-auto rounded-lg p-3 space-y-2"
+              style={{ background: 'var(--fi-bg-secondary)', border: '1px solid var(--fi-border)' }}
+            >
               {chatMessages.map((m, i) => (
                 <div
                   key={i}
                   className={cn(
                     'text-sm rounded-lg px-3 py-2',
-                    m.role === 'user'
-                      ? 'bg-primary/15 ml-4 text-foreground'
-                      : 'bg-muted mr-4 text-foreground'
+                    m.role === 'user' ? 'ml-4' : 'mr-4'
                   )}
+                  style={{
+                    background: m.role === 'user' ? 'rgba(16,185,129,0.08)' : 'var(--fi-bg)',
+                    color: 'var(--fi-text-primary)',
+                  }}
                 >
                   <div>{m.content}</div>
                   {m.created_at && (
-                    <div className="text-[10px] text-muted-foreground mt-1 opacity-70">
+                    <div className="text-[10px] mt-1" style={{ color: 'var(--fi-text-muted)', opacity: 0.7 }}>
                       {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   )}
@@ -409,12 +446,18 @@ export function TaskAICompletion({
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChatSend()}
                 placeholder="Type your message..."
-                className="flex-1 px-3 py-2 rounded-lg bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none"
+                style={{
+                  background: 'var(--fi-bg-secondary)',
+                  border: '1px solid var(--fi-border)',
+                  color: 'var(--fi-text-primary)',
+                }}
               />
               <button
                 onClick={handleChatSend}
                 disabled={chatLoading || !chatInput.trim()}
-                className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                style={{ background: 'var(--fi-primary)', color: '#fff' }}
               >
                 {chatLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -426,7 +469,11 @@ export function TaskAICompletion({
             {suggestComplete && completeTaskViaApi && (
               <button
                 onClick={handleMarkCompleteFromChat}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-score-excellent/20 text-score-excellent font-medium text-sm hover:bg-score-excellent/30 transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors"
+                style={{
+                  background: 'rgba(16,185,129,0.12)',
+                  color: 'var(--fi-score-excellent)',
+                }}
               >
                 <PartyPopper className="w-4 h-4" />
                 Mark task complete
@@ -448,13 +495,12 @@ export function TaskAICompletion({
               animate={{ rotate: 360 }}
               transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
             >
-              <Loader2 className="w-8 h-8 text-primary" />
+              <Loader2 className="w-8 h-8" style={{ color: 'var(--fi-primary)' }} />
             </motion.div>
             <div className="text-center">
-              <p className="text-sm font-semibold text-foreground">AI is analyzing your document...</p>
-              <p className="text-xs text-muted-foreground mt-1">Extracting fields and validating data</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>AI is analyzing your document...</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--fi-text-muted)' }}>Extracting fields and validating data</p>
             </div>
-            {/* Fake progress steps */}
             <div className="space-y-2 w-full max-w-xs">
               {['Reading document', 'Extracting fields', 'Validating data'].map((label, i) => (
                 <motion.div
@@ -465,15 +511,16 @@ export function TaskAICompletion({
                   className="flex items-center gap-2 text-xs"
                 >
                   <motion.div
-                    className="w-4 h-4 rounded-full border-2 border-primary flex items-center justify-center"
+                    className="w-4 h-4 rounded-full flex items-center justify-center"
+                    style={{ border: '2px solid var(--fi-primary)' }}
                     animate={step === 'analyzing' && i <= 1 ? { borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,0.2)' } : {}}
                     transition={{ delay: i * 0.6 }}
                   >
                     {step === 'analyzing' && i <= 1 && (
-                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-2 h-2 rounded-full bg-score-excellent" />
+                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-2 h-2 rounded-full" style={{ background: 'var(--fi-score-excellent)' }} />
                     )}
                   </motion.div>
-                  <span className="text-muted-foreground">{label}</span>
+                  <span style={{ color: 'var(--fi-text-muted)' }}>{label}</span>
                 </motion.div>
               ))}
             </div>
@@ -500,11 +547,14 @@ export function TaskAICompletion({
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center gap-3 py-6 text-center"
           >
-            <div className="w-12 h-12 rounded-full bg-score-excellent/20 flex items-center justify-center">
-              <PartyPopper className="w-6 h-6 text-score-excellent" />
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center"
+              style={{ background: 'rgba(16,185,129,0.12)' }}
+            >
+              <PartyPopper className="w-6 h-6" style={{ color: 'var(--fi-score-excellent)' }} />
             </div>
-            <p className="text-sm font-semibold text-foreground">Data accepted!</p>
-            <p className="text-xs text-muted-foreground">Task marked as complete. Score rescore queued.</p>
+            <p className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Data accepted!</p>
+            <p className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>Task marked as complete. Score rescore queued.</p>
           </motion.div>
         )}
       </AnimatePresence>

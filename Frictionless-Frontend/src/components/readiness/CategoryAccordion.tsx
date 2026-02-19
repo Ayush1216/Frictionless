@@ -21,7 +21,6 @@ import {
   TrendingUp,
   AlertCircle,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface Category {
   name: string;
@@ -164,16 +163,29 @@ const CATEGORY_TIPS: Record<string, string[]> = {
   ],
 };
 
-function getScoreColor(score: number) {
-  if (score >= 86) return 'bg-score-excellent';
-  if (score >= 80) return 'bg-score-good';
-  return 'bg-score-poor';
+function getScoreBgStyle(score: number): React.CSSProperties {
+  if (score >= 86) return { background: 'var(--fi-score-excellent-bg)' };
+  if (score >= 81) return { background: 'var(--fi-score-good-bg)' };
+  return { background: 'var(--fi-score-need-improvement-bg)' };
 }
 
-function getScoreTextColor(score: number) {
-  if (score >= 86) return 'text-score-excellent';
-  if (score >= 80) return 'text-score-good';
-  return 'text-score-poor';
+function getScoreTextStyle(score: number): React.CSSProperties {
+  if (score >= 86) return { color: 'var(--fi-score-excellent)' };
+  if (score >= 81) return { color: 'var(--fi-score-good)' };
+  return { color: 'var(--fi-score-need-improvement)' };
+}
+
+function getPointsTextStyle(points: number, maxPoints: number): React.CSSProperties {
+  if (points >= maxPoints * 0.8) return { color: 'var(--fi-score-excellent)' };
+  if (points >= maxPoints * 0.5) return { color: 'var(--fi-score-good)' };
+  if (points > 0) return { color: 'var(--fi-score-fair)' };
+  return { color: 'var(--fi-score-poor)' };
+}
+
+function getSeverityStyle(severity: 'high' | 'medium' | 'low'): React.CSSProperties {
+  if (severity === 'high') return { background: 'var(--fi-score-poor-bg)', color: 'var(--fi-score-poor)' };
+  if (severity === 'medium') return { background: 'var(--fi-score-fair-bg)', color: 'var(--fi-score-fair)' };
+  return { background: 'var(--fi-score-excellent-bg)', color: 'var(--fi-score-excellent)' };
 }
 
 export function CategoryAccordion({ categories, missingData, scoredRubric }: CategoryAccordionProps) {
@@ -207,18 +219,27 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2 }}
-      className="glass-card overflow-hidden"
+      className="fi-card overflow-hidden"
     >
-      <div className="p-4 lg:p-6 border-b border-border/50">
-        <h2 className="text-lg font-display font-semibold text-foreground">
+      <div
+        className="p-4 lg:p-6 border-b"
+        style={{ borderColor: 'var(--fi-border)' }}
+      >
+        <h2
+          className="text-lg font-display font-semibold"
+          style={{ color: 'var(--fi-text-primary)' }}
+        >
           Category Breakdown
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p
+          className="text-sm mt-1"
+          style={{ color: 'var(--fi-text-muted)' }}
+        >
           Detailed scores across 7 assessment dimensions
         </p>
       </div>
 
-      <Accordion type="multiple" className="divide-y divide-border/30">
+      <Accordion type="multiple">
         {displayCategories.map((cat, idx) => {
           const missing = getMissingForCategory(cat.name);
           const tips = CATEGORY_TIPS[cat.name] ?? [];
@@ -226,29 +247,45 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
 
           return (
             <AccordionItem key={cat.name} value={cat.name} className="border-none">
-              <AccordionTrigger className="px-4 lg:px-6 hover:no-underline hover:bg-muted/30 transition-colors">
+              <AccordionTrigger
+                className="px-4 lg:px-6 hover:no-underline transition-colors"
+                style={{ ['--tw-hover-bg' as string]: 'var(--fi-bg-secondary)' }}
+              >
                 <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
                   {/* Icon */}
-                  <div className="w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center text-muted-foreground shrink-0">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: 'var(--fi-bg-secondary)', color: 'var(--fi-text-muted)' }}
+                  >
                     {getCategoryIcon(cat.name)}
                   </div>
 
                   {/* Name + Bar */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-sm font-medium text-foreground truncate">
+                      <span
+                        className="text-sm font-medium truncate"
+                        style={{ color: 'var(--fi-text-primary)' }}
+                      >
                         {cat.name}
                       </span>
                       <div className="flex items-center gap-2 ml-2 shrink-0">
-                        <span className={cn('text-sm font-bold tabular-nums', getScoreTextColor(cat.score))}>
+                        <span
+                          className="text-sm font-bold tabular-nums"
+                          style={getScoreTextStyle(cat.score)}
+                        >
                           {cat.score}
                         </span>
                         <DeltaArrow delta={cat.delta} size="sm" />
                       </div>
                     </div>
-                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className="w-full h-1.5 rounded-full overflow-hidden"
+                      style={{ background: 'var(--fi-bg-tertiary)' }}
+                    >
                       <motion.div
-                        className={cn('h-full rounded-full', getScoreColor(cat.score))}
+                        className="h-full rounded-full"
+                        style={getScoreBgStyle(cat.score)}
                         initial={{ width: 0 }}
                         animate={{ width: `${cat.score}%` }}
                         transition={{ duration: 0.8, delay: 0.1 * idx, ease: 'easeOut' }}
@@ -265,32 +302,78 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
                     <div className="overflow-x-auto -mx-2">
                       <table className="w-full text-sm border-collapse">
                         <thead>
-                          <tr className="border-b border-border/50">
-                            <th className="text-left py-2 px-2 font-semibold text-muted-foreground">Question</th>
-                            <th className="text-left py-2 px-2 font-semibold text-muted-foreground w-24">Answer</th>
-                            <th className="text-left py-2 px-2 font-semibold text-muted-foreground w-16">Points</th>
-                            <th className="text-left py-2 px-2 font-semibold text-muted-foreground">Value / Reasoning</th>
+                          <tr
+                            className="border-b"
+                            style={{ borderColor: 'var(--fi-border)' }}
+                          >
+                            <th
+                              className="text-left py-2 px-2 font-semibold"
+                              style={{ color: 'var(--fi-text-muted)' }}
+                            >
+                              Question
+                            </th>
+                            <th
+                              className="text-left py-2 px-2 font-semibold w-24"
+                              style={{ color: 'var(--fi-text-muted)' }}
+                            >
+                              Answer
+                            </th>
+                            <th
+                              className="text-left py-2 px-2 font-semibold w-16"
+                              style={{ color: 'var(--fi-text-muted)' }}
+                            >
+                              Points
+                            </th>
+                            <th
+                              className="text-left py-2 px-2 font-semibold"
+                              style={{ color: 'var(--fi-text-muted)' }}
+                            >
+                              Value / Reasoning
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {rubricCategory.items.map((item, i) => (
-                            <tr key={i} className="border-b border-border/20">
-                              <td className="py-2.5 px-2 text-foreground">{item.Question ?? '—'}</td>
-                              <td className="py-2.5 px-2 text-muted-foreground">{String(item.Answer ?? '—')}</td>
+                            <tr
+                              key={i}
+                              className="border-b"
+                              style={{ borderColor: 'var(--fi-border)' }}
+                            >
+                              <td
+                                className="py-2.5 px-2"
+                                style={{ color: 'var(--fi-text-primary)' }}
+                              >
+                                {item.Question ?? '—'}
+                              </td>
+                              <td
+                                className="py-2.5 px-2"
+                                style={{ color: 'var(--fi-text-muted)' }}
+                              >
+                                {String(item.Answer ?? '—')}
+                              </td>
                               <td className="py-2.5 px-2 tabular-nums">
-                                <span className={cn(
-                                  'font-medium',
-                                  (item.Points ?? 0) >= (item.maximum_points ?? 0) * 0.8 ? 'text-score-excellent' :
-                                  (item.Points ?? 0) >= (item.maximum_points ?? 0) * 0.5 ? 'text-score-good' :
-                                  (item.Points ?? 0) > 0 ? 'text-score-fair' : 'text-score-poor',
-                                )}>
+                                <span
+                                  className="font-medium"
+                                  style={getPointsTextStyle(
+                                    (item.Points ?? 0),
+                                    (item.maximum_points ?? 0),
+                                  )}
+                                >
                                   {(item.Points ?? 0)}/{(item.maximum_points ?? 0)}
                                 </span>
                               </td>
-                              <td className="py-2.5 px-2 text-muted-foreground">
+                              <td
+                                className="py-2.5 px-2"
+                                style={{ color: 'var(--fi-text-muted)' }}
+                              >
                                 {item.Value && <span className="block text-xs mb-1">{item.Value}</span>}
                                 {item.Reasoning && (
-                                  <span className="block text-xs italic text-muted-foreground">{item.Reasoning}</span>
+                                  <span
+                                    className="block text-xs italic"
+                                    style={{ color: 'var(--fi-text-muted)' }}
+                                  >
+                                    {item.Reasoning}
+                                  </span>
                                 )}
                                 {!item.Value && !item.Reasoning && '—'}
                               </td>
@@ -304,13 +387,23 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
                   {/* Fallback: Tips when no rubric data */}
                   {(!useRubric || !rubricCategory?.items?.length) && (
                     <div>
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                      <h4
+                        className="text-xs font-semibold uppercase tracking-wider mb-2"
+                        style={{ color: 'var(--fi-text-muted)' }}
+                      >
                         Improvement Tips
                       </h4>
                       <ul className="space-y-1.5">
                         {tips.map((tip) => (
-                          <li key={tip} className="flex items-start gap-2 text-sm text-muted-foreground">
-                            <Lightbulb className="w-3.5 h-3.5 text-score-fair mt-0.5 shrink-0" />
+                          <li
+                            key={tip}
+                            className="flex items-start gap-2 text-sm"
+                            style={{ color: 'var(--fi-text-muted)' }}
+                          >
+                            <Lightbulb
+                              className="w-3.5 h-3.5 mt-0.5 shrink-0"
+                              style={{ color: 'var(--fi-score-fair)' }}
+                            />
                             {tip}
                           </li>
                         ))}
@@ -321,20 +414,25 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
                   {/* Missing data items for this category */}
                   {missing.length > 0 && (
                     <div>
-                      <h4 className="text-xs font-semibold text-score-poor uppercase tracking-wider mb-2">
+                      <h4
+                        className="text-xs font-semibold uppercase tracking-wider mb-2"
+                        style={{ color: 'var(--fi-score-poor)' }}
+                      >
                         Missing Data
                       </h4>
                       <ul className="space-y-1.5">
                         {missing.map((m) => (
-                          <li key={m.item} className="flex items-center gap-2 text-sm text-score-poor">
+                          <li
+                            key={m.item}
+                            className="flex items-center gap-2 text-sm"
+                            style={{ color: 'var(--fi-score-poor)' }}
+                          >
                             <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                             {m.item}
-                            <span className={cn(
-                              'text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase',
-                              m.severity === 'high' && 'bg-score-poor/20 text-score-poor',
-                              m.severity === 'medium' && 'bg-score-fair/20 text-score-fair',
-                              m.severity === 'low' && 'bg-score-excellent/20 text-score-excellent',
-                            )}>
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold uppercase"
+                              style={getSeverityStyle(m.severity)}
+                            >
                               {m.severity}
                             </span>
                           </li>
@@ -346,7 +444,11 @@ export function CategoryAccordion({ categories, missingData, scoredRubric }: Cat
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-primary/30 text-primary hover:bg-primary/10 gap-1.5"
+                    className="gap-1.5"
+                    style={{
+                      borderColor: 'var(--fi-primary)',
+                      color: 'var(--fi-primary)',
+                    }}
                   >
                     Improve This
                     <ArrowRight className="w-3.5 h-3.5" />

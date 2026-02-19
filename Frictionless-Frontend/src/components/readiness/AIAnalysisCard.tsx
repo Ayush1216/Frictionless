@@ -17,7 +17,6 @@ export type AIAnalysisResult = {
 interface AIAnalysisCardProps {
   orgId: string | null;
   getToken: () => Promise<string | null>;
-  /** Input hash or readiness data to invalidate cache */
   readinessDataHash?: string;
   className?: string;
 }
@@ -72,11 +71,11 @@ export function AIAnalysisCard({
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className={cn('glass-card p-6', className)}
+        className={cn('fi-card p-6', className)}
       >
-        <div className="flex items-center gap-3 text-muted-foreground">
+        <div className="flex items-center gap-3" style={{ color: 'var(--fi-text-muted)' }}>
           <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm">Generating AI analysis…</span>
+          <span className="text-sm">Generating AI analysis...</span>
         </div>
       </motion.div>
     );
@@ -87,9 +86,10 @@ export function AIAnalysisCard({
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        className={cn('glass-card p-6 border-amber-500/30', className)}
+        className={cn('fi-card p-6', className)}
+        style={{ borderColor: 'rgba(245,158,11,0.2)' }}
       >
-        <div className="flex items-center gap-3 text-amber-500">
+        <div className="flex items-center gap-3" style={{ color: 'var(--fi-score-good)' }}>
           <AlertCircle className="w-5 h-5" />
           <span className="text-sm">AI analysis unavailable. Try again later.</span>
         </div>
@@ -106,15 +106,18 @@ export function AIAnalysisCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
-      className={cn('glass-card p-6', className)}
+      className={cn('fi-card p-6', className)}
     >
       <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 rounded-xl bg-primary/20">
-          <Sparkles className="w-5 h-5 text-primary" />
+        <div
+          className="p-2 rounded-xl"
+          style={{ background: 'rgba(16,185,129,0.1)' }}
+        >
+          <Sparkles className="w-5 h-5" style={{ color: 'var(--fi-primary)' }} />
         </div>
         <div>
-          <h3 className="text-base font-display font-semibold text-foreground">AI Readiness Analysis</h3>
-          <p className="text-xs text-muted-foreground">
+          <h3 className="text-base font-semibold" style={{ color: 'var(--fi-text-primary)' }}>AI Frictionless Analysis</h3>
+          <p className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>
             {analysis.status === 'cached' && analysis.cached_at
               ? `Cached ${new Date(analysis.cached_at).toLocaleDateString()}`
               : 'Generated for your current profile'}
@@ -122,16 +125,21 @@ export function AIAnalysisCard({
         </div>
       </div>
       {analysis.insights && (
-        <p className="text-sm text-foreground/90 mb-4 leading-relaxed">{analysis.insights}</p>
+        <p className="text-sm mb-4 leading-relaxed" style={{ color: 'var(--fi-text-secondary)' }}>{analysis.insights}</p>
       )}
       <div className="grid gap-4 sm:grid-cols-3">
         {analysis.strengths?.length ? (
           <div>
-            <h4 className="text-xs font-semibold text-accent uppercase tracking-wider mb-2">Strengths</h4>
+            <h4
+              className="text-xs font-semibold uppercase tracking-wider mb-2"
+              style={{ color: 'var(--fi-score-excellent)' }}
+            >
+              Strengths
+            </h4>
             <ul className="space-y-1">
               {analysis.strengths.map((s, i) => (
-                <li key={i} className="text-sm text-foreground/80 flex gap-2">
-                  <span className="text-accent">•</span>{s}
+                <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--fi-text-secondary)' }}>
+                  <span style={{ color: 'var(--fi-score-excellent)' }}>&#x2022;</span>{s}
                 </li>
               ))}
             </ul>
@@ -139,11 +147,16 @@ export function AIAnalysisCard({
         ) : null}
         {analysis.risks?.length ? (
           <div>
-            <h4 className="text-xs font-semibold text-amber-500 uppercase tracking-wider mb-2">Risks</h4>
+            <h4
+              className="text-xs font-semibold uppercase tracking-wider mb-2"
+              style={{ color: 'var(--fi-score-good)' }}
+            >
+              Risks
+            </h4>
             <ul className="space-y-1">
               {analysis.risks.map((r, i) => (
-                <li key={i} className="text-sm text-foreground/80 flex gap-2">
-                  <span className="text-amber-500">•</span>{r}
+                <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--fi-text-secondary)' }}>
+                  <span style={{ color: 'var(--fi-score-good)' }}>&#x2022;</span>{r}
                 </li>
               ))}
             </ul>
@@ -151,11 +164,16 @@ export function AIAnalysisCard({
         ) : null}
         {analysis.recommendations?.length ? (
           <div>
-            <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">Recommendations</h4>
+            <h4
+              className="text-xs font-semibold uppercase tracking-wider mb-2"
+              style={{ color: 'var(--fi-primary)' }}
+            >
+              Recommendations
+            </h4>
             <ul className="space-y-1">
               {analysis.recommendations.map((r, i) => (
-                <li key={i} className="text-sm text-foreground/80 flex gap-2">
-                  <span className="text-primary">•</span>{r}
+                <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--fi-text-secondary)' }}>
+                  <span style={{ color: 'var(--fi-primary)' }}>&#x2022;</span>{r}
                 </li>
               ))}
             </ul>

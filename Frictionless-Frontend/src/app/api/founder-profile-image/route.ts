@@ -49,10 +49,6 @@ export async function POST(request: NextRequest) {
         const backendData = (await backendRes.json().catch(() => ({}))) as { profile_image_url?: string | null };
         const backendUrl = (backendData.profile_image_url || '').trim();
         if (backendRes.ok && backendUrl) {
-          console.log('[founder-profile-image] OK (backend fallback)', {
-            linkedin_url: linkedinUrl,
-            profile_image_url: backendUrl,
-          });
           return NextResponse.json({
             profile_image_url: backendUrl,
             profile_image_source: 'linkedin',
@@ -65,20 +61,11 @@ export async function POST(request: NextRequest) {
     }
 
     if ('error' in result) {
-      console.log('[founder-profile-image] FAILED', {
-        linkedin_url: linkedinUrl,
-        error: result.error,
-        debug_scraped_url: result.debug_scraped_url ?? null,
-      });
       return NextResponse.json(
         { error: result.error, debug_scraped_url: result.debug_scraped_url ?? null },
         { status: 422 }
       );
     }
-    console.log('[founder-profile-image] OK', {
-      linkedin_url: linkedinUrl,
-      profile_image_url: result.profile_image_url,
-    });
     return NextResponse.json(result);
   } catch (err) {
     return NextResponse.json(

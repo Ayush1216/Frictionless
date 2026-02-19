@@ -366,7 +366,7 @@ export default function AnalyticsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="glass-card p-4"
         >
-          <p className="text-xs text-muted-foreground">Readiness Score</p>
+          <p className="text-xs text-muted-foreground">Frictionless Score</p>
           <p className="text-2xl font-mono font-bold text-primary">{Math.round(overallScore)}%</p>
         </motion.div>
         <motion.div
@@ -399,7 +399,7 @@ export default function AnalyticsPage() {
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Score Trend — from readiness store */}
-        <ChartCard title="Readiness Score Trend" icon={TrendingUp} index={0}>
+        <ChartCard title="Frictionless Score Trend" icon={TrendingUp} index={0}>
           <AnimatedLineChart data={realScoreTrend} color="#3B82F6" height={220} />
         </ChartCard>
 
@@ -409,8 +409,8 @@ export default function AnalyticsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={radarData} margin={{ top: 8, right: 8, bottom: 0, left: -10 }} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.2)" />
-                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: '#9CA3AF' }} tickFormatter={(v) => `${v}%`} />
-                <YAxis type="category" dataKey="dimension" width={80} tick={{ fontSize: 10, fill: '#9CA3AF' }} />
+                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }} tickFormatter={(v) => `${v}%`} />
+                <YAxis type="category" dataKey="dimension" width={80} tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }} />
                 <Tooltip content={<ChartTooltip />} />
                 <Bar dataKey="score" name="Score" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
               </BarChart>
@@ -430,9 +430,9 @@ export default function AnalyticsPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.2)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }} tickLine={false} axisLine={false} />
                 <YAxis
-                  tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                  tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v: number) => `$${v / 1000}K`}
@@ -460,8 +460,8 @@ export default function AnalyticsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={customerGrowth} margin={{ top: 8, right: 8, bottom: 0, left: -10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.2)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }} tickLine={false} axisLine={false} />
                 <Tooltip content={<ChartTooltip />} />
                 <Bar
                   dataKey="value"
@@ -488,9 +488,9 @@ export default function AnalyticsPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.2)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }} tickLine={false} axisLine={false} />
                 <YAxis
-                  tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                  tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v: number) => `$${v / 1000}K`}
@@ -535,8 +535,8 @@ export default function AnalyticsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={matchActivity} margin={{ top: 8, right: 8, bottom: 0, left: -10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(75,85,99,0.2)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} tickLine={false} axisLine={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: 'var(--fi-text-muted)' }} tickLine={false} axisLine={false} />
                 <Tooltip content={<ChartTooltip />} />
                 <Bar
                   dataKey="views"

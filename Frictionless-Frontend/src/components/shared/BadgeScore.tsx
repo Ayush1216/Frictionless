@@ -12,7 +12,7 @@ interface BadgeScoreProps {
 
 function getScoreColor(score: number) {
   if (score >= 86) return 'text-score-excellent bg-score-excellent/15 border-score-excellent/30';
-  if (score >= 80) return 'text-score-good bg-score-good/15 border-score-good/30';
+  if (score >= 81) return 'text-score-good bg-score-good/15 border-score-good/30';
   return 'text-score-poor bg-score-poor/15 border-score-poor/30';
 }
 

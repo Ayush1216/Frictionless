@@ -52,7 +52,8 @@ export function AIStreamingText({ text, speed = 20, isStreaming = true, onComple
         <motion.span
           animate={{ opacity: [1, 0] }}
           transition={{ repeat: Infinity, duration: 0.6 }}
-          className="inline-block w-[2px] h-[1em] bg-primary ml-0.5 align-middle"
+          className="inline-block w-[2px] h-[1em] ml-0.5 align-middle"
+          style={{ background: 'var(--fi-primary)' }}
         />
       )}
     </span>

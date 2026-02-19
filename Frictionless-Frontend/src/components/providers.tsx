@@ -3,8 +3,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { useUIStore } from "@/stores/ui-store";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import dynamic from "next/dynamic";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const AuthSessionEffect = dynamic(
   () =>
@@ -44,7 +46,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
+      <ThemeProvider>
+        <TooltipProvider delayDuration={200}>
+          {children}
+        </TooltipProvider>
+      </ThemeProvider>
       <AuthSessionEffect />
       <Toaster
         position="top-right"
