@@ -14,9 +14,9 @@ import {
 const features = [
   {
     icon: Gauge,
-    title: 'Readiness Scoring',
+    title: 'Frictionless Scoring',
     description:
-      'Get an AI-powered investment readiness score across 12 key dimensions. Know exactly where you stand and what to improve before approaching investors.',
+      'Get an AI-powered investment Frictionless score across 12 key dimensions. Know exactly where you stand and what to improve before approaching investors.',
     color: 'from-primary to-accent',
     glowColor: 'rgba(59, 130, 246, 0.15)',
     size: 'large' as const,

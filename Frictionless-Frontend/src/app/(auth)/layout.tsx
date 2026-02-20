@@ -51,9 +51,9 @@ export default function AuthLayout({
 
         {/* Brand content */}
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-          {/* Logo — compact, 2x size */}
+          {/* Logo */}
           <Link href="/" className="flex items-center group p-0">
-            <div className="relative w-32 h-32 flex-shrink-0 sm:w-40 sm:h-40">
+            <div className="relative w-48 h-48 flex-shrink-0 lg:w-56 lg:h-56">
               <Image
                 src="/logo.png"
                 alt="Frictionless"
@@ -82,7 +82,7 @@ export default function AuthLayout({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              Score your startup&apos;s investment readiness, get matched with
+              Score your startup&apos;s investment Frictionless, get matched with
               ideal investors, and accelerate your fundraising journey.
             </motion.p>
 
@@ -93,7 +93,7 @@ export default function AuthLayout({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.6 }}
             >
-              {['Readiness Scoring', 'Investor Matching', 'AI Chat', 'Data Room'].map(
+              {['Frictionless Scoring', 'Investor Matching', 'AI Chat', 'Data Room'].map(
                 (feature) => (
                   <span
                     key={feature}
@@ -160,6 +160,18 @@ export default function AuthLayout({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
+            {/* Logo — desktop right panel only */}
+            <div className="hidden lg:flex justify-center mb-6">
+              <Link href="/" className="block">
+                <Image
+                  src="/logo.png"
+                  alt="Frictionless"
+                  width={1024}
+                  height={1024}
+                  className="object-contain w-20 h-20"
+                />
+              </Link>
+            </div>
             {children}
           </motion.div>
         </div>

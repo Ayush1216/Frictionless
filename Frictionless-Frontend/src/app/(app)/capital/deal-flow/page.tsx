@@ -34,8 +34,8 @@ function formatCurrency(value: number): string {
 }
 
 function getScoreColorClass(score: number) {
-  if (score >= 86) return 'text-score-excellent';
-  if (score >= 81) return 'text-score-good';
+  if (score >= 80) return 'text-score-excellent';
+  if (score >= 60) return 'text-score-good';
   return 'text-score-poor';
 }
 
@@ -45,9 +45,9 @@ function MiniGauge({ score }: { score: number }) {
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 100) * circumference;
   const color =
-    score >= 86
+    score >= 80
       ? '#10B981'
-      : score >= 81
+      : score >= 60
         ? '#EAB308'
         : '#EF4444';
 
@@ -102,7 +102,7 @@ function StartupCard({ startup, index, isNew }: { startup: DummyStartup; index: 
               <span className="text-xs text-muted-foreground">{startup.sector.name}</span>
             </div>
           </div>
-          <MiniGauge score={startup.current_readiness_score} />
+          <MiniGauge score={startup.current_Readiness_score} />
         </div>
 
         {/* Summary */}
@@ -133,7 +133,7 @@ function StartupCard({ startup, index, isNew }: { startup: DummyStartup; index: 
               </span>
             ))}
           </div>
-          <BadgeScore score={startup.current_readiness_score} delta={startup.score_delta} size="sm" />
+          <BadgeScore score={startup.current_Readiness_score} delta={startup.score_delta} size="sm" />
         </div>
       </Link>
 
@@ -193,14 +193,14 @@ export default function DealFlowPage() {
 
     // Score min
     if (scoreMin > 0) {
-      results = results.filter((s) => s.current_readiness_score >= scoreMin);
+      results = results.filter((s) => s.current_Readiness_score >= scoreMin);
     }
 
     // Sort
     results.sort((a, b) => {
       switch (sortBy) {
         case 'score':
-          return b.current_readiness_score - a.current_readiness_score;
+          return b.current_Readiness_score - a.current_Readiness_score;
         case 'name':
           return a.org.name.localeCompare(b.org.name);
         case 'date':

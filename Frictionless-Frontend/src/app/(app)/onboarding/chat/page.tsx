@@ -67,7 +67,7 @@ const AFTER_WEBSITE =
   "Thanks! Now please upload your pitch deck (PDF). Use the attachment button below to upload the file.";
 
 const AFTER_PITCH_DECK =
-  "We've saved your pitch deck. Almost done! I'll ask you 6 quick questions so we can calculate your readiness score.";
+  "We've saved your pitch deck. Almost done! I'll ask you 6 quick questions so we can calculate your Frictionless score.";
 
 const INVESTOR_INITIAL =
   "Welcome! To get you set up, we'll need your firm's website and your thesis fit document (PDF). First, please paste your website URL below.";
@@ -143,7 +143,8 @@ export default function OnboardingChatPage() {
       if (!cancelled && user.org_type === 'startup' && statusJson.step === 'questionnaire') {
         const extRes = await fetch('/api/extraction/data', { headers: { Authorization: `Bearer ${token}` } });
         const extJson = await extRes.json().catch(() => ({}));
-        const extractionReady = extJson.status === 'ready' && extJson.extraction_data?.ocr_storage_path;
+        // Accept extraction if status is ready (even if ocr_storage_path missing — OCR may have failed)
+        const extractionReady = extJson.status === 'ready';
         if (cancelled) return;
         if (extractionReady) {
           setStep('questionnaire');
@@ -174,9 +175,13 @@ export default function OnboardingChatPage() {
   const showQuestionnaireStep = step === 'questionnaire';
   const showCalculatingStep = step === 'calculating';
 
-  /** Poll extraction in background — just tracks readiness in a ref */
+  /** Poll extraction in background — just tracks Frictionless in a ref. Stops after ~2 min. */
   const pollExtractionInBackground = (token: string) => {
+    let retries = 0;
+    const MAX_RETRIES = 40; // ~2 minutes at 3s intervals
     const poll = async (): Promise<void> => {
+      if (retries >= MAX_RETRIES) return;
+      retries++;
       try {
         const res = await fetch('/api/extraction/data', {
           headers: { Authorization: `Bearer ${token}` },
@@ -192,18 +197,26 @@ export default function OnboardingChatPage() {
     setTimeout(poll, 2000);
   };
 
-  /** Wait for extraction to be ready (returns a promise that resolves when done) */
+  /** Wait for extraction to be ready. Resolves when status is 'ready' or after 3-min timeout. */
   const waitForExtraction = (token: string): Promise<void> => {
     if (extractionReadyRef.current) return Promise.resolve();
     return new Promise((resolve) => {
+      const startTime = Date.now();
+      const HARD_TIMEOUT_MS = 3 * 60 * 1000; // 3 min absolute max
       const check = async () => {
+        const elapsed = Date.now() - startTime;
+        if (elapsed >= HARD_TIMEOUT_MS) {
+          resolve(); // timed out — proceed anyway
+          return;
+        }
         try {
           const res = await fetch('/api/extraction/data', {
             headers: { Authorization: `Bearer ${token}` },
           });
           const data = await res.json().catch(() => ({}));
-          if (data.status === 'ready' && data.extraction_data?.ocr_storage_path) {
-            extractionReadyRef.current = true;
+          // Resolve as soon as extraction data exists — Frictionless scoring works without OCR too
+          if (data.status === 'ready') {
+            if (data.extraction_data?.ocr_storage_path) extractionReadyRef.current = true;
             resolve();
             return;
           }
@@ -215,7 +228,15 @@ export default function OnboardingChatPage() {
   };
 
   const pollReadinessAndRedirect = async (token: string) => {
+    const startTime = Date.now();
+    const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes max
     const poll = async (): Promise<void> => {
+      // Timeout: redirect to dashboard anyway (score may still be calculating)
+      if (Date.now() - startTime >= TIMEOUT_MS) {
+        setStep('done');
+        router.replace('/dashboard');
+        return;
+      }
       const res = await fetch('/api/readiness/status', {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -432,14 +453,14 @@ export default function OnboardingChatPage() {
       } as Record<string, string>;
 
       // If extraction isn't ready yet, wait before submitting
-      // (questionnaire submission triggers readiness scoring which needs extraction data)
+      // (questionnaire submission triggers Frictionless scoring which needs extraction data)
       if (!extractionReadyRef.current) {
         addMessage('assistant', 'Processing your pitch deck… just a moment.');
         setStep('calculating');
         await waitForExtraction(token);
       }
 
-      // Now extraction is ready — submit questionnaire (triggers readiness scoring)
+      // Now extraction is ready — submit questionnaire (triggers Frictionless scoring)
       const res = await fetch('/api/onboarding/questionnaire', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -451,7 +472,7 @@ export default function OnboardingChatPage() {
         setSubmittingQuestionnaire(false);
         return;
       }
-      addMessage('assistant', "Thanks! We've saved your answers. Calculating your readiness score…");
+      addMessage('assistant', "Thanks! We've saved your answers. Calculating your Frictionless score…");
       setStep('calculating');
       pollReadinessAndRedirect(token);
     } catch (e) {
@@ -618,7 +639,7 @@ export default function OnboardingChatPage() {
           <div className="flex justify-end">
             <div className="flex items-center gap-2 rounded-xl px-4 py-2.5 bg-card/50 text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-xs">Calculating readiness score…</span>
+              <span className="text-xs">Calculating Frictionless score…</span>
             </div>
           </div>
         )}

@@ -1,5 +1,5 @@
 /**
- * Startup readiness questionnaire options.
+ * Startup Frictionless questionnaire options.
  * Matches API validation and rubric schema (company.*, overview.*, funds.*, biz.*).
  * Questions are single-choice unless multiSelect is true.
  */

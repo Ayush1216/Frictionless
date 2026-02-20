@@ -50,10 +50,10 @@ export async function GET(request: NextRequest) {
 
     // Fallback: generate placeholder until backend integration
     const placeholder = {
-      insights: 'Complete your company profile and run a readiness assessment to get personalized AI insights.',
+      insights: 'Complete your company profile and run a Frictionless assessment to get personalized AI insights.',
       strengths: ['Profile setup in progress'],
       risks: ['Add more company details for better analysis'],
-      recommendations: ['Fill in key profile sections', 'Upload your pitch deck', 'Complete the readiness questionnaire'],
+      recommendations: ['Fill in key profile sections', 'Upload your pitch deck', 'Complete the Frictionless questionnaire'],
     };
 
     // Cache placeholder so subsequent requests are served from DB

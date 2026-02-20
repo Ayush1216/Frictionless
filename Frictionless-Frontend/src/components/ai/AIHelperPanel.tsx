@@ -41,9 +41,9 @@ interface PageEntry {
 }
 
 const PAGE_REGISTRY: PageEntry[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, keywords: ['home', 'overview', 'summary', 'start'], description: 'Overview of readiness, tasks, and activity' },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, keywords: ['home', 'overview', 'summary', 'start'], description: 'Overview of Frictionless, tasks, and activity' },
   { label: 'Company Profile', href: '/startup/company-profile', icon: Building2, keywords: ['profile', 'company', 'startup', 'about', 'pitch', 'overview', 'team', 'founders', 'financials', 'charts', 'kpi'], description: 'Company data, team, financials, and charts' },
-  { label: 'Readiness', href: '/startup/readiness', icon: Gauge, keywords: ['readiness', 'score', 'assessment', 'rubric', 'improvement', 'gaps'], description: 'Investment readiness score and simulator' },
+  { label: 'Frictionless', href: '/startup/readiness', icon: Gauge, keywords: ['Frictionless', 'score', 'assessment', 'rubric', 'improvement', 'gaps'], description: 'Investment Frictionless score and simulator' },
   { label: 'Tasks', href: '/startup/tasks', icon: CheckSquare, keywords: ['tasks', 'todo', 'action', 'checklist', 'pending', 'complete'], description: 'Task list and completion tracking' },
   { label: 'Investors', href: '/startup/investors', icon: Handshake, keywords: ['investors', 'match', 'matching', 'fund', 'vc', 'angel', 'capital', 'thesis'], description: 'AI-matched investors based on your thesis' },
   { label: 'AI Chat', href: '/startup/chat', icon: Bot, keywords: ['chat', 'ai', 'assistant', 'ask', 'question', 'help', 'frictionless'], description: 'Full AI conversation with Frictionless Intelligence' },
@@ -70,9 +70,9 @@ interface QuickAction {
 
 function getContextualActions(pathname: string): QuickAction[] {
   const base: QuickAction[] = [
-    { label: 'Summarize my readiness', description: 'AI analysis of your current score and gaps', icon: Gauge, action: 'ai-query', prompt: 'Give me a brief summary of my startup readiness status. What are my top 3 strengths and top 3 gaps? Be concise and actionable.' },
+    { label: 'Summarize my Frictionless', description: 'AI analysis of your current score and gaps', icon: Gauge, action: 'ai-query', prompt: 'Give me a brief summary of my startup Frictionless status. What are my top 3 strengths and top 3 gaps? Be concise and actionable.' },
     { label: 'Draft investor email', description: 'Generate a personalized outreach email', icon: Send, action: 'ai-query', prompt: 'Help me draft a concise, compelling cold outreach email to a potential investor. Include our key traction metrics and value proposition. Keep it under 150 words.' },
-    { label: 'What should I focus on?', description: 'AI-powered priority recommendation', icon: Zap, action: 'ai-query', prompt: 'Based on my startup profile, what are the top 3 most impactful things I should focus on this week to improve my fundraising readiness? Be specific and actionable.' },
+    { label: 'What should I focus on?', description: 'AI-powered priority recommendation', icon: Zap, action: 'ai-query', prompt: 'Based on my startup profile, what are the top 3 most impactful things I should focus on this week to improve my fundraising Frictionless? Be specific and actionable.' },
   ];
 
   if (pathname.includes('company-profile')) {
@@ -81,8 +81,8 @@ function getContextualActions(pathname: string): QuickAction[] {
   if (pathname.includes('investors')) {
     base.unshift({ label: 'Refine my investor strategy', description: 'Optimize your matching criteria', icon: Handshake, action: 'ai-query', prompt: 'Review my investor matching results. Suggest how I can improve my thesis profile to get better matches. What investor types should I target?' });
   }
-  if (pathname.includes('tasks') || pathname.includes('readiness')) {
-    base.unshift({ label: 'Prioritize my tasks', description: 'Smart task ordering', icon: CheckSquare, action: 'ai-query', prompt: 'Look at my current tasks and help me prioritize them by impact on my readiness score. Which 3 tasks will give me the biggest score improvement?' });
+  if (pathname.includes('tasks') || pathname.includes('Frictionless')) {
+    base.unshift({ label: 'Prioritize my tasks', description: 'Smart task ordering', icon: CheckSquare, action: 'ai-query', prompt: 'Look at my current tasks and help me prioritize them by impact on my Frictionless score. Which 3 tasks will give me the biggest score improvement?' });
   }
 
   return base.slice(0, 4);
@@ -191,9 +191,9 @@ export function AIHelperPanel({ open, onClose }: AIHelperPanelProps) {
     setAiResponse('');
 
     const contextStr = `Current page: ${pathname}\nUser query: ${prompt}`;
-    const systemPrompt = `You are "Frictionless Intelligence" — the AI assistant for the Frictionless platform. You are an expert in startup fundraising, investor readiness, and pitch strategy. The user is on the "${pathname}" page.
+    const systemPrompt = `You are "Frictionless Intelligence" — the AI assistant for the Frictionless platform. You are an expert in startup fundraising, investor Frictionless, and pitch strategy. The user is on the "${pathname}" page.
 
-Respond concisely (3-5 sentences max for simple questions, up to a short paragraph for complex ones). Be specific, actionable, and use bullet points when listing items. Reference specific features of the Frictionless platform when relevant (Readiness Score, Investor Matching, Data Room, Tasks, etc.).
+Respond concisely (3-5 sentences max for simple questions, up to a short paragraph for complex ones). Be specific, actionable, and use bullet points when listing items. Reference specific features of the Frictionless platform when relevant (Frictionless Score, Investor Matching, Data Room, Tasks, etc.).
 
 If the user asks about navigation, tell them which page to visit.`;
 

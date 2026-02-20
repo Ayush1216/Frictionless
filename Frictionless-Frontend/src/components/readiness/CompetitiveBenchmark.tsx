@@ -117,7 +117,7 @@ export function CompetitiveBenchmark({
         <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>
           Competitive Benchmark
         </h3>
-        <TooltipInfo text={`Competitive Benchmark compares ${name}'s readiness scores against other seed-stage companies. See where you outperform peers and where you need to catch up.`} />
+        <TooltipInfo text={`Competitive Benchmark compares ${name}'s Frictionless scores against other seed-stage companies. See where you outperform peers and where you need to catch up.`} />
       </div>
       <p className="text-[11px] mb-4" style={{ color: 'var(--fi-text-muted)' }}>
         How {name} compares to seed-stage peers

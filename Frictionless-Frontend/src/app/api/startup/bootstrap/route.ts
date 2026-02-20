@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/startup/bootstrap
- * Single request for dashboard + tasks: readiness status, score history, and tasks.
+ * Single request for dashboard + tasks: Frictionless status, score history, and tasks.
  * Use this once on app load so dashboard and tasks pages can render instantly from cache.
  */
 export async function GET(request: NextRequest) {

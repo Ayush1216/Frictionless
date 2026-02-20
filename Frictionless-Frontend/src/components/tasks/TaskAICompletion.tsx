@@ -2,27 +2,16 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, MessageSquare, Loader2, PartyPopper, Send, X, Paperclip, MessageCircle } from 'lucide-react';
+import { Loader2, PartyPopper, Send, Paperclip, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { TaskFileUpload } from './TaskFileUpload';
-import { AIExtractionCard } from '@/components/ai/AIExtractionCard';
 import { useTaskStore } from '@/stores/task-store';
 import { useTasksSync } from '@/contexts/TasksSyncContext';
 import { chatWithTaskAI, fetchTaskChatMessages, getAuthHeaders, saveTaskChatMessages } from '@/lib/api/tasks';
-import type { AIExtraction } from '@/types/database';
-
-const demoExtractions: AIExtraction[] = [
-  { field: 'Company Name', value: 'NeuralPay Inc.', confidence: 0.97 },
-  { field: 'Incorporation Date', value: '2023-03-15', confidence: 0.92 },
-  { field: 'State of Incorporation', value: 'Delaware', confidence: 0.95 },
-  { field: 'Registered Agent', value: 'Corporation Service Company', confidence: 0.88 },
-  { field: 'Share Classes', value: 'Common + Series Seed Preferred', confidence: 0.78 },
-];
 
 const INITIAL_AI_MESSAGE =
   "Hi! I'm here to help you complete this task. You can describe what you've done so far, ask how to complete it, or attach a document (e.g. proof or supporting file) using the paperclip. What would you like to do?";
 
-type CompletionStep = 'idle' | 'file-selected' | 'analyzing' | 'results' | 'accepted' | 'chat';
+type CompletionStep = 'accepted' | 'chat';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -45,7 +34,7 @@ export function TaskAICompletion({
   onChatFullPanel,
   onExitFullPanel,
 }: TaskAICompletionProps) {
-  const [step, setStep] = useState<CompletionStep>(chatFullPanel ? 'chat' : 'idle');
+  const [step, setStep] = useState<CompletionStep>('chat');
   const [showConfetti, setShowConfetti] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -53,28 +42,8 @@ export function TaskAICompletion({
   const [loadingHistory, setLoadingHistory] = useState(chatFullPanel);
   const [suggestComplete, setSuggestComplete] = useState(false);
   const [lastSubmittedValue, setLastSubmittedValue] = useState<string | undefined>();
-  const completeTaskWithAI = useTaskStore((s) => s.completeTaskWithAI);
   const completeTaskViaApi = useTasksSync()?.completeTaskViaApi;
   const task = useTaskStore((s) => s.tasks.find((t) => t.id === taskId));
-
-  const handleFileSelect = useCallback(() => {
-    setStep('file-selected');
-    setTimeout(() => {
-      setStep('analyzing');
-      setTimeout(() => setStep('results'), 2500);
-    }, 800);
-  }, []);
-
-  const handleAccept = useCallback(() => {
-    completeTaskWithAI(taskId, demoExtractions, 'ai_file_upload');
-    setStep('accepted');
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), 3000);
-  }, [taskId, completeTaskWithAI]);
-
-  const handleReject = useCallback(() => {
-    setStep('idle');
-  }, []);
 
   const loadChatMessages = useCallback(async () => {
     setLoadingHistory(true);
@@ -94,7 +63,7 @@ export function TaskAICompletion({
   }, [taskId]);
 
   useEffect(() => {
-    if (step === 'chat' && !chatFullPanel && chatMessages.length === 0) {
+    if (step === 'chat' && chatMessages.length === 0 && !chatFullPanel) {
       loadChatMessages();
     }
   }, [step, chatFullPanel, chatMessages.length, loadChatMessages]);
@@ -122,10 +91,6 @@ export function TaskAICompletion({
     );
     if (canMarkComplete) setSuggestComplete(true);
   }, [chatFullPanel, task?.submitted_value, task?.status, chatMessages]);
-
-  const handleChatClick = useCallback(() => {
-    onChatFullPanel?.();
-  }, [onChatFullPanel]);
 
   const handleChatSend = useCallback(async () => {
     const msg = chatInput.trim();
@@ -191,7 +156,7 @@ export function TaskAICompletion({
         const alreadyExists = data.already_exists === true;
         const assistantContent = alreadyExists
           ? 'This document is already in your Data Room. You can mark the task complete when ready.'
-          : "I've added this document to your Data Room. We're updating your readiness score from it. You can mark the task complete when ready.";
+          : "I've added this document to your Data Room. We're updating your Frictionless score from it. You can mark the task complete when ready.";
         setChatMessages((prev) => [
           ...prev,
           { role: 'assistant', content: assistantContent },
@@ -340,11 +305,6 @@ export function TaskAICompletion({
 
   return (
     <div className={cn('space-y-4', className)}>
-      <div className="flex items-center gap-2 mb-2">
-        <Sparkles className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
-        <h4 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Complete with AI</h4>
-      </div>
-
       <AnimatePresence mode="wait">
         {/* Confetti overlay */}
         {showConfetti && (
@@ -371,30 +331,6 @@ export function TaskAICompletion({
           </motion.div>
         )}
 
-        {/* Idle: upload or chat */}
-        {step === 'idle' && (
-          <motion.div key="idle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-3">
-            <TaskFileUpload onFileSelect={handleFileSelect} />
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px" style={{ background: 'var(--fi-border)' }} />
-              <span className="text-xs font-medium" style={{ color: 'var(--fi-text-muted)' }}>or</span>
-              <div className="flex-1 h-px" style={{ background: 'var(--fi-border)' }} />
-            </div>
-            <button
-              onClick={handleChatClick}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all"
-              style={{
-                background: 'var(--fi-bg-secondary)',
-                border: '1px solid var(--fi-border)',
-                color: 'var(--fi-text-primary)',
-              }}
-            >
-              <MessageSquare className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
-              Chat with AI
-            </button>
-          </motion.div>
-        )}
-
         {/* Chat with AI */}
         {step === 'chat' && (
           <motion.div
@@ -404,43 +340,55 @@ export function TaskAICompletion({
             exit={{ opacity: 0 }}
             className="flex flex-col min-h-[320px] sm:min-h-[400px]"
           >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium" style={{ color: 'var(--fi-text-primary)' }}>Chat with AI</span>
-              <button
-                onClick={() => setStep('idle')}
-                className="p-1.5 rounded-lg transition-colors"
-                style={{ color: 'var(--fi-text-muted)' }}
-                title="Close chat"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
             <div
               className="flex-1 min-h-[240px] overflow-y-auto rounded-lg p-3 space-y-2"
               style={{ background: 'var(--fi-bg-secondary)', border: '1px solid var(--fi-border)' }}
             >
-              {chatMessages.map((m, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    'text-sm rounded-lg px-3 py-2',
-                    m.role === 'user' ? 'ml-4' : 'mr-4'
-                  )}
-                  style={{
-                    background: m.role === 'user' ? 'rgba(16,185,129,0.08)' : 'var(--fi-bg)',
-                    color: 'var(--fi-text-primary)',
-                  }}
-                >
-                  <div>{m.content}</div>
-                  {m.created_at && (
-                    <div className="text-[10px] mt-1" style={{ color: 'var(--fi-text-muted)', opacity: 0.7 }}>
-                      {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  )}
+              {loadingHistory ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--fi-primary)' }} />
                 </div>
-              ))}
+              ) : (
+                chatMessages.map((m, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      'text-sm rounded-lg px-3 py-2',
+                      m.role === 'user' ? 'ml-4' : 'mr-4'
+                    )}
+                    style={{
+                      background: m.role === 'user' ? 'rgba(16,185,129,0.08)' : 'var(--fi-bg)',
+                      color: 'var(--fi-text-primary)',
+                    }}
+                  >
+                    <div>{m.content}</div>
+                    {m.created_at && (
+                      <div className="text-[10px] mt-1" style={{ color: 'var(--fi-text-muted)', opacity: 0.7 }}>
+                        {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
             <div className="flex gap-2 mt-3 flex-shrink-0">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.xlsx,.xls,.csv,.docx,.doc,.png,.jpg,.jpeg"
+                className="hidden"
+                onChange={handleAttachFile}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={chatLoading}
+                className="p-2 rounded-lg disabled:opacity-50 transition-colors"
+                style={{ border: '1px solid var(--fi-border)', color: 'var(--fi-text-muted)' }}
+                title="Upload document"
+              >
+                <Paperclip className="w-4 h-4" />
+              </button>
               <input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
@@ -479,63 +427,6 @@ export function TaskAICompletion({
                 Mark task complete
               </button>
             )}
-          </motion.div>
-        )}
-
-        {/* File selected / Analyzing */}
-        {(step === 'file-selected' || step === 'analyzing') && (
-          <motion.div
-            key="analyzing"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col items-center gap-4 py-8"
-          >
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
-            >
-              <Loader2 className="w-8 h-8" style={{ color: 'var(--fi-primary)' }} />
-            </motion.div>
-            <div className="text-center">
-              <p className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>AI is analyzing your document...</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--fi-text-muted)' }}>Extracting fields and validating data</p>
-            </div>
-            <div className="space-y-2 w-full max-w-xs">
-              {['Reading document', 'Extracting fields', 'Validating data'].map((label, i) => (
-                <motion.div
-                  key={label}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.6 }}
-                  className="flex items-center gap-2 text-xs"
-                >
-                  <motion.div
-                    className="w-4 h-4 rounded-full flex items-center justify-center"
-                    style={{ border: '2px solid var(--fi-primary)' }}
-                    animate={step === 'analyzing' && i <= 1 ? { borderColor: '#10B981', backgroundColor: 'rgba(16,185,129,0.2)' } : {}}
-                    transition={{ delay: i * 0.6 }}
-                  >
-                    {step === 'analyzing' && i <= 1 && (
-                      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-2 h-2 rounded-full" style={{ background: 'var(--fi-score-excellent)' }} />
-                    )}
-                  </motion.div>
-                  <span style={{ color: 'var(--fi-text-muted)' }}>{label}</span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* Results */}
-        {step === 'results' && (
-          <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <AIExtractionCard
-              extractions={demoExtractions}
-              onAcceptAll={handleAccept}
-              onReject={handleReject}
-              onEdit={() => {}}
-            />
           </motion.div>
         )}
 

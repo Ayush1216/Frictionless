@@ -13,6 +13,7 @@ import {
   Zap,
   BookOpen,
   Search,
+  Globe,
 } from 'lucide-react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -65,6 +66,8 @@ export default function AIChatPage() {
     togglePin,
     responseMode,
     setResponseMode,
+    webMode,
+    setWebMode,
   } = useIntelligenceChat();
 
   const [showSidebar, setShowSidebar] = useState(true);
@@ -310,7 +313,7 @@ export default function AIChatPage() {
               <p className="text-[11px]" style={{ color: 'var(--fi-text-muted)' }}>
                 {activeThread
                   ? `${activeThread.message_count ?? 0} messages`
-                  : 'Your AI readiness advisor'}
+                  : 'Your AI Frictionless advisor'}
               </p>
             </div>
           </div>
@@ -341,6 +344,21 @@ export default function AIChatPage() {
               );
             })}
           </div>
+
+          {/* Web search toggle */}
+          <button
+            onClick={() => setWebMode(!webMode)}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+            style={{
+              background: webMode ? 'rgba(16,185,129,0.1)' : 'var(--fi-bg-secondary)',
+              border: `1px solid ${webMode ? 'rgba(16,185,129,0.3)' : 'var(--fi-border)'}`,
+              color: webMode ? 'var(--fi-primary)' : 'var(--fi-text-muted)',
+            }}
+            title={webMode ? 'Web search ON — disable' : 'Enable web search'}
+          >
+            <Globe className="w-3.5 h-3.5" />
+            Web
+          </button>
 
           {/* Export */}
           {activeThread && messages.length > 0 && (

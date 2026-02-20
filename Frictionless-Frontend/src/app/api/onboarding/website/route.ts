@@ -41,26 +41,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Startups: call backend to enrich org via Apollo and store in Supabase (required before pitch deck)
+    // Startups: call backend to enrich org (Apollo → Gemini fallback) and store in Supabase
     if (org?.org_type === 'startup') {
-      const url = `${BACKEND_URL.replace(/\/$/, '')}/api/enrich-organization`;
       if (!BACKEND_URL) {
         return NextResponse.json(
           { error: 'Backend not configured. Please set FRICTIONLESS_BACKEND_URL.' },
           { status: 500 }
         );
       }
+      const url = `${BACKEND_URL.replace(/\/$/, '')}/api/enrich-organization`;
       try {
         const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ org_id: orgId, website }),
         });
-        const errData = await res.json().catch(() => ({}));
+        const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          const msg = (errData?.detail as string) || errData?.error || 'Apollo enrichment failed';
-          console.error('[onboarding/website] Apollo enrichment failed:', res.status, errData);
+          const msg = (data?.detail as string) || data?.error || 'Organization enrichment failed';
+          console.error('[onboarding/website] Enrichment failed:', res.status, data);
           return NextResponse.json({ error: msg }, { status: res.status >= 400 ? res.status : 502 });
+        }
+        if (data?.source) {
+          console.log(`[onboarding/website] Enrichment succeeded via ${data.source}`);
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Backend unreachable';

@@ -82,7 +82,7 @@ export interface NarrativeData {
   // Gaps
   topGaps: { item: string; severity: string }[];
 
-  // Readiness signals
+  // Frictionless signals
   profileCompleteness: number;
   dataRoomCompleteness: number;
   documentCount: number;
@@ -411,8 +411,8 @@ export function useNarrativeData(): NarrativeData {
     const topTask = topImpactTasks[0];
     const topTaskStr = topTask
       ? `Your biggest opportunity is "${topTask.title}" (+${topTask.potential_points ?? 0} points).`
-      : 'Complete your readiness assessment to unlock personalized insights.';
-    return `${greeting}, ${companyName}. You're at ${Math.round(readinessScore)}% readiness \u2014 ${scoreLabel}. ${topTaskStr}`;
+      : 'Complete your Frictionless assessment to unlock personalized insights.';
+    return `${greeting}, ${companyName}. You're at ${Math.round(readinessScore)}% Frictionless \u2014 ${scoreLabel}. ${topTaskStr}`;
   }, [companyName, readinessScore, scoreLabel, topImpactTasks]);
 
   return {

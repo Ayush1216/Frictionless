@@ -1,6 +1,7 @@
 """Supabase client for backend operations (uses service role)."""
 import logging
 import os
+import re
 
 log = logging.getLogger(__name__)
 from datetime import datetime, timezone
@@ -9,6 +10,13 @@ from supabase import Client, create_client
 
 BUCKET = "org-assets"
 SIGNED_URL_EXPIRES = 3600  # 1 hour
+
+_UUID_RE = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.I)
+
+
+def _is_valid_uuid(s: str) -> bool:
+    """Return True if s looks like a valid UUID."""
+    return bool(s and _UUID_RE.match(str(s).strip()))
 
 
 def upsert_person_provenance(
@@ -133,6 +141,8 @@ def create_signed_pdf_url(supabase: Client, storage_path: str) -> str | None:
 
 def get_extraction_data(supabase: Client, org_id: str) -> dict | None:
     """Get extraction_data from startup_extraction_results."""
+    if not _is_valid_uuid(org_id):
+        return None
     r = supabase.table("startup_extraction_results").select("extraction_data").eq("org_id", org_id).execute()
     rows = r.data or []
     if not rows:
@@ -201,14 +211,19 @@ def upsert_readiness_result(
 
 def get_readiness_result(supabase: Client, org_id: str) -> dict | None:
     """Get readiness result (scored_rubric, score_summary, updated_at, initial_pending_task_count) or None."""
+    if not _is_valid_uuid(org_id):
+        return None
     try:
         r = supabase.table("startup_readiness_results").select(
             "scored_rubric, score_summary, updated_at, initial_pending_task_count"
         ).eq("org_id", org_id).execute()
     except Exception:
-        r = supabase.table("startup_readiness_results").select(
-            "scored_rubric, score_summary, updated_at"
-        ).eq("org_id", org_id).execute()
+        try:
+            r = supabase.table("startup_readiness_results").select(
+                "scored_rubric, score_summary, updated_at"
+            ).eq("org_id", org_id).execute()
+        except Exception:
+            return None
     rows = r.data or []
     if not rows:
         return None

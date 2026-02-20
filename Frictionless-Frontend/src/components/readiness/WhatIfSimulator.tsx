@@ -141,7 +141,7 @@ export function WhatIfSimulator({
           setAiNarrative(fullContent);
         }
       } else {
-        fullContent = `Completing these ${selectedTasks.length} tasks would boost your score from ${currentScore}% to ${projectedScore}%, with the biggest gains in ${selectedTasks[0]?.category ?? 'key areas'}. This momentum shift could meaningfully improve investor perception of your readiness.`;
+        fullContent = `Completing these ${selectedTasks.length} tasks would boost your score from ${currentScore}% to ${projectedScore}%, with the biggest gains in ${selectedTasks[0]?.category ?? 'key areas'}. This momentum shift could meaningfully improve investor perception of your Frictionless.`;
         setAiNarrative(fullContent);
       }
       setCachedAnalysis(cacheKey, scoreHash, fullContent);
@@ -164,7 +164,7 @@ export function WhatIfSimulator({
         <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>
           What-If Simulator
         </h3>
-        <TooltipInfo text="Select tasks to simulate how completing them would affect your weighted readiness score. The projection uses category weights for accuracy." />
+        <TooltipInfo text="Select tasks to simulate how completing them would affect your weighted Frictionless score. The projection uses category weights for accuracy." />
       </div>
       <p className="text-[11px] mb-4" style={{ color: 'var(--fi-text-muted)' }}>
         Select tasks to see how they affect your weighted score

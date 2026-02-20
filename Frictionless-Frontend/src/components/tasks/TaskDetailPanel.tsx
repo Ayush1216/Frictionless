@@ -162,7 +162,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                     <ChevronLeft className="w-4 h-4" />
                     Back
                   </button>
-                  <span className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Chat with AI</span>
+                  <span className="text-sm font-semibold truncate max-w-[200px]" style={{ color: 'var(--fi-text-primary)' }}>{task.title}</span>
                   <button
                     onClick={onClose}
                     className="p-2 rounded-lg transition-colors"

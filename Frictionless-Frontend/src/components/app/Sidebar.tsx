@@ -10,7 +10,6 @@ import {
   LayoutDashboard,
   Gauge,
   Handshake,
-  MessageSquare,
   Bot,
   FolderOpen,
   BarChart3,
@@ -91,7 +90,6 @@ const acceleratorNav: NavItem[] = [
 ];
 
 const commonNav: NavItem[] = [
-  { label: 'Messages', href: '/messages', icon: MessageSquare, badge: 3 },
   { label: 'Notifications', href: '/notifications', icon: Bell },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];

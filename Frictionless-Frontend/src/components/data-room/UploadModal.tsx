@@ -46,7 +46,7 @@ function UploadContent({
         onUpload={onUpload}
       />
       <p className="text-xs text-muted-foreground">
-        Uploaded files are added to your Data Room. PDFs and spreadsheets are analyzed to update your readiness score.
+        Uploaded files are added to your Data Room. PDFs and spreadsheets are analyzed to update your Frictionless score.
       </p>
       <div className="flex justify-end gap-2">
         <Button

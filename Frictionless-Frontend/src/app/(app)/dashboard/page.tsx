@@ -26,7 +26,7 @@ import { AskButton } from '@/components/ui/AskButton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { TooltipInfo } from '@/components/ui/TooltipInfo';
 import { SkeletonCard, SkeletonTable } from '@/components/ui/fi-skeleton';
-import { getScoreColor, calculateFrictionlessScore } from '@/lib/scores';
+import { getScoreColor, calculateReadinessScore } from '@/lib/scores';
 import { isGeminiEnabled, geminiStream, geminiAnalyze } from '@/lib/ai/gemini-client';
 import { getAuthHeaders } from '@/lib/api/tasks';
 import type { NarrativeData } from '@/components/dashboard/story/useNarrativeData';
@@ -91,7 +91,7 @@ function NextStepsInsight({ data }: { data: NarrativeData }) {
     }
 
     setLoading(true);
-    const prompt = `You are a sharp fundraising advisor. A ${stage ?? 'startup'} ${roundTarget ? `raising ${roundTarget}` : ''} needs to move faster on their round. Top pending tasks: ${topTasks || 'not specified'}. Write 2 short sentences of the most important advice to raise faster. Be concrete and direct. No bullet points, no headers, no percentages, no "readiness score" mention.`;
+    const prompt = `You are a sharp fundraising advisor. A ${stage ?? 'startup'} ${roundTarget ? `raising ${roundTarget}` : ''} needs to move faster on their round. Top pending tasks: ${topTasks || 'not specified'}. Write 2 short sentences of the most important advice to raise faster. Be concrete and direct. No bullet points, no headers, no percentages, no "Frictionless score" mention.`;
 
     (async () => {
       let text = '';
@@ -157,7 +157,7 @@ function FundingInsight({ data }: { data: NarrativeData }) {
       if (matchCount > 0)
         return `${matchCount}+ investors matched to your ${stage ?? ''} profile. Review their theses to tailor your pitch deck before reaching out.`;
       if (roundTarget)
-        return `Targeting ${roundTarget} for your ${stage ?? ''} round. Complete your readiness assessment to surface the best-fit investors.`;
+        return `Targeting ${roundTarget} for your ${stage ?? ''} round. Complete your Frictionless assessment to surface the best-fit investors.`;
       return `Strengthen your pitch, financials, and traction narrative to attract the right investors for your ${stage ?? 'current'} stage.`;
     };
 
@@ -167,7 +167,7 @@ function FundingInsight({ data }: { data: NarrativeData }) {
     }
 
     setLoading(true);
-    const prompt = `You are an expert startup fundraising advisor. Give a single, specific 1-2 sentence fundraising tip for a ${stage ?? 'startup'} startup${roundTarget ? ` raising ${roundTarget}` : ''}${matchCount > 0 ? ` with ${matchCount} investor matches (${highFit} high-fit)` : ''}. Be direct and actionable. No fluff. Don't mention "readiness score".`;
+    const prompt = `You are an expert startup fundraising advisor. Give a single, specific 1-2 sentence fundraising tip for a ${stage ?? 'startup'} startup${roundTarget ? ` raising ${roundTarget}` : ''}${matchCount > 0 ? ` with ${matchCount} investor matches (${highFit} high-fit)` : ''}. Be direct and actionable. No fluff. Don't mention "Frictionless score".`;
 
     (async () => {
       let text = '';
@@ -326,7 +326,7 @@ function NormalDashboard({ data }: { data: NarrativeData }) {
       {/* ════════ ROW 1: Three Cards ════════ */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
-        {/* ── Card 1: Readiness Score ── */}
+        {/* ── Card 1: Frictionless Score ── */}
         <motion.div
           custom={0}
           variants={cardVariants}
@@ -359,7 +359,7 @@ function NormalDashboard({ data }: { data: NarrativeData }) {
             </Link>
           </div>
           <p className="text-xs mb-2 leading-snug" style={{ color: 'var(--fi-text-muted)' }}>
-            Improving your readiness increases investor response rates and warm intro success.
+            Improving your Frictionless increases investor response rates and warm intro success.
           </p>
 
           {/* Gauge + sub-labels */}
@@ -649,7 +649,7 @@ function NormalDashboard({ data }: { data: NarrativeData }) {
             <EmptyState
               icon={<Users className="w-6 h-6" />}
               title="No investor matches yet"
-              description="Complete your readiness assessment to start matching with relevant investors."
+              description="Complete your Frictionless assessment to start matching with relevant investors."
               action={
                 <Link href="/startup/readiness" className="fi-btn fi-btn-primary">
                   Run Assessment
@@ -670,7 +670,7 @@ function NormalDashboard({ data }: { data: NarrativeData }) {
                 </thead>
                 <tbody>
                   {data.topMatches.slice(0, 5).map((match, idx) => {
-                    const fscore = calculateFrictionlessScore(data.readinessScore, match.fit_score_0_to_100);
+                    const fscore = calculateReadinessScore(data.readinessScore, match.fit_score_0_to_100);
                     const ip = match.investor_profile;
                     return (
                       <tr
@@ -761,7 +761,7 @@ function NormalDashboard({ data }: { data: NarrativeData }) {
             <EmptyState
               icon={<CheckCircle2 className="w-6 h-6" />}
               title="All caught up"
-              description="Complete a readiness assessment to get personalized action items."
+              description="Complete a Frictionless assessment to get personalized action items."
             />
           ) : (
             <div className="space-y-1">
@@ -783,7 +783,7 @@ function NormalDashboard({ data }: { data: NarrativeData }) {
                       {task.title}
                     </p>
                   </div>
-                  <AskButton onClick={() => openAskWithPrompt(`Help me complete this task: "${task.title}". ${task.description ? 'Details: ' + task.description : ''} This task has a potential impact of +${task.potential_points ?? 0} points on my readiness score. Give me a step-by-step guide with examples on how to complete this effectively for investor readiness.`)} size="sm" variant="outline" />
+                  <AskButton onClick={() => openAskWithPrompt(`Help me complete this task: "${task.title}". ${task.description ? 'Details: ' + task.description : ''} This task has a potential impact of +${task.potential_points ?? 0} points on my Frictionless score. Give me a step-by-step guide with examples on how to complete this effectively for investor Frictionless.`)} size="sm" variant="outline" />
                 </div>
               ))}
             </div>
@@ -1133,20 +1133,20 @@ function getInvestorCriteria(data: NarrativeData) {
 
   // Financials & Metrics
   criteria.push({
-    label: 'Financial Readiness',
+    label: 'Financial Frictionless',
     status: data.metrics.arr ? 'strong' : data.metrics.runway_months ? 'moderate' : 'weak',
     detail: data.metrics.arr
       ? `ARR: ${formatCurrency(data.metrics.arr)} — show clear path to unit economics`
       : 'Prepare detailed financial projections and key metrics for investors',
   });
 
-  // Overall Readiness
+  // Overall Frictionless
   criteria.push({
-    label: 'Investment Readiness',
+    label: 'Investment Frictionless',
     status: score >= 75 ? 'strong' : score >= 50 ? 'moderate' : 'weak',
     detail: score >= 75
       ? `Score: ${Math.round(score)}% — you\'re well-prepared, focus on differentiation in pitch`
-      : `Score: ${Math.round(score)}% — improve readiness to stand out to top-tier investors`,
+      : `Score: ${Math.round(score)}% — improve Frictionless to stand out to top-tier investors`,
   });
 
   return criteria;
@@ -1207,13 +1207,13 @@ function getCompetitiveFactors(data: NarrativeData) {
       : 'Strengthen your team narrative — investors bet on people first',
   });
 
-  // Fundraising Readiness
+  // Fundraising Frictionless
   factors.push({
-    factor: 'Fundraising Readiness',
-    yourPosition: score >= 70 ? 'leading' : score >= 30 ? 'competitive' : 'catching up',
-    tip: score >= 70
+    factor: 'Fundraising Frictionless',
+    yourPosition: score >= 80 ? 'leading' : score >= 60 ? 'competitive' : 'catching up',
+    tip: score >= 80
       ? 'You\'re in the green zone — capitalize with targeted investor outreach'
-      : `Reach 70%+ to stand out to top-tier ${data.companySector || 'sector'} investors`,
+      : `Reach 80%+ to stand out to top-tier ${data.companySector || 'sector'} investors`,
   });
 
   return factors;

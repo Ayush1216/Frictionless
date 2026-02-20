@@ -11,7 +11,7 @@ let lastBootstrapAt = 0;
 const BOOTSTRAP_COOLDOWN_MS = 10_000; // 10s minimum between fetches
 
 /**
- * Single request to load readiness + score history + tasks. Call once on app load
+ * Single request to load Frictionless + score history + tasks. Call once on app load
  * (e.g. from layout) so dashboard and tasks pages can render instantly from stores.
  * Deduplicates concurrent calls and enforces a cooldown to avoid hammering the API.
  */

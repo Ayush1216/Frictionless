@@ -21,7 +21,7 @@ interface AIChatInterfaceProps {
 }
 
 const QUICK_CHIPS = [
-  'How can I improve my readiness score?',
+  'How can I improve my Frictionless score?',
   'What do investors look for?',
   'Help me with my pitch',
   'Explain my weakest category',
@@ -204,7 +204,7 @@ export function AIChatInterface({
               className="text-sm max-w-md mb-8 leading-relaxed"
               style={{ color: 'var(--fi-text-muted)' }}
             >
-              Your AI readiness advisor. Ask about your score, get fundraising tips, upload documents, or share company updates.
+              Your AI Frictionless advisor. Ask about your score, get fundraising tips, upload documents, or share company updates.
             </p>
             {/* Quick action chips */}
             <div className="flex flex-wrap justify-center gap-2 max-w-lg">
@@ -303,7 +303,7 @@ export function AIChatInterface({
               value={input}
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
-              placeholder="Ask anything about your readiness..."
+              placeholder="Ask anything about your Frictionless..."
               rows={1}
               className="w-full resize-none rounded-xl px-4 py-3 text-sm focus:outline-none transition-all max-h-[150px]"
               style={{

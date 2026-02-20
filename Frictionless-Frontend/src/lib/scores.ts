@@ -1,31 +1,29 @@
 // Score color based on Frictionless ranges
-// 70-100 = green, 30-69 = orange, 0-29 = red
+// 80-100 = green, 60-79 = yellow, 0-59 = red
 export function getScoreColor(score: number): string {
-  if (score >= 70) return 'var(--fi-score-excellent)';
-  if (score >= 30) return 'var(--fi-score-moderate)';
+  if (score >= 80) return 'var(--fi-score-excellent)';
+  if (score >= 60) return 'var(--fi-score-moderate)';
   return 'var(--fi-score-need-improvement)';
 }
 
 // Score status label
 export function getScoreLabel(score: number): string {
-  if (score >= 85) return 'Excellent';
-  if (score >= 70) return 'Strong';
-  if (score >= 50) return 'Moderate';
-  if (score >= 30) return 'Early';
-  return 'Critical';
+  if (score >= 80) return 'Excellent';
+  if (score >= 60) return 'Good';
+  return 'Need Improvement';
 }
 
 // Score CSS class (for Tailwind users)
 export function getScoreClass(score: number): string {
-  if (score >= 70) return 'score-excellent';
-  if (score >= 30) return 'score-moderate';
+  if (score >= 80) return 'score-excellent';
+  if (score >= 60) return 'score-moderate';
   return 'score-need-improvement';
 }
 
 // Score background color (subtle)
 export function getScoreBgColor(score: number): string {
-  if (score >= 70) return 'var(--fi-score-excellent-bg)';
-  if (score >= 30) return 'var(--fi-score-moderate-bg)';
+  if (score >= 80) return 'var(--fi-score-excellent-bg)';
+  if (score >= 60) return 'var(--fi-score-moderate-bg)';
   return 'var(--fi-score-need-improvement-bg)';
 }
 
@@ -37,6 +35,6 @@ export function formatDelta(delta: number): { text: string; positive: boolean } 
 }
 
 // Calculate Frictionless Score (used on investor pages)
-export function calculateFrictionlessScore(readinessScore: number, thesisFitScore: number): number {
+export function calculateReadinessScore(readinessScore: number, thesisFitScore: number): number {
   return Math.round((readinessScore + thesisFitScore) / 2);
 }

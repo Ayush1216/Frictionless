@@ -165,7 +165,7 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
 
   const streamResponseFallback = useCallback(async (allMessages: ChatMessage[], t: Task) => {
     const chatMsgs = [
-      { role: 'system' as const, content: `You are "Ask Frictionless", a startup advisor helping complete readiness tasks. Be concise and actionable.` },
+      { role: 'system' as const, content: `You are "Ask Frictionless", a startup advisor helping complete Frictionless tasks. Be concise and actionable.` },
       ...allMessages.map((m) => ({ role: m.role as 'system' | 'user' | 'assistant', content: m.content })),
     ];
 
@@ -246,8 +246,8 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
       const success = await tasksSync.completeTaskViaApi(task.id);
       if (success) {
         setCompletionAnalysis('generating');
-        const systemPrompt = `You are a startup advisor. The founder just completed a readiness task. Provide a brief congratulatory analysis (3-4 sentences) of the impact this has on their readiness. Mention the category and potential score improvement. Be encouraging and specific.`;
-        const analysisMsg = `I just completed the task: "${task.title}" in the "${categoryName}" category. It was worth ${task.potential_points ?? 'several'} points. Give me a brief analysis of what this means for my readiness.`;
+        const systemPrompt = `You are a startup advisor. The founder just completed a Frictionless task. Provide a brief congratulatory analysis (3-4 sentences) of the impact this has on their Frictionless. Mention the category and potential score improvement. Be encouraging and specific.`;
+        const analysisMsg = `I just completed the task: "${task.title}" in the "${categoryName}" category. It was worth ${task.potential_points ?? 'several'} points. Give me a brief analysis of what this means for my Frictionless.`;
 
         let analysis = '';
         try {
@@ -259,7 +259,7 @@ export function AskFrictionlessPanel({ task, categoryName, isOpen, onClose, onTa
             setCompletionAnalysis(analysis);
           }
         } catch {
-          analysis = `Great work completing "${task.title}"! This task in the ${categoryName} category is worth ${task.potential_points ?? 'several'} points toward your readiness score. Consider running a new assessment to see your updated score.`;
+          analysis = `Great work completing "${task.title}"! This task in the ${categoryName} category is worth ${task.potential_points ?? 'several'} points toward your Frictionless score. Consider running a new assessment to see your updated score.`;
           setCompletionAnalysis(analysis);
         }
 

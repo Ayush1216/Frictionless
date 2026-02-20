@@ -8,7 +8,7 @@ import { Users, ArrowUpRight } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SkeletonCard } from '@/components/ui/fi-skeleton';
 import { sectionVariants, staggerContainer, staggerItem, cardHover } from './storyVariants';
-import { getScoreColor, calculateFrictionlessScore } from '@/lib/scores';
+import { getScoreColor, calculateReadinessScore } from '@/lib/scores';
 import type { NarrativeData } from './useNarrativeData';
 
 interface InvestorRadarProps {
@@ -63,7 +63,7 @@ export function InvestorRadar({ data }: InvestorRadarProps) {
         <EmptyState
           icon={<Users className="w-6 h-6" />}
           title="No investor matches yet"
-          description="Complete your readiness assessment to start matching with relevant investors."
+          description="Complete your Frictionless assessment to start matching with relevant investors."
           action={
             <Link href="/startup/readiness" className="fi-btn fi-btn-primary">
               Run Assessment
@@ -79,7 +79,7 @@ export function InvestorRadar({ data }: InvestorRadarProps) {
         >
           {data.topMatches.map((match) => {
             const ip = match.investor_profile;
-            const fscore = calculateFrictionlessScore(data.readinessScore, match.fit_score_0_to_100);
+            const fscore = calculateReadinessScore(data.readinessScore, match.fit_score_0_to_100);
             const scoreColor = getScoreColor(fscore);
 
             return (

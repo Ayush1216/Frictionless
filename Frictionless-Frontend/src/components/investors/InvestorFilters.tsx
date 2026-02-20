@@ -74,7 +74,7 @@ export function InvestorFilters({ filters, onChange, totalCount, filteredCount }
                 {filters.scoreMin}
               </span>
               <span className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>
-                {filters.scoreMin >= 86 ? 'Excellent' : filters.scoreMin >= 80 ? 'Good' : 'All'}
+                {filters.scoreMin >= 80 ? 'Excellent' : filters.scoreMin >= 60 ? 'Good' : 'All'}
               </span>
             </span>
           </div>

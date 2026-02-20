@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.services.apollo import enrich_organization
+from app.services.gemini_enrichment import enrich_with_gemini
 from app.services.extraction import startup_kv_extractor
 from app.services.extraction.mistral_ocr import run as run_mistral_ocr
 from app.services.extraction.founder_linkedin import (
@@ -201,37 +202,54 @@ async def health():
 
 @app.post("/api/enrich-organization")
 async def enrich_organization_endpoint(body: EnrichRequest):
-    """Extract domain from website, call Apollo, store in Supabase."""
+    """Extract domain from website, call Apollo, fall back to Gemini grounded search."""
     log.info("POST /api/enrich-organization received org_id=%s website=%s", body.org_id, body.website)
     domain = extract_domain(body.website)
     if not domain:
         raise HTTPException(status_code=400, detail="Could not extract domain from website URL")
 
-    api_key = os.getenv("APOLLO_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=500, detail="Apollo API key not configured")
-
-    org_data = await enrich_organization(domain, api_key)
-    if not org_data:
-        raise HTTPException(
-            status_code=502,
-            detail="Apollo organization enrichment returned no data",
-        )
-
     supabase = get_supabase()
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase not configured")
 
+    enrichment_source = "apollo"
+    org_data = None
+
+    # --- Try Apollo first ---
+    api_key = os.getenv("APOLLO_API_KEY")
+    if api_key:
+        try:
+            org_data = await enrich_organization(domain, api_key)
+        except Exception as e:
+            log.warning("Apollo enrichment error for %s: %s", domain, e)
+    else:
+        log.warning("APOLLO_API_KEY not set, skipping Apollo enrichment")
+
+    # --- Fallback: Gemini grounded search + website scrape ---
+    if not org_data:
+        log.info("Apollo returned no data for %s, trying Gemini fallback", domain)
+        org_data = await enrich_with_gemini(domain, body.website)
+        if org_data:
+            enrichment_source = "gemini"
+
+    if not org_data:
+        raise HTTPException(
+            status_code=502,
+            detail="Organization enrichment failed — both Apollo and Gemini returned no data",
+        )
+
     apollo_id = org_data.get("id") if isinstance(org_data, dict) else None
+    raw = org_data if isinstance(org_data, dict) else {"organization": org_data}
+    raw["_enrichment_source"] = enrichment_source
     upsert_apollo_enrichment(
         supabase,
         org_id=body.org_id,
         domain=domain,
-        raw_data=org_data if isinstance(org_data, dict) else {"organization": org_data},
+        raw_data=raw,
         apollo_org_id=str(apollo_id) if apollo_id else None,
     )
-    log.info("Apollo enrichment saved for org_id=%s domain=%s", body.org_id, domain)
-    return {"ok": True, "domain": domain}
+    log.info("%s enrichment saved for org_id=%s domain=%s", enrichment_source.capitalize(), body.org_id, domain)
+    return {"ok": True, "domain": domain, "source": enrichment_source}
 
 
 def _run_extraction_task(org_id: str) -> None:
@@ -394,19 +412,16 @@ def _run_readiness_task(org_id: str, update_source: str = "scheduled") -> None:
         log.warning("No extraction data for org %s", org_id)
         return
     ocr_storage_path = extraction.get("ocr_storage_path")
-    if not ocr_storage_path:
-        _log("ERROR: No OCR storage path. Run extraction pipeline first.")
-        log.warning("No OCR storage path for org %s", org_id)
-        return
-    ocr_text = download_ocr_text(supabase, ocr_storage_path)
+    ocr_text = ""
+    if ocr_storage_path:
+        ocr_text = download_ocr_text(supabase, ocr_storage_path) or ""
     if not ocr_text:
-        _log("ERROR: Could not download OCR text.")
-        log.warning("Could not download OCR for org %s", org_id)
-        return
+        _log("WARNING: No OCR text — running readiness scoring with available extraction data only.")
+        log.warning("No OCR text for org %s — proceeding without it", org_id)
     apollo = get_apollo_data(supabase, org_id)
     apollo_data = apollo if apollo else {}
     questionnaire = get_questionnaire(supabase, org_id)
-    _log(f"Data loaded: extraction=YES, ocr=YES, apollo={'YES' if apollo else 'NO'}, questionnaire={'YES' if questionnaire else 'NO'}")
+    _log(f"Data loaded: extraction=YES, ocr={'YES' if ocr_text else 'NO (fallback)'}, apollo={'YES' if apollo else 'NO'}, questionnaire={'YES' if questionnaire else 'NO'}")
 
     # --- Step 1: Readiness scoring ---
     _log("[1/3] READINESS SCORING...")
@@ -476,10 +491,10 @@ async def run_readiness_endpoint(body: RunReadinessRequest, background_tasks: Ba
     if not supabase:
         raise HTTPException(status_code=500, detail="Supabase not configured")
     extraction = get_extraction_data(supabase, body.org_id)
-    if not extraction or not extraction.get("ocr_storage_path"):
+    if not extraction:
         raise HTTPException(
             status_code=400,
-            detail="Extraction or OCR not ready. Complete pitch deck upload and extraction first.",
+            detail="Extraction data not ready. Complete pitch deck upload first.",
         )
     background_tasks.add_task(_run_readiness_task, body.org_id)
     return {"ok": True, "message": "Readiness scoring started"}
@@ -1015,6 +1030,53 @@ class TaskCompleteBody(BaseModel):
     submitted_value: str | None = None
 
 
+# Map rubric subcategory names to extraction initial_details keys
+_SUBCATEGORY_TO_EXTRACTION_KEY: dict[str, str] = {
+    "company.hq_jurisdiction": "hq_country",
+    "company.entity_type": "entity_type",
+    "company.legal_name": "legal_name",
+    "company.board_of_directors": "board_of_directors",
+    "company.full_time_founders": "founders_full_time",
+    "overview.product_status": "product_stage",
+    "overview.target_market": "target_market",
+    "overview.business_model": "business_model",
+    "overview.one_liner": "one_line_summary",
+    "overview.problem": "problem",
+    "overview.solution": "solution",
+    "overview.unique_value_proposition": "unique_value_proposition",
+    "overview.competitive_advantages": "competitive_advantages",
+    "overview.traction": "traction",
+    "fin.revenue_model": "revenue_model",
+    "fin.monthly_revenue_usd": "monthly_revenue_usd",
+    "fin.burn_rate": "burn_rate_usd_per_month",
+    "fin.runway_months": "runway_months",
+    "fin.total_funding_usd": "total_funding_usd",
+    "biz.privacy_policy": "privacy_policy_url",
+    "biz.terms_of_service": "terms_of_service_url",
+}
+
+
+def _update_extraction_from_task(supabase, org_id: str, subcategory: str, submitted_value: str):
+    """Write the task's submitted value back into extraction data so the
+    company profile stays in sync."""
+    extraction_key = _SUBCATEGORY_TO_EXTRACTION_KEY.get(subcategory)
+    if not extraction_key:
+        return  # No mapping for this subcategory
+
+    extraction = get_extraction_data(supabase, org_id)
+    if not extraction:
+        extraction = {}
+
+    startup_kv = extraction.get("startup_kv") or {}
+    initial_details = startup_kv.get("initial_details") or {}
+    initial_details[extraction_key] = submitted_value
+    startup_kv["initial_details"] = initial_details
+    extraction["startup_kv"] = startup_kv
+
+    upsert_extraction_result(supabase, org_id, extraction)
+    log.info("Updated extraction key '%s' from task subcategory '%s' for org %s", extraction_key, subcategory, org_id)
+
+
 @app.post("/api/tasks/{task_id}/complete")
 async def complete_task_endpoint(task_id: str, body: TaskCompleteBody | None = None):
     """
@@ -1044,6 +1106,15 @@ async def complete_task_endpoint(task_id: str, body: TaskCompleteBody | None = N
     summary = readiness_compute_summary(new_rubric)
     upsert_readiness_result(supabase, org_id, new_rubric, summary, update_source="task_complete")
     _invalidate_dashboard_cache(org_id)
+
+    # Also update extraction data with the submitted value so the company
+    # profile page reflects the new data.
+    if submitted_value:
+        try:
+            _update_extraction_from_task(supabase, org_id, subcategory, submitted_value)
+        except Exception as e:
+            log.warning("Failed to update extraction from task %s: %s", task_id, e)
+
     row = mark_task_done(supabase, task_id, completed_by=body.completed_by if body else None)
     return {"ok": True, "task": row}
 
@@ -1179,6 +1250,23 @@ def _build_company_context_for_chat(supabase, org_id: str) -> dict:
                         ctx["founders"] = provenance_list
             except Exception:
                 pass  # person_provenance may not exist
+
+        # Include completed tasks and their submitted values so the chatbot
+        # knows what the user has already answered and won't re-ask.
+        try:
+            done_resp = supabase.table("tasks").select(
+                "title, subcategory_name, submitted_value"
+            ).eq("org_id", org_id).eq("status", "done").execute()
+            done_tasks = done_resp.data or []
+            completed_answers = []
+            for t in done_tasks:
+                sv = t.get("submitted_value")
+                if sv:
+                    completed_answers.append(f"  - {t.get('title', '')}: {sv}")
+            if completed_answers:
+                ctx["previously_completed_tasks"] = "\n".join(completed_answers)
+        except Exception:
+            pass  # tasks table query may fail
 
     except Exception as e:
         log.warning("Failed to build company context for org %s: %s", org_id, e)

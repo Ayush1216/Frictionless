@@ -452,12 +452,12 @@
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
 }
 
-/* Readiness score gauge glow */
+/* Frictionless score gauge glow */
 .score-gauge-glow {
   filter: drop-shadow(0 0 8px var(--score-color, rgba(59, 130, 246, 0.3)));
 }
 
-/* Readiness category panel - equal height layout */
+/* Frictionless category panel - equal height layout */
 .readiness-category-panel {
   display: flex;
   flex-direction: column;
@@ -466,6 +466,40 @@
 /* Recharts tooltip override for glass effect */
 .recharts-tooltip-wrapper {
   z-index: 100 !important;
+}
+
+/* ── Marketing: Role Tabs Section — Light mode overrides ── */
+/* Section header subtitle */
+.light .role-tabs-section .role-tabs-subtitle {
+  color: #4B5563; /* obsidian-500 */
+}
+/* Tab buttons */
+.light .role-tabs-section .role-tabs-btn-active {
+  color: #111827; /* obsidian-800 */
+  background-color: rgba(0, 0, 0, 0.06);
+}
+.light .role-tabs-section .role-tabs-btn-inactive {
+  color: #6B7280; /* obsidian-500 mid */
+}
+.light .role-tabs-section .role-tabs-btn-inactive:hover {
+  color: #111827;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+/* Headline */
+.light .role-tabs-section .role-tabs-headline {
+  color: #111827; /* obsidian-800 */
+}
+/* Description */
+.light .role-tabs-section .role-tabs-desc {
+  color: #4B5563; /* obsidian-500 */
+}
+/* Bullet text */
+.light .role-tabs-section .role-tabs-bullet {
+  color: #374151; /* obsidian-700 */
+}
+/* Active tab border indicator */
+.light .role-tabs-section [data-tab-indicator] {
+  border-color: rgba(59, 130, 246, 0.5);
 }
 
 /* Ask Frictionless side panel */
@@ -819,9 +853,7 @@
     rgba(255,255,255,0.7) 50%, rgba(255,255,255,0.35) 55%,
     transparent 60%
   );
-}
-
-/* ── Inner Card Glass Depth ── */
+}/* ── Inner Card Glass Depth ── */
 :root:not(.light) .fi-card-depth {
   box-shadow: var(--fi-shadow-sm), inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(255,255,255,0.03);
   border-color: rgba(255,255,255,0.06);

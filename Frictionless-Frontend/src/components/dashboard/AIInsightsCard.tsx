@@ -96,7 +96,7 @@ export function AIInsightsCard({
           </h3>
         </div>
         <p className="text-sm leading-relaxed" style={{ color: 'var(--fi-text-muted)' }}>
-          Run your first readiness assessment to unlock AI-powered insights about your startup.
+          Run your first Frictionless assessment to unlock AI-powered insights about your startup.
         </p>
         <Link
           href="/startup/readiness"

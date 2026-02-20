@@ -61,7 +61,7 @@ export async function saveMessage(
 export async function streamChatMessage(
   threadId: string,
   message: string,
-  opts?: { responseMode?: string; attachments?: unknown[] }
+  opts?: { responseMode?: string; attachments?: unknown[]; webSearch?: boolean }
 ): Promise<ReadableStream<Uint8Array> | null> {
   const headers = await getAuthHeaders();
   const res = await fetch('/api/intelligence/chat', {
@@ -72,6 +72,7 @@ export async function streamChatMessage(
       message,
       response_mode: opts?.responseMode ?? 'concise',
       attachments: opts?.attachments ?? [],
+      web_search: opts?.webSearch ?? false,
     }),
   });
 

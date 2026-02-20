@@ -33,7 +33,15 @@
       "Bash(netstat:*)",
       "Bash(taskkill:*)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(grep:*)",
+      "Bash(npx tsc:*)",
+      "Bash(head:*)",
+      "Bash(curl:*)",
+      "Bash(python3 -c \":*)",
+      "Bash(python -c:*)",
+      "Bash(cat:*)"
     ]
   }
 }

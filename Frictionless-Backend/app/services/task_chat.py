@@ -79,6 +79,11 @@ def _build_company_context_block(company_context: dict | None) -> str:
         if metric_lines:
             parts.append("Key Metrics:\n" + "\n".join(metric_lines[:10]))
 
+    # Previously completed tasks — so we don't re-ask
+    prev = company_context.get("previously_completed_tasks")
+    if prev:
+        parts.append("Already Answered Tasks (DO NOT re-ask these):\n" + prev)
+
     if not parts:
         return ""
 
@@ -136,6 +141,7 @@ You are "Ask Frictionless", a smart AI advisor that knows this startup's data. W
 - For policies, certificates, financials, and tasks that explicitly ask for a link or document: ask for proof.
 - Be concise and conversational. Use short paragraphs, not long lists.
 - For uploads, say: "Please upload using the attachment (paperclip) button — it will be added to your Data Room."
+- NEVER ask for information the user has already provided in previously completed tasks (listed in the context below). If the info is already there, use it directly and tell them they can mark the task complete.
 {company_block}"""
 
     context = f"Task: {task_title}\nDescription: {task_description or 'No description'}\nCategory: {subcategory_name or 'General'}\nWe need to collect and store one value from the user for this task."

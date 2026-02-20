@@ -157,7 +157,7 @@ interface IntelligenceSidebarProps {
 function buildSystemContext(data: NarrativeData, webMode: boolean): string {
   const parts: string[] = [];
 
-  parts.push(`You are Frictionless Intelligence — an AI strategist for startup founders on investment readiness, fundraising, and competitive positioning.
+  parts.push(`You are Frictionless Intelligence — an AI strategist for startup founders on investment Frictionless, fundraising, and competitive positioning.
 
 RULES:
 1. Answer ALL startup-related questions (team, founders, metrics, strategy, projections, charts, competitors, fundraising, etc.) using the company data below. NEVER say "off-topic" for any business/startup question.
@@ -209,9 +209,9 @@ Types: "line", "bar", "area". Use actual data for projections. Include brief tex
   if (data.metrics.runway_months) parts.push(`Runway: ${data.metrics.runway_months} months`);
   if (data.metrics.headcount) parts.push(`Headcount: ${data.metrics.headcount}`);
 
-  // Readiness
-  parts.push(`\n--- READINESS ASSESSMENT ---`);
-  parts.push(`Overall Readiness Score: ${data.readinessScore}% (${data.scoreLabel})`);
+  // Frictionless
+  parts.push(`\n--- Frictionless ASSESSMENT ---`);
+  parts.push(`Overall Frictionless Score: ${data.readinessScore}% (${data.scoreLabel})`);
   if (data.readinessDelta !== 0) parts.push(`Score Change: ${data.readinessDelta > 0 ? '+' : ''}${data.readinessDelta}% since last assessment`);
   parts.push(`Task Completion Rate: ${data.taskCompletionRate}%`);
   parts.push(`Projected Score (if top tasks done): ${data.scoreProjection}%`);
@@ -277,7 +277,7 @@ function buildDeepDivePrompt(data: NarrativeData): string {
 
 1. **Executive Summary** — 2-3 sentence overview of where ${data.companyName || 'the company'} stands in its fundraising journey.
 
-2. **Readiness Snapshot** — The current readiness score is ${data.readinessScore}%. Break down what this means for ${data.companyStage || 'current'} stage fundraising. What score do top investors typically filter for?
+2. **Frictionless Snapshot** — The current Frictionless score is ${data.readinessScore}%. Break down what this means for ${data.companyStage || 'current'} stage fundraising. What score do top investors typically filter for?
 
 3. **Biggest Strengths** — What's working well based on the category scores and metrics.
 
@@ -285,7 +285,7 @@ function buildDeepDivePrompt(data: NarrativeData): string {
 
 5. **Investor Strategy** — Based on the ${data.topMatches.length} matched investors and the ${data.highMatchCount} high-fit matches, what should the outreach strategy be?
 
-6. **30-Day Action Plan** — Top 3-5 highest-impact actions to take in the next 30 days to maximize fundraising readiness.
+6. **30-Day Action Plan** — Top 3-5 highest-impact actions to take in the next 30 days to maximize fundraising Frictionless.
 
 Be specific, reference actual numbers from the data, and be actionable. Keep it concise but insightful.`;
 }
@@ -302,7 +302,7 @@ function buildDemoDeepDive(data: NarrativeData): string {
   const strengths = data.aiAnalysis.strengths?.slice(0, 2) || [];
   const risks = data.aiAnalysis.risks?.slice(0, 2) || [];
   const topCats = data.readinessCategories
-    .filter((c) => c.score >= 70)
+    .filter((c) => c.score >= 80)
     .slice(0, 2)
     .map((c) => `${c.name} (${c.score}%)`);
   const weakCats = data.lowestCategories
@@ -316,7 +316,7 @@ function buildDemoDeepDive(data: NarrativeData): string {
   }));
   const catChartJson = JSON.stringify({
     type: 'bar',
-    title: 'Readiness by Category',
+    title: 'Frictionless by Category',
     xKey: 'name',
     lines: [{ key: 'score', color: '#10B981', label: 'Score' }],
     data: catChartData,
@@ -324,11 +324,11 @@ function buildDemoDeepDive(data: NarrativeData): string {
 
   return `## Executive Summary
 
-**${name}** is a ${stage} ${sector} startup with a readiness score of **${score}%**. ${score >= 70 ? 'You\'re approaching investor-ready territory.' : score >= 50 ? 'There\'s solid foundation here, but key gaps need attention before fundraising.' : 'Significant work is needed to become investor-ready.'} Here's your deep-dive analysis.
+**${name}** is a ${stage} ${sector} startup with a Frictionless score of **${score}%**. ${score >= 80 ? 'You\'re approaching investor-ready territory.' : score >= 60 ? 'There\'s solid foundation here, but key gaps need attention before fundraising.' : 'Significant work is needed to become investor-ready.'} Here's your deep-dive analysis.
 
-## Readiness Snapshot
+## Frictionless Snapshot
 
-Your overall score of **${score}%** puts you ${score >= 81 ? 'in the top tier' : score >= 65 ? 'in the competitive range' : 'below where most investors filter'}. Most active ${stage} investors filter for startups scoring **75%+** on readiness assessments.
+Your overall score of **${score}%** puts you ${score >= 80 ? 'in the top tier' : score >= 60 ? 'in the competitive range' : 'below where most investors filter'}. Most active ${stage} investors filter for startups scoring **75%+** on Frictionless assessments.
 
 \`\`\`fi-chart
 ${catChartJson}
@@ -339,21 +339,21 @@ ${weakCats.length > 0 ? `\n**Needs work:** ${weakCats.join(', ')}` : ''}
 
 ## Biggest Strengths
 
-${strengths.length > 0 ? strengths.map((s) => `- ${s}`).join('\n') : `- Your presence in the ${sector} sector positions you in a growing market\n- You've completed an initial readiness assessment — most startups haven't`}
+${strengths.length > 0 ? strengths.map((s) => `- ${s}`).join('\n') : `- Your presence in the ${sector} sector positions you in a growing market\n- You've completed an initial Frictionless assessment — most startups haven't`}
 
 ## Critical Gaps
 
-${risks.length > 0 ? risks.map((r) => `- **${r}** — address this before any investor outreach`).join('\n') : `- ${weakCats.length > 0 ? `**${weakCats[0]}** needs immediate attention` : 'Complete your readiness assessment for specific gap analysis'}\n- Ensure your data room and pitch deck are investor-ready`}
+${risks.length > 0 ? risks.map((r) => `- **${r}** — address this before any investor outreach`).join('\n') : `- ${weakCats.length > 0 ? `**${weakCats[0]}** needs immediate attention` : 'Complete your Frictionless assessment for specific gap analysis'}\n- Ensure your data room and pitch deck are investor-ready`}
 
 ## Investor Strategy
 
-You have **${matches} investor matches** with **${highFit} high-fit** opportunities. ${highFit > 0 ? 'Focus your initial outreach on high-fit investors who align with your sector and stage.' : 'Improve your readiness score to unlock higher-fit matches.'}
+You have **${matches} investor matches** with **${highFit} high-fit** opportunities. ${highFit > 0 ? 'Focus your initial outreach on high-fit investors who align with your sector and stage.' : 'Improve your Frictionless score to unlock higher-fit matches.'}
 
 ${data.topMatches.slice(0, 3).map((m) => `- **${m.investor_profile.name ?? 'Investor'}** — ${m.fit_score_0_to_100}% fit score`).join('\n')}
 
 ## 30-Day Action Plan
 
-${data.topImpactTasks.slice(0, 3).map((t, i) => `${i + 1}. **${t.title}** — potential +${t.potential_points ?? 0} points to your readiness score`).join('\n') || '1. Complete your full readiness assessment\n2. Upload key documents to your data room\n3. Refine your company profile and pitch narrative'}
+${data.topImpactTasks.slice(0, 3).map((t, i) => `${i + 1}. **${t.title}** — potential +${t.potential_points ?? 0} points to your Frictionless score`).join('\n') || '1. Complete your full Frictionless assessment\n2. Upload key documents to your data room\n3. Refine your company profile and pitch narrative'}
 
 ---
 
@@ -368,7 +368,7 @@ function buildContextualDemo(prompt: string, data: NarrativeData): string {
 
   // Graph / chart / projection requests
   if (lowerPrompt.includes('graph') || lowerPrompt.includes('chart') || lowerPrompt.includes('projection') || lowerPrompt.includes('forecast') || lowerPrompt.includes('draw') || lowerPrompt.includes('visuali')) {
-    // Generate projected readiness score data over months
+    // Generate projected Frictionless score data over months
     const months = ['Month 1', 'Month 2', 'Month 3', 'Month 4', 'Month 5', 'Month 6', 'Month 7', 'Month 8', 'Month 9', 'Month 10'];
     const projectedGrowth = score < 70 ? 3.5 : score < 80 ? 2.5 : 1.5;
     const projData = months.map((m, i) => ({
@@ -378,7 +378,7 @@ function buildContextualDemo(prompt: string, data: NarrativeData): string {
     }));
     const chartJson = JSON.stringify({
       type: 'area',
-      title: `${name} — Readiness Score Projection`,
+      title: `${name} — Frictionless Score Projection`,
       xKey: 'month',
       lines: [
         { key: 'score', color: '#10B981', label: 'Projected Score' },
@@ -404,7 +404,7 @@ function buildContextualDemo(prompt: string, data: NarrativeData): string {
       data: catData,
     });
 
-    return `## Readiness Score Projection for ${name}\n\nBased on your current score of **${score}%** and the impact of completing your top tasks, here's the projected growth over the next 10 months:\n\n\`\`\`fi-chart\n${chartJson}\n\`\`\`\n\n**Key assumptions:**\n- Completing **${data.topImpactTasks.length} high-impact tasks** at a steady pace\n- The investor-ready threshold is **85%** (blue line)\n- Growth rate accounts for diminishing returns at higher scores\n\n### Category Breakdown\n\n\`\`\`fi-chart\n${barChartJson}\n\`\`\`\n\n**Action plan to hit these targets:**\n${data.topImpactTasks.slice(0, 3).map((t, i) => `${i + 1}. **${t.title}** — potential +${t.potential_points ?? 0} pts`).join('\n')}\n\n*Enable your Gemini API key for more detailed projections.*`;
+    return `## Frictionless Score Projection for ${name}\n\nBased on your current score of **${score}%** and the impact of completing your top tasks, here's the projected growth over the next 10 months:\n\n\`\`\`fi-chart\n${chartJson}\n\`\`\`\n\n**Key assumptions:**\n- Completing **${data.topImpactTasks.length} high-impact tasks** at a steady pace\n- The investor-ready threshold is **85%** (blue line)\n- Growth rate accounts for diminishing returns at higher scores\n\n### Category Breakdown\n\n\`\`\`fi-chart\n${barChartJson}\n\`\`\`\n\n**Action plan to hit these targets:**\n${data.topImpactTasks.slice(0, 3).map((t, i) => `${i + 1}. **${t.title}** — potential +${t.potential_points ?? 0} pts`).join('\n')}\n\n*Enable your Gemini API key for more detailed projections.*`;
   }
 
   // Fundraising plan / fund / raise requests
@@ -426,18 +426,18 @@ function buildContextualDemo(prompt: string, data: NarrativeData): string {
       ],
       data: raisePlan,
     });
-    return `## Fundraising Plan for ${name}\n\nBased on your **${stage}** stage and current readiness of **${score}%**, here's a realistic fundraising plan:\n\n\`\`\`fi-chart\n${fundChartJson}\n\`\`\`\n\n**Strategy:**\n- **${data.highMatchCount} high-fit investors** are your priority targets\n- At ${score}% readiness, focus on improving to **85%+** before major outreach\n- Target: **$${raisePlan[3].target}K** cumulative by Q4\n\n| Quarter | Target | Activity |\n|---------|--------|----------|\n| Q1 | $${raisePlan[0].target}K | Build pipeline, warm introductions |\n| Q2 | $${raisePlan[1].target}K | Active outreach to high-fit investors |\n| Q3 | $${raisePlan[2].target}K | Term sheet negotiations |\n| Q4 | $${raisePlan[3].target}K | Close round |\n\n*Enable your Gemini API key for personalized fundraising models.*`;
+    return `## Fundraising Plan for ${name}\n\nBased on your **${stage}** stage and current Frictionless of **${score}%**, here's a realistic fundraising plan:\n\n\`\`\`fi-chart\n${fundChartJson}\n\`\`\`\n\n**Strategy:**\n- **${data.highMatchCount} high-fit investors** are your priority targets\n- At ${score}% Frictionless, focus on improving to **85%+** before major outreach\n- Target: **$${raisePlan[3].target}K** cumulative by Q4\n\n| Quarter | Target | Activity |\n|---------|--------|----------|\n| Q1 | $${raisePlan[0].target}K | Build pipeline, warm introductions |\n| Q2 | $${raisePlan[1].target}K | Active outreach to high-fit investors |\n| Q3 | $${raisePlan[2].target}K | Term sheet negotiations |\n| Q4 | $${raisePlan[3].target}K | Close round |\n\n*Enable your Gemini API key for personalized fundraising models.*`;
   }
 
   // Task-specific response
   if (lowerPrompt.includes('task') || lowerPrompt.includes('how to') || lowerPrompt.includes('help me')) {
-    return `## Here's how to approach this\n\n**Context:** ${name} currently has a readiness score of **${score}%**. This task directly impacts your fundraising readiness.\n\n**Step-by-step approach:**\n\n1. **Gather the required information** — Check your existing documents, pitch deck, and financial records\n2. **Focus on investor expectations** — At the ${data.companyStage || 'current'} stage, investors want to see clear metrics and traction\n3. **Use specific data points** — Reference your ${data.companySector || 'sector'} benchmarks\n\n**Example:**\n> If you're preparing financial projections, investors at ${data.companyStage || 'your stage'} typically want to see 18-24 month forecasts with clear assumptions tied to your unit economics.\n\n**Impact:** Completing this could improve your readiness score by several points, moving you closer to the **75%+ threshold** where top investors start paying attention.\n\n*Enable your Gemini API key for personalized, detailed guidance.*`;
+    return `## Here's how to approach this\n\n**Context:** ${name} currently has a Frictionless score of **${score}%**. This task directly impacts your fundraising Frictionless.\n\n**Step-by-step approach:**\n\n1. **Gather the required information** — Check your existing documents, pitch deck, and financial records\n2. **Focus on investor expectations** — At the ${data.companyStage || 'current'} stage, investors want to see clear metrics and traction\n3. **Use specific data points** — Reference your ${data.companySector || 'sector'} benchmarks\n\n**Example:**\n> If you're preparing financial projections, investors at ${data.companyStage || 'your stage'} typically want to see 18-24 month forecasts with clear assumptions tied to your unit economics.\n\n**Impact:** Completing this could improve your Frictionless score by several points, moving you closer to the **75%+ threshold** where top investors start paying attention.\n\n*Enable your Gemini API key for personalized, detailed guidance.*`;
   }
 
-  // Readiness-specific
-  if (lowerPrompt.includes('readiness') || lowerPrompt.includes('score') || lowerPrompt.includes('improve')) {
-    const weakCats = data.lowestCategories.slice(0, 3).map((c) => `| ${c.name} | ${c.score}% | ${c.score >= 70 ? 'On track' : c.score >= 50 ? 'Needs work' : 'Critical'} |`).join('\n');
-    return `## Readiness Analysis for ${name}\n\nYour current score of **${score}%** ${score >= 75 ? 'is competitive' : score >= 50 ? 'shows promise but needs improvement' : 'needs significant work'}.\n\n**Areas that need the most attention:**\n\n| Category | Score | Status |\n|----------|-------|--------|\n${weakCats}\n\n**Fastest path to improvement:**\n${data.topImpactTasks.slice(0, 3).map((t, i) => `${i + 1}. **${t.title}** — potential +${t.potential_points ?? 0} pts`).join('\n')}\n\n**Benchmark:** Most successful ${data.companyStage || 'Series A'} companies in ${data.companySector || 'your sector'} score **75-85%** before starting investor outreach.\n\n*Enable your Gemini API key for deeper analysis.*`;
+  // Frictionless-specific
+  if (lowerPrompt.includes('Frictionless') || lowerPrompt.includes('score') || lowerPrompt.includes('improve')) {
+    const weakCats = data.lowestCategories.slice(0, 3).map((c) => `| ${c.name} | ${c.score}% | ${c.score >= 80 ? 'On track' : c.score >= 60 ? 'Needs work' : 'Critical'} |`).join('\n');
+    return `## Frictionless Analysis for ${name}\n\nYour current score of **${score}%** ${score >= 75 ? 'is competitive' : score >= 50 ? 'shows promise but needs improvement' : 'needs significant work'}.\n\n**Areas that need the most attention:**\n\n| Category | Score | Status |\n|----------|-------|--------|\n${weakCats}\n\n**Fastest path to improvement:**\n${data.topImpactTasks.slice(0, 3).map((t, i) => `${i + 1}. **${t.title}** — potential +${t.potential_points ?? 0} pts`).join('\n')}\n\n**Benchmark:** Most successful ${data.companyStage || 'Series A'} companies in ${data.companySector || 'your sector'} score **75-85%** before starting investor outreach.\n\n*Enable your Gemini API key for deeper analysis.*`;
   }
 
   // Investor / competitor / market questions
@@ -447,11 +447,11 @@ function buildContextualDemo(prompt: string, data: NarrativeData): string {
 
   // Competitor questions
   if (lowerPrompt.includes('competitor') || lowerPrompt.includes('competitive') || lowerPrompt.includes('market') || lowerPrompt.includes('landscape')) {
-    return `## Competitive Landscape for ${name}\n\nAs a **${data.companyStage || 'Series A'}** startup in the **${data.companySector || 'tech'}** sector, here's what we know about your competitive positioning:\n\n**Your Readiness vs Market:**\n\n| Metric | ${name} | Typical ${data.companyStage || 'Series A'} |\n|--------|---------|-------------------|\n| Readiness Score | ${score}% | 55-70% |\n| Task Completion | ${data.taskCompletionRate}% | 40-60% |\n| Investor Matches | ${data.topMatches.length} | 3-8 |\n\n**Competitive advantages to highlight:**\n- ${data.aiAnalysis.strengths?.[0] || 'Your sector positioning'}\n- ${data.aiAnalysis.strengths?.[1] || 'Completion of readiness assessment'}\n\n**To identify specific competitors**, enable web search mode and ask me to research competitors in the ${data.companySector || 'tech'} space.\n\n*Enable your Gemini API key for real-time competitor analysis.*`;
+    return `## Competitive Landscape for ${name}\n\nAs a **${data.companyStage || 'Series A'}** startup in the **${data.companySector || 'tech'}** sector, here's what we know about your competitive positioning:\n\n**Your Frictionless vs Market:**\n\n| Metric | ${name} | Typical ${data.companyStage || 'Series A'} |\n|--------|---------|-------------------|\n| Frictionless Score | ${score}% | 55-70% |\n| Task Completion | ${data.taskCompletionRate}% | 40-60% |\n| Investor Matches | ${data.topMatches.length} | 3-8 |\n\n**Competitive advantages to highlight:**\n- ${data.aiAnalysis.strengths?.[0] || 'Your sector positioning'}\n- ${data.aiAnalysis.strengths?.[1] || 'Completion of Frictionless assessment'}\n\n**To identify specific competitors**, enable web search mode and ask me to research competitors in the ${data.companySector || 'tech'} space.\n\n*Enable your Gemini API key for real-time competitor analysis.*`;
   }
 
   // Generic fallback
-  return `## Analysis for ${name}\n\n**Quick snapshot:**\n\n| Metric | Value |\n|--------|-------|\n| Readiness Score | ${score}% |\n| Stage | ${data.companyStage || 'N/A'} |\n| Sector | ${data.companySector || 'N/A'} |\n| Investor Matches | ${data.topMatches.length} |\n| Task Completion | ${data.taskCompletionRate}% |\n\n**Key insight:** ${data.lowestCategories[0] ? `Your biggest opportunity is in **${data.lowestCategories[0].name}** (${data.lowestCategories[0].score}%). Improving this area would have the largest impact on your overall readiness.` : 'Complete a readiness assessment to unlock detailed insights.'}\n\n**Recommended next step:** ${data.topImpactTasks[0] ? `Focus on *${data.topImpactTasks[0].title}* — this single task could add +${data.topImpactTasks[0].potential_points ?? 0} points to your score.` : 'Start with your highest-impact readiness tasks.'}\n\n*Enable your Gemini API key for in-depth, personalized analysis.*`;
+  return `## Analysis for ${name}\n\n**Quick snapshot:**\n\n| Metric | Value |\n|--------|-------|\n| Frictionless Score | ${score}% |\n| Stage | ${data.companyStage || 'N/A'} |\n| Sector | ${data.companySector || 'N/A'} |\n| Investor Matches | ${data.topMatches.length} |\n| Task Completion | ${data.taskCompletionRate}% |\n\n**Key insight:** ${data.lowestCategories[0] ? `Your biggest opportunity is in **${data.lowestCategories[0].name}** (${data.lowestCategories[0].score}%). Improving this area would have the largest impact on your overall Frictionless.` : 'Complete a Frictionless assessment to unlock detailed insights.'}\n\n**Recommended next step:** ${data.topImpactTasks[0] ? `Focus on *${data.topImpactTasks[0].title}* — this single task could add +${data.topImpactTasks[0].potential_points ?? 0} points to your score.` : 'Start with your highest-impact Frictionless tasks.'}\n\n*Enable your Gemini API key for in-depth, personalized analysis.*`;
 }
 
 /* ─── Context summary card data ─── */
@@ -484,7 +484,7 @@ interface HistoryEntry {
 function smartTitle(message: string): string {
   // Strip boilerplate prompt prefixes
   let text = message
-    .replace(/^(help me with this readiness task:|based on all the company data.*?give me a|analyze my|give me a)\s*/i, '')
+    .replace(/^(help me with this Frictionless task:|based on all the company data.*?give me a|analyze my|give me a)\s*/i, '')
     .replace(/^[""]/, '')
     .replace(/[""].*$/, '')
     .trim();
@@ -832,7 +832,7 @@ export function IntelligenceSidebar({ open, onClose, data, initialPrompt, onProm
         .slice(-10)
         .join('\n\n');
       const fullPrompt = `${context}\n\n${historyText}\n\nAssistant:`;
-      const demo = `Based on **${data.companyName || 'your startup'}'s** data with a readiness score of **${data.readinessScore}%**, here's my quick analysis.\n\n*Enable your Gemini API key for deeper analysis.*`;
+      const demo = `Based on **${data.companyName || 'your startup'}'s** data with a Frictionless score of **${data.readinessScore}%**, here's my quick analysis.\n\n*Enable your Gemini API key for deeper analysis.*`;
       await streamClientSide(fullPrompt, updateLastMsg, { demo });
     }
 
@@ -1013,7 +1013,7 @@ export function IntelligenceSidebar({ open, onClose, data, initialPrompt, onProm
               <div className="flex gap-2 mt-3 overflow-x-auto pb-1 -mx-1 px-1" style={{ scrollbarWidth: 'none' }}>
                 <ContextChip
                   icon={<Target className="w-3.5 h-3.5" />}
-                  label="Readiness"
+                  label="Frictionless"
                   value={`${contextSummary.score}%`}
                   color={scoreColor}
                   delta={contextSummary.delta}
@@ -1400,7 +1400,7 @@ export function IntelligenceSidebar({ open, onClose, data, initialPrompt, onProm
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask about your readiness, investors, strategy..."
+                  placeholder="Ask about your Frictionless, investors, strategy..."
                   rows={1}
                   className="flex-1 resize-none text-sm bg-transparent outline-none min-h-[40px] max-h-[120px] py-2 px-3"
                   style={{ color: 'var(--fi-text-primary)' }}

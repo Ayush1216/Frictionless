@@ -53,7 +53,7 @@ export const dummyPrograms: DummyProgram[] = [
       { id: 'prog-3-s1', name: 'Onboarding', order: 1, description: 'Goal setting and mentor matching' },
       { id: 'prog-3-s2', name: 'Workshops', order: 2, description: 'Monthly GTM, product, and ops workshops' },
       { id: 'prog-3-s3', name: '1:1 Mentoring', order: 3, description: 'Bi-weekly mentor sessions' },
-      { id: 'prog-3-s4', name: 'Investor Prep', order: 4, description: 'Data room and pitch readiness' },
+      { id: 'prog-3-s4', name: 'Investor Prep', order: 4, description: 'Data room and pitch Frictionless' },
       { id: 'prog-3-s5', name: 'Graduation', order: 5, description: 'Demo day and investor intros' },
     ],
   },
@@ -68,7 +68,7 @@ export const dummyPrograms: DummyProgram[] = [
     startup_count: 8,
     mentor_count: 12,
     stages: [
-      { id: 'prog-2-s1', name: 'Assessment', order: 1, description: 'Readiness score and gap analysis' },
+      { id: 'prog-2-s1', name: 'Assessment', order: 1, description: 'Frictionless score and gap analysis' },
       { id: 'prog-2-s2', name: 'Data Room Setup', order: 2, description: 'Complete data room and financials' },
       { id: 'prog-2-s3', name: 'Pitch Refinement', order: 3, description: 'Deck and narrative workshops' },
       { id: 'prog-2-s4', name: 'Investor Matching', order: 4, description: 'AI-powered investor fit and outreach strategy' },

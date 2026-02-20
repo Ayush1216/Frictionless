@@ -31,7 +31,7 @@ const footerColumns = [
     links: [
       { label: 'Features', href: '/features' },
       { label: 'Pricing', href: '/pricing' },
-      { label: 'Readiness Scoring', href: '/features#scoring' },
+      { label: 'Frictionless Scoring', href: '/features#scoring' },
       { label: 'Investor Matching', href: '/features#matching' },
       { label: 'Data Room', href: '/features#dataroom' },
     ],
@@ -258,7 +258,7 @@ function Footer() {
               </div>
             </Link>
             <p className="text-sm text-muted-foreground font-body leading-relaxed mb-6 max-w-[240px]">
-              AI-powered investment readiness platform for startups and investors.
+              AI-powered investment Frictionless platform for startups and investors.
             </p>
             <div className="flex items-center gap-3">
               {socialLinks.map((social) => {

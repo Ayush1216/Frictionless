@@ -169,7 +169,7 @@ export default function ProgramStartupDetailPage() {
         )}
       </motion.div>
 
-      {/* Readiness Assessment */}
+      {/* Frictionless Assessment */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -178,7 +178,7 @@ export default function ProgramStartupDetailPage() {
       >
         <h2 className="text-lg font-display font-semibold text-foreground mb-4 flex items-center gap-2">
           <Gauge className="w-5 h-5 text-electric-blue" />
-          Readiness Assessment
+          Frictionless Assessment
         </h2>
         <div className="flex items-center gap-6 mb-4">
           <div className="text-4xl font-mono font-bold text-foreground">

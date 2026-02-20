@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getScoreStyle, formatUsd, getInitials } from '@/lib/investor-utils';
-import { calculateFrictionlessScore, getScoreColor, getScoreLabel } from '@/lib/scores';
+import { calculateReadinessScore, getScoreColor, getScoreLabel } from '@/lib/scores';
 import { ScoreGauge } from '@/components/ui/ScoreGauge';
 import type { InvestorMatchResult, CategoryBreakdown } from '@/types/database';
 
@@ -108,7 +108,7 @@ export function InvestorMatchCard({ match, index = 0, readinessScore = 0, isNew 
   const [expanded, setExpanded] = useState(false);
   const inv = match.investor_profile;
   const thesisFit = match.fit_score_0_to_100;
-  const frictionlessScore = calculateFrictionlessScore(readinessScore, thesisFit);
+  const frictionlessScore = calculateReadinessScore(readinessScore, thesisFit);
   const breakdown = match.category_breakdown || {};
   const topSignals = getTopSignals(breakdown);
 

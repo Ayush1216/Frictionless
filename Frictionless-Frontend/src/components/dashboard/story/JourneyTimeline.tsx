@@ -105,7 +105,7 @@ export function JourneyTimeline({ data }: JourneyTimelineProps) {
         </h3>
         <EmptyState
           title="No journey data yet"
-          description="Complete assessments and tasks to see your readiness journey unfold."
+          description="Complete assessments and tasks to see your Frictionless journey unfold."
         />
       </motion.div>
     );

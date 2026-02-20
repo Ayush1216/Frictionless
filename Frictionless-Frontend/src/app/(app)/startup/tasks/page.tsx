@@ -31,7 +31,7 @@ export default function TasksPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Redirect to Readiness tasks tab when enabled (backward compat)
+  // Redirect to Frictionless tasks tab when enabled (backward compat)
   useEffect(() => {
     if (featureFlags.focusMode) {
       const taskId = searchParams.get('task');

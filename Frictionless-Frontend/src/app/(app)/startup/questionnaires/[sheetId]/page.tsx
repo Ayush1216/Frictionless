@@ -33,7 +33,7 @@ interface Question {
   required?: boolean;
 }
 
-const QUESTIONNAIRE_NAME = 'Startup Readiness Assessment';
+const QUESTIONNAIRE_NAME = 'Startup Frictionless Assessment';
 
 const QUESTIONS: Question[] = [
   {
@@ -179,7 +179,7 @@ export default function QuestionnairePage() {
             Questionnaire Submitted!
           </h2>
           <p className="text-muted-foreground">
-            Your responses have been saved. Your readiness score will be updated shortly.
+            Your responses have been saved. Your Frictionless score will be updated shortly.
           </p>
           <Button
             className="mt-4 bg-electric-blue hover:bg-electric-blue/90 gap-2"
@@ -206,7 +206,7 @@ export default function QuestionnairePage() {
           {QUESTIONNAIRE_NAME}
         </h1>
         <p className="text-muted-foreground text-sm">
-          Complete this questionnaire to improve your readiness score.
+          Complete this questionnaire to improve your Frictionless score.
         </p>
       </motion.div>
 

@@ -37,7 +37,7 @@ export function ScoreDriverDecomposition({
     >
       <h3 className="text-sm font-semibold mb-1" style={{ color: 'var(--fi-text-primary)' }}>Score Driver Decomposition</h3>
       <p className="text-xs mb-4" style={{ color: 'var(--fi-text-muted)' }}>
-        What&apos;s helping and hurting your readiness score
+        What&apos;s helping and hurting your Frictionless score
       </p>
 
       {confidence != null && (

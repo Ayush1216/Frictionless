@@ -137,14 +137,14 @@ const LIGHT: ThemeColors = {
    HELPERS
    ================================================================ */
 function getScoreColor(score: number) {
-  if (score >= 86) return '#22c55e';
-  if (score >= 81) return '#eab308';
+  if (score >= 80) return '#22c55e';
+  if (score >= 60) return '#eab308';
   return '#ef4444';
 }
 
 function getScoreLabel(score: number) {
-  if (score >= 86) return 'Excellent';
-  if (score >= 81) return 'Good';
+  if (score >= 80) return 'Excellent';
+  if (score >= 60) return 'Good';
   return 'Need Improvement';
 }
 
@@ -278,8 +278,8 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
   const categories = data.categories ?? [];
   const scoreColor = getScoreColor(score);
   const sortedCategories = [...categories].sort((a, b) => b.score - a.score);
-  const strengths = sortedCategories.filter((c) => c.score >= 86);
-  const gaps = sortedCategories.filter((c) => c.score < 80);
+  const strengths = sortedCategories.filter((c) => c.score >= 80);
+  const gaps = sortedCategories.filter((c) => c.score < 60);
   const profile = data.company_profile || {};
   const tasks = data.tasks || {};
   const scoreHistory = data.scoreHistory || [];
@@ -332,7 +332,7 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
       if (!cat.items || cat.items.length === 0) return '';
       const rows = cat.items.map((item) => {
         const pct = item.maxPoints > 0 ? Math.round((item.points / item.maxPoints) * 100) : 0;
-        const color = pct >= 86 ? '#22c55e' : pct >= 80 ? '#eab308' : '#ef4444';
+        const color = pct >= 80 ? '#22c55e' : pct >= 60 ? '#eab308' : '#ef4444';
         const icon = pct >= 80 ? '&#10003;' : pct > 0 ? '&#9679;' : '&#10007;';
         return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 12px;border-bottom:1px solid #0f172a;">
           <span style="color:${color};font-size:12px;font-weight:700;margin-top:1px;">${icon}</span>
@@ -375,7 +375,7 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
     const gHtml = gaps.map((g) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(239,68,68,0.08);"><span style="color:#d1d5db;font-size:13px;">${g.name}</span><span style="font-weight:700;color:#ef4444;font-size:13px;">${g.score}%</span></div>`).join('') || '<p style="color:#6b7280;font-size:12px;">All above 50%</p>';
 
     pw.document.write(`<!DOCTYPE html><html><head>
-      <title>${companyName} — Investor Readiness Report</title>
+      <title>${companyName} — Investor Frictionless Report</title>
       <style>
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
         *{margin:0;padding:0;box-sizing:border-box;}
@@ -388,7 +388,7 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
       <!-- Header -->
       <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid ${DARK.border};margin-bottom:20px;">
         <div style="display:flex;align-items:center;gap:10px;">${LOGO_SVG}<span style="font-size:18px;font-weight:700;color:#818cf8;letter-spacing:-0.5px;">Frictionless</span></div>
-        <div style="text-align:right;"><div style="font-size:11px;color:#64748b;">Investor Readiness Report</div><div style="font-size:11px;color:#4b5563;">${generatedDate}</div></div>
+        <div style="text-align:right;"><div style="font-size:11px;color:#64748b;">Investor Frictionless Report</div><div style="font-size:11px;color:#4b5563;">${generatedDate}</div></div>
       </div>
 
       <!-- Title -->
@@ -475,7 +475,7 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
               {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
             </button>
             <div className="text-right">
-              <div className="text-[12px]" style={{ color: t.textMuted }}>Investor Readiness Report</div>
+              <div className="text-[12px]" style={{ color: t.textMuted }}>Investor Frictionless Report</div>
               <div className="text-[12px]" style={{ color: t.textMuted }}>{generatedDate}</div>
             </div>
           </div>
@@ -706,7 +706,7 @@ function ReadinessReport({ data, companyName }: { data: ReadinessSnapshot; compa
                     <div>
                       {cat.items.map((item, idx) => {
                         const pct = item.maxPoints > 0 ? Math.round((item.points / item.maxPoints) * 100) : 0;
-                        const itemColor = pct >= 86 ? t.greenText : pct >= 80 ? t.amberText : t.redText;
+                        const itemColor = pct >= 80 ? t.greenText : pct >= 60 ? t.amberText : t.redText;
                         return (
                           <div key={idx} className="flex items-start gap-3 px-5 py-2.5" style={{ borderBottom: `1px solid ${t.borderLight}` }}>
                             <div className="mt-0.5 shrink-0">

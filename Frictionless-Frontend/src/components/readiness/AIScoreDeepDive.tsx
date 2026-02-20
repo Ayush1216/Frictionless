@@ -19,7 +19,7 @@ interface AIScoreDeepDiveProps {
 }
 
 const DEMO_ANALYSIS = `## Executive Summary
-Your startup shows solid foundational readiness with clear strengths in team composition and product development, but significant gaps in financial documentation and go-to-market strategy are holding your score back.
+Your startup shows solid foundational Frictionless with clear strengths in team composition and product development, but significant gaps in financial documentation and go-to-market strategy are holding your score back.
 
 ## Top Strengths
 1. **Team & Founders** — Strong founding team with relevant domain experience and complementary skill sets
@@ -54,7 +54,7 @@ export function AIScoreDeepDive({
   const scoreHash = buildScoreHash(overallScore, categories);
 
   // Quick stats from categories
-  const strengths = categories.filter((c) => c.score >= 86).length;
+  const strengths = categories.filter((c) => c.score >= 80).length;
   const gaps = categories.filter((c) => c.score < 80).length;
   const topCategory = [...categories].sort((a, b) => b.score - a.score)[0];
 
@@ -78,7 +78,7 @@ export function AIScoreDeepDive({
       })
       .join('\n');
 
-    const userMessage = `Overall readiness score: ${overallScore}%\n\nCategory breakdown:\n${categoryData}`;
+    const userMessage = `Overall Frictionless score: ${overallScore}%\n\nCategory breakdown:\n${categoryData}`;
 
     let fullContent = '';
     try {
@@ -185,7 +185,7 @@ export function AIScoreDeepDive({
                 {isLoading && !analysis && (
                   <div className="flex items-center gap-2 py-6 justify-center">
                     <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--fi-primary)' }} />
-                    <span className="text-sm" style={{ color: 'var(--fi-text-muted)' }}>Analyzing your readiness profile...</span>
+                    <span className="text-sm" style={{ color: 'var(--fi-text-muted)' }}>Analyzing your Frictionless profile...</span>
                   </div>
                 )}
                 {analysis && (

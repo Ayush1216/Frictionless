@@ -20,7 +20,7 @@ const features = [
   {
     id: 'scoring',
     icon: Gauge,
-    title: 'AI Readiness Scoring',
+    title: 'AI Frictionless Scoring',
     tagline: 'Know exactly where you stand',
     description:
       'Our proprietary AI engine evaluates your startup across 12 critical investment dimensions — from market opportunity and traction to team composition and financial health. Get a comprehensive score with actionable insights to improve before you approach investors.',
@@ -71,7 +71,7 @@ const features = [
     title: 'Smart Task Engine',
     tagline: 'Never miss a critical step',
     description:
-      'Based on your readiness score and fundraising stage, our AI generates and prioritizes action items to keep your raise on track. From updating financials to following up with investors, every task is optimized for maximum impact.',
+      'Based on your Frictionless score and fundraising stage, our AI generates and prioritizes action items to keep your raise on track. From updating financials to following up with investors, every task is optimized for maximum impact.',
     highlights: [
       'AI-generated task priorities',
       'Stage-specific action items',

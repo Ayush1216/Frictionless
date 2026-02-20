@@ -30,8 +30,8 @@ const STRENGTH_TEMPLATES: Record<string, string> = {
 
 const CONCERN_TEMPLATES: Record<string, (score: number, gapName: string) => string> = {
   'Traction Validation': (s, g) => `At ${s}%, traction validation is weak. Key metrics like ${g} are missing, which investors rely on to gauge product-market fit.`,
-  'Foundational Setup': (s, g) => `Scoring only ${s}% on structural readiness raises due diligence concerns. Items like ${g} are expected before any serious investor conversation.`,
-  'Financials': (s, g) => `Financial readiness at ${s}% is a red flag. Without ${g}, investors cannot model returns or assess burn sustainability.`,
+  'Foundational Setup': (s, g) => `Scoring only ${s}% on structural Frictionless raises due diligence concerns. Items like ${g} are expected before any serious investor conversation.`,
+  'Financials': (s, g) => `Financial Frictionless at ${s}% is a red flag. Without ${g}, investors cannot model returns or assess burn sustainability.`,
   'GTM Strategy': (s, g) => `Go-to-market strategy at ${s}% lacks depth. Missing clarity on ${g} makes it hard for investors to evaluate scalability.`,
   'Product Maturity': (s, g) => `Product maturity at ${s}% suggests early stage risk. ${g} would help demonstrate the product is beyond proof-of-concept.`,
   'Storytelling Comms': (s, g) => `At ${s}%, messaging consistency is weak. Investors cross-reference materials, and gaps like ${g} erode confidence.`,
@@ -72,10 +72,10 @@ function buildDemoMemo(
       ? `Would I take a meeting? **Yes, conditionally.** At ${overallScore}%, the profile is compelling enough for a conversation, but I'd want the weaker categories addressed before advancing to full diligence.`
       : overallScore >= 50
         ? `Would I take a meeting? **Not yet.** At ${overallScore}%, there are too many open gaps for a productive investor conversation. The red flags above need to be resolved first.`
-        : `Would I take a meeting? **No.** At ${overallScore}%, the readiness profile has fundamental gaps across multiple categories. Significant groundwork is needed before this would warrant investor time.`;
+        : `Would I take a meeting? **No.** At ${overallScore}%, the Frictionless profile has fundamental gaps across multiple categories. Significant groundwork is needed before this would warrant investor time.`;
 
   return `## First Impression
-At ${overallScore}% overall readiness across ${cats.length} categories, the profile shows ${top[0] ? `clear strength in **${top[0].name}** (${top[0].score}%)` : 'early-stage progress'} but ${bottom.length > 0 ? `notable weakness in ${bottom.map((c) => `**${c.name}** (${c.score}%)`).join(' and ')}` : 'room for improvement across the board'}. ${overallScore >= 70 ? 'The overall score clears the meeting-ready bar, though gaps remain.' : 'The overall score falls short of the 70% meeting-ready threshold.'}
+At ${overallScore}% overall Frictionless across ${cats.length} categories, the profile shows ${top[0] ? `clear strength in **${top[0].name}** (${top[0].score}%)` : 'early-stage progress'} but ${bottom.length > 0 ? `notable weakness in ${bottom.map((c) => `**${c.name}** (${c.score}%)`).join(' and ')}` : 'room for improvement across the board'}. ${overallScore >= 80 ? 'The overall score clears the meeting-ready bar, though gaps remain.' : 'The overall score falls short of the 80% meeting-ready threshold.'}
 
 ## Strengths Worth Highlighting
 ${strengthBullets.join('\n')}
@@ -104,10 +104,10 @@ export function InvestorLensPreview({
 
   const investorMetrics = useMemo(() => {
     const sorted = [...categories].sort((a, b) => b.score - a.score);
-    const strengths = sorted.filter((c) => c.score >= 86);
-    const concerns = sorted.filter((c) => c.score < 80);
-    const meetingReady = overallScore >= 80;
-    const diligenceReady = overallScore >= 86;
+    const strengths = sorted.filter((c) => c.score >= 80);
+    const concerns = sorted.filter((c) => c.score < 60);
+    const meetingReady = overallScore >= 60;
+    const diligenceReady = overallScore >= 80;
     return { strengths, concerns, meetingReady, diligenceReady };
   }, [categories, overallScore]);
 
@@ -165,7 +165,7 @@ export function InvestorLensPreview({
     const diligenceReady = overallScore >= 85 ? 'Yes' : 'No';
 
     const userMessage = [
-      `Overall readiness: ${overallScore}%`,
+      `Overall Frictionless: ${overallScore}%`,
       `Meeting-ready threshold (70%): ${meetingReady}`,
       `Diligence-ready threshold (85%): ${diligenceReady}`,
       `Total categories: ${categories.length}`,
@@ -231,7 +231,7 @@ export function InvestorLensPreview({
         </div>
         <p className="text-xs text-muted-foreground mb-3 ml-[30px]">Your profile through investor eyes</p>
 
-        {/* Readiness gates + quick stats */}
+        {/* Frictionless gates + quick stats */}
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Meeting / Diligence toggles */}
           <div className="flex rounded-lg p-0.5 bg-muted/40">

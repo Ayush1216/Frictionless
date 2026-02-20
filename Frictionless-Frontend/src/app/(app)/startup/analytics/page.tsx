@@ -227,7 +227,7 @@ export default function AnalyticsPage() {
     return () => { cancelled = true; };
   }, [user]);
 
-  // Fetch readiness categories for radar chart
+  // Fetch Frictionless categories for radar chart
   useEffect(() => {
     if (!user || user.org_type !== 'startup') return;
     let cancelled = false;
@@ -279,7 +279,7 @@ export default function AnalyticsPage() {
           Analytics & Insights
         </h1>
         <p className="text-muted-foreground text-sm">
-          Track your startup&apos;s performance and readiness over time.
+          Track your startup&apos;s performance and Frictionless over time.
         </p>
       </motion.div>
 
@@ -354,11 +354,11 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      {/* Readiness & Execution KPIs — driven by real store data */}
+      {/* Frictionless & Execution KPIs — driven by real store data */}
       <div className="space-y-4">
       <h2 className="text-lg font-display font-semibold text-foreground flex items-center gap-2">
         <LayoutGrid className="w-5 h-5 text-primary" />
-        Readiness & Execution
+        Frictionless & Execution
       </h2>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <motion.div
@@ -398,7 +398,7 @@ export default function AnalyticsPage() {
         </motion.div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Score Trend — from readiness store */}
+        {/* Score Trend — from Frictionless store */}
         <ChartCard title="Frictionless Score Trend" icon={TrendingUp} index={0}>
           <AnimatedLineChart data={realScoreTrend} color="#3B82F6" height={220} />
         </ChartCard>

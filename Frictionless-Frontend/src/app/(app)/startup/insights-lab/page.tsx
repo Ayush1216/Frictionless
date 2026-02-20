@@ -25,7 +25,7 @@ export default function InsightsLabPage() {
           <Lightbulb className="w-12 h-12 text-primary/60 mx-auto mb-4" />
           <h2 className="text-lg font-semibold text-foreground mb-2">Coming Soon</h2>
           <p className="text-muted-foreground text-sm mb-6 max-w-md mx-auto">
-            Get deep AI-driven insights on your startup profile, market positioning, and investor readiness.
+            Get deep AI-driven insights on your startup profile, market positioning, and investor Frictionless.
           </p>
           <Link
             href="/startup/company-profile"

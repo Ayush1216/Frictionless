@@ -27,9 +27,9 @@ const roles = [
     icon: Rocket,
     headline: 'Raise your next round with confidence',
     description:
-      'Get a clear picture of your investment readiness, connect with the right investors, and close your round faster than ever.',
+      'Get a clear picture of your investment Frictionless, connect with the right investors, and close your round faster than ever.',
     bullets: [
-      'AI-powered readiness score across 12 dimensions',
+      'AI-powered Frictionless score across 12 dimensions',
       'Smart investor matching based on your stage & sector',
       'Automated task engine to stay fundraise-ready',
       'Secure data room with real-time analytics',
@@ -61,7 +61,7 @@ const roles = [
     description:
       'Give your cohort startups the tools they need to raise successfully. Track progress and drive outcomes at scale.',
     bullets: [
-      'Cohort-wide readiness tracking dashboard',
+      'Cohort-wide Frictionless tracking dashboard',
       'Automated mentor and investor introductions',
       'Bulk assessment and benchmarking tools',
       'White-label options for your brand',
@@ -78,7 +78,7 @@ function RoleTabsSection() {
   const role = roles.find((r) => r.id === activeRole)!;
 
   return (
-    <section ref={ref} className="py-20 md:py-32 px-4">
+    <section ref={ref} className="role-tabs-section py-20 md:py-32 px-4">
       <div className="max-w-6xl mx-auto">
         {/* Section header */}
         <motion.div
@@ -90,7 +90,7 @@ function RoleTabsSection() {
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold mb-4">
             Built for <span className="gradient-text">every side</span> of the table
           </h2>
-          <p className="text-obsidian-400 text-base md:text-lg max-w-2xl mx-auto font-body">
+          <p className="role-tabs-subtitle text-obsidian-400 text-base md:text-lg max-w-2xl mx-auto font-body">
             Whether you&apos;re raising, investing, or accelerating — we&apos;ve got you covered.
           </p>
         </motion.div>
@@ -110,8 +110,8 @@ function RoleTabsSection() {
                 onClick={() => setActiveRole(r.id)}
                 className={`relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-display font-semibold transition-all duration-300 w-full sm:w-auto justify-center ${
                   activeRole === r.id
-                    ? 'text-white bg-white/10 shadow-lg'
-                    : 'text-obsidian-400 hover:text-obsidian-200 hover:bg-white/5'
+                    ? 'role-tabs-btn-active text-white bg-white/10 shadow-lg'
+                    : 'role-tabs-btn-inactive text-obsidian-400 hover:text-obsidian-200 hover:bg-white/5'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -138,10 +138,10 @@ function RoleTabsSection() {
         >
           {/* Text side */}
           <div>
-            <h3 className="text-2xl md:text-3xl font-display font-bold text-white mb-4">
+            <h3 className="role-tabs-headline text-2xl md:text-3xl font-display font-bold text-white mb-4">
               {role.headline}
             </h3>
-            <p className="text-obsidian-400 font-body mb-8 leading-relaxed">
+            <p className="role-tabs-desc text-obsidian-400 font-body mb-8 leading-relaxed">
               {role.description}
             </p>
             <ul className="space-y-4">
@@ -154,7 +154,7 @@ function RoleTabsSection() {
                   className="flex items-start gap-3 text-sm md:text-base font-body"
                 >
                   <CheckCircle2 className="w-5 h-5 text-electric-blue mt-0.5 flex-shrink-0" />
-                  <span className="text-obsidian-300">{bullet}</span>
+                  <span className="role-tabs-bullet text-obsidian-300">{bullet}</span>
                 </motion.li>
               ))}
             </ul>

@@ -1,5 +1,5 @@
 /**
- * Readiness rubric parsing & gap analysis utilities.
+ * Frictionless rubric parsing & gap analysis utilities.
  */
 export interface GapItem {
   item: string;

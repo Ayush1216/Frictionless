@@ -57,14 +57,14 @@ function pct(value: number): string {
 }
 
 function getScoreColor(score: number) {
-  if (score >= 86) return '#10B981';
-  if (score >= 81) return '#EAB308';
+  if (score >= 80) return '#10B981';
+  if (score >= 60) return '#EAB308';
   return '#EF4444';
 }
 
 function getScoreBarColor(score: number) {
-  if (score >= 86) return 'bg-score-excellent';
-  if (score >= 81) return 'bg-score-good';
+  if (score >= 80) return 'bg-score-excellent';
+  if (score >= 60) return 'bg-score-good';
   return 'bg-score-poor';
 }
 
@@ -439,7 +439,7 @@ export default function StartupDetailPage() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="glass-card p-6 flex items-center gap-6">
             <ScoreGaugeLarge score={a.overall_score} badge={a.badge} />
             <div>
-              <h3 className="font-display font-semibold text-foreground text-lg">Readiness Assessment</h3>
+              <h3 className="font-display font-semibold text-foreground text-lg">Frictionless Assessment</h3>
               <p className="text-sm text-muted-foreground mt-1">
                 Overall score based on 7 assessment categories. Badge: <span className="capitalize font-semibold text-foreground">{a.badge}</span>
               </p>

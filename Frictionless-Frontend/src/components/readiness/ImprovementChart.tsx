@@ -96,7 +96,7 @@ export function ImprovementChart({
             All Data Complete
           </h3>
           <p className="text-sm mt-1 max-w-sm" style={{ color: 'var(--fi-text-muted)' }}>
-            You have no missing data items. Your score reflects your full readiness profile.
+            You have no missing data items. Your score reflects your full Frictionless profile.
           </p>
         </div>
       </motion.div>

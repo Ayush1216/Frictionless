@@ -25,7 +25,7 @@ import { useReadinessStore } from '@/stores/readiness-store';
 import { InvestorMatchCard } from '@/components/investors/InvestorMatchCard';
 import { InvestorFilters, type InvestorFilterValues } from '@/components/investors/InvestorFilters';
 import { StatCard } from '@/components/ui/StatCard';
-import { calculateFrictionlessScore, getScoreColor, getScoreLabel } from '@/lib/scores';
+import { calculateReadinessScore, getScoreColor, getScoreLabel } from '@/lib/scores';
 import { isGeminiEnabled, geminiStream } from '@/lib/ai/gemini-client';
 import type { InvestorMatchResult } from '@/types/database';
 
@@ -71,7 +71,7 @@ function exportMatchesCSV(matches: InvestorMatchResult[], readinessScore: number
   const rows = matches.map((m) => {
     const inv = m.investor_profile;
     const thesisFit = m.fit_score_0_to_100;
-    const frictionless = calculateFrictionlessScore(readinessScore, thesisFit);
+    const frictionless = calculateReadinessScore(readinessScore, thesisFit);
     const location = [inv?.city, inv?.state, inv?.country].filter(Boolean).join(', ');
     const sectors = Array.isArray(inv?.sectors) ? inv.sectors.join('; ') : '';
     return [
@@ -144,7 +144,7 @@ function AITopPickCard({ match, readinessScore }: { match: InvestorMatchResult; 
   const [expanded, setExpanded] = useState(true);
   const hasStarted = useRef(false);
   const inv = match.investor_profile;
-  const score = calculateFrictionlessScore(readinessScore, match.fit_score_0_to_100);
+  const score = calculateReadinessScore(readinessScore, match.fit_score_0_to_100);
 
   useEffect(() => {
     // If we already have reasoning from DB, use it — no need to call Gemini
@@ -523,12 +523,12 @@ export default function InvestorsPage() {
       result = result.filter((m) => m.eligible);
     }
     result = result.filter((m) => {
-      const fs = calculateFrictionlessScore(readinessScore, m.fit_score_0_to_100);
+      const fs = calculateReadinessScore(readinessScore, m.fit_score_0_to_100);
       return fs >= filters.scoreMin && fs <= filters.scoreMax;
     });
     result.sort((a, b) => {
-      const fsA = calculateFrictionlessScore(readinessScore, a.fit_score_0_to_100);
-      const fsB = calculateFrictionlessScore(readinessScore, b.fit_score_0_to_100);
+      const fsA = calculateReadinessScore(readinessScore, a.fit_score_0_to_100);
+      const fsB = calculateReadinessScore(readinessScore, b.fit_score_0_to_100);
       switch (filters.sortBy) {
         case 'score_desc': return fsB - fsA;
         case 'score_asc': return fsA - fsB;
@@ -542,10 +542,10 @@ export default function InvestorsPage() {
   const stats = useMemo(() => {
     if (matches.length === 0) return null;
     const eligible = matches.filter((m) => m.eligible).length;
-    const avgFrictionless = Math.round(
-      matches.reduce((sum, m) => sum + calculateFrictionlessScore(readinessScore, m.fit_score_0_to_100), 0) / matches.length
+    const avgReadiness = Math.round(
+      matches.reduce((sum, m) => sum + calculateReadinessScore(readinessScore, m.fit_score_0_to_100), 0) / matches.length
     );
-    return { total: matches.length, eligible, avgFrictionless };
+    return { total: matches.length, eligible, avgReadiness };
   }, [matches, readinessScore]);
 
   const topMatch = filteredMatches[0] ?? null;
@@ -687,8 +687,8 @@ export default function InvestorsPage() {
             icon={<TrendingUp className="w-5 h-5" />}
             label="Avg Match Score"
             value={
-              <span style={{ color: getScoreColor(stats.avgFrictionless) }}>
-                {stats.avgFrictionless}
+              <span style={{ color: getScoreColor(stats.avgReadiness) }}>
+                {stats.avgReadiness}
               </span>
             }
           />
@@ -782,7 +782,7 @@ export default function InvestorsPage() {
           </p>
           <p className="text-sm max-w-md" style={{ color: 'var(--fi-text-muted)' }}>
             {status === 'generating'
-              ? 'Analyzing your startup data, readiness scores, and market positioning. Usually takes 30–60 seconds.'
+              ? 'Analyzing your startup data, Frictionless scores, and market positioning. Usually takes 30–60 seconds.'
               : 'Running deterministic matching against our investor database. First results appear in seconds.'}
           </p>
           {elapsedStr && (
@@ -828,7 +828,7 @@ export default function InvestorsPage() {
             <ul className="text-xs space-y-1.5" style={{ color: 'var(--fi-text-muted)', opacity: 0.8 }}>
               <li>1. Make sure the backend is running: <code className="px-1.5 py-0.5 rounded" style={{ background: 'var(--fi-bg-tertiary)', color: 'var(--fi-primary)' }}>cd Frictionless-Backend && uvicorn app.main:app --reload</code></li>
               <li>2. Check the backend terminal for error messages</li>
-              <li>3. Ensure readiness scoring has completed first</li>
+              <li>3. Ensure Frictionless scoring has completed first</li>
               <li>4. Verify your Supabase and API keys are configured in <code className="px-1.5 py-0.5 rounded" style={{ background: 'var(--fi-bg-tertiary)', color: 'var(--fi-primary)' }}>.env</code></li>
             </ul>
           </div>

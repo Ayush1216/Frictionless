@@ -54,7 +54,7 @@ export function ActionCenter({ data, onAskAI }: ActionCenterProps) {
             <EmptyState
               icon={<CheckCircle2 className="w-6 h-6" />}
               title="All caught up"
-              description="Complete a readiness assessment to get personalized action items."
+              description="Complete a Frictionless assessment to get personalized action items."
               className="py-8"
             />
           ) : (

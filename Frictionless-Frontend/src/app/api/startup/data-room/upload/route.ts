@@ -8,7 +8,7 @@ const BACKEND_URL = process.env.FRICTIONLESS_BACKEND_URL || 'http://localhost:80
 /**
  * POST /api/startup/data-room/upload
  * Upload a file to the data room (storage + org_assets), then trigger backend to process it
- * (OCR, KV merge, readiness). Used from Data Room page and from task chat when user sends proof.
+ * (OCR, KV merge, Frictionless). Used from Data Room page and from task chat when user sends proof.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: insertError.message }, { status: 500 });
     }
 
-    // Trigger backend: OCR doc, merge KV into extraction, run readiness
+    // Trigger backend: OCR doc, merge KV into extraction, run Frictionless
     try {
       const url = `${BACKEND_URL.replace(/\/$/, '')}/api/process-dataroom-doc`;
       const res = await fetch(url, {

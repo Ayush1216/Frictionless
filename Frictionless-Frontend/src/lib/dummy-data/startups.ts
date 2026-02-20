@@ -18,7 +18,7 @@ export interface DummyStartup {
   hq_location: { city: string; state: string; country: string };
   short_summary: string;
   pitch_summary: string;
-  current_readiness_score: number;
+  current_Readiness_score: number;
   score_delta: number;
   latest_metrics: {
     mrr: number;
@@ -91,7 +91,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'San Francisco', state: 'CA', country: 'USA' },
     short_summary: 'AI-driven payment orchestration reducing settlement times by 60%.',
     pitch_summary: 'NeuralPay provides intelligent payment infrastructure that uses machine learning to optimize routing, reduce fraud, and accelerate settlement for enterprise marketplaces. We process $2B+ monthly GMV across 200+ merchants.',
-    current_readiness_score: 82,
+    current_Readiness_score: 82,
     score_delta: 3,
     latest_metrics: {
       mrr: 420000,
@@ -152,7 +152,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'Austin', state: 'TX', country: 'USA' },
     short_summary: 'AI-powered grid management for utilities adopting solar and wind.',
     pitch_summary: 'GreenGrid helps utilities integrate renewables at scale. Our platform predicts demand, optimizes storage, and reduces curtailment by 40%. Currently deployed at 3 municipal utilities.',
-    current_readiness_score: 65,
+    current_Readiness_score: 65,
     score_delta: 5,
     latest_metrics: {
       mrr: 45000,
@@ -208,7 +208,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'Boston', state: 'MA', country: 'USA' },
     short_summary: 'Reduce administrative burden in hospitals with AI.',
     pitch_summary: 'MedFlow AI automates scheduling, prior auth, and discharge documentation. Pilot with 2 community hospitals showed 30% reduction in admin time. Seeking pre-seed to complete pilots.',
-    current_readiness_score: 45,
+    current_Readiness_score: 45,
     score_delta: -2,
     latest_metrics: {
       mrr: 8000,
@@ -272,7 +272,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'New York', state: 'NY', country: 'USA' },
     short_summary: 'Keep data in-region while enabling global analytics.',
     pitch_summary: 'DataVault enables enterprises to comply with GDPR, CCPA, and sector regulations without sacrificing analytics. Data never leaves the region. 50+ F500 customers. $28M ARR.',
-    current_readiness_score: 91,
+    current_Readiness_score: 91,
     score_delta: 2,
     latest_metrics: {
       mrr: 2330000,
@@ -332,7 +332,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'Los Angeles', state: 'CA', country: 'USA' },
     short_summary: 'Modern stack for D2C brands. Shopify alternative.',
     pitch_summary: 'ShopSphere provides headless commerce infrastructure for brands that outgrow Shopify. API-first, developer-friendly. 120+ brands. $1.2M ARR. Targeting $5M ARR in 18 months.',
-    current_readiness_score: 58,
+    current_Readiness_score: 58,
     score_delta: 4,
     latest_metrics: {
       mrr: 100000,
@@ -388,7 +388,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'Seattle', state: 'WA', country: 'USA' },
     short_summary: 'One platform for CI/CD, monitoring, and incident response.',
     pitch_summary: 'CloudNine unifies DevOps workflows. From build to deploy to incident response. Reduces tool sprawl. 400+ engineering teams. $4.2M ARR. Strong NRR.',
-    current_readiness_score: 77,
+    current_Readiness_score: 77,
     score_delta: 5,
     latest_metrics: {
       mrr: 350000,
@@ -448,7 +448,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'Des Moines', state: 'IA', country: 'USA' },
     short_summary: 'Robots that weed and harvest. Reduce labor costs 40%.',
     pitch_summary: 'AgriBot deploys autonomous robots for weeding and selective harvest. Pilot with 2 farms showed 40% labor reduction. Seeking pre-seed for prototype scale.',
-    current_readiness_score: 32,
+    current_Readiness_score: 32,
     score_delta: -3,
     latest_metrics: {
       mrr: 2000,
@@ -506,7 +506,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'Chicago', state: 'IL', country: 'USA' },
     short_summary: 'Adaptive learning that improves outcomes 25%.',
     pitch_summary: 'EduSpark uses AI to create personalized learning paths. Used by 50 schools. Proven 25% improvement in standardized scores. $680K ARR. Expanding to 200 schools.',
-    current_readiness_score: 69,
+    current_Readiness_score: 69,
     score_delta: 6,
     latest_metrics: {
       mrr: 57000,
@@ -566,7 +566,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'San Francisco', state: 'CA', country: 'USA' },
     short_summary: 'Automate bookkeeping, forecasting, and compliance.',
     pitch_summary: 'FinanceAI is an AI CFO for SMBs. Handles bookkeeping, cash flow forecasting, and tax prep. 2,400 customers. $3.8M ARR. 95% retention.',
-    current_readiness_score: 85,
+    current_Readiness_score: 85,
     score_delta: 4,
     latest_metrics: {
       mrr: 317000,
@@ -626,7 +626,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'Miami', state: 'FL', country: 'USA' },
     short_summary: 'Software for scooter and bike share operators.',
     pitch_summary: 'UrbanMobility provides fleet ops software for shared micromobility. Rebalancing, maintenance, compliance. 3 city pilots. Pre-revenue. Seeking pre-seed.',
-    current_readiness_score: 41,
+    current_Readiness_score: 41,
     score_delta: 2,
     latest_metrics: {
       mrr: 5000,
@@ -682,7 +682,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'Cambridge', state: 'MA', country: 'USA' },
     short_summary: 'Platform for designing organisms for industrial production.',
     pitch_summary: 'BioGenesis accelerates biomanufacturing. Our platform designs and optimizes organisms for sustainable materials, food, and chemicals. 8 partners. $12M ARR. Breakthrough results.',
-    current_readiness_score: 88,
+    current_Readiness_score: 88,
     score_delta: 3,
     latest_metrics: {
       mrr: 1000000,
@@ -742,7 +742,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'Atlanta', state: 'GA', country: 'USA' },
     short_summary: 'All-in-one property management for 50+ unit buildings.',
     pitch_summary: 'PropTech Solutions replaces legacy property management tools. Leasing, maintenance, accounting in one platform. 180 properties. $920K ARR. Strong growth in Southeast.',
-    current_readiness_score: 54,
+    current_Readiness_score: 54,
     score_delta: 1,
     latest_metrics: {
       mrr: 77000,
@@ -798,7 +798,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'Denver', state: 'CO', country: 'USA' },
     short_summary: 'Zero-trust agents for distributed teams.',
     pitch_summary: 'CyberShield enforces zero-trust at the endpoint. Works with any identity provider. 85 enterprise customers. $2.1M ARR. SOC 2 certified.',
-    current_readiness_score: 73,
+    current_Readiness_score: 73,
     score_delta: 4,
     latest_metrics: {
       mrr: 175000,
@@ -858,7 +858,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'Portland', state: 'OR', country: 'USA' },
     short_summary: 'Traceability and quality for food supply chains.',
     pitch_summary: 'FoodTech Labs provides end-to-end visibility for food manufacturers. Traceability, quality, compliance. 25 customers. $580K ARR. Critical for recalls and audits.',
-    current_readiness_score: 62,
+    current_Readiness_score: 62,
     score_delta: 3,
     latest_metrics: {
       mrr: 48000,
@@ -914,7 +914,7 @@ export const dummyStartups: DummyStartup[] = [
     hq_location: { city: 'Boston', state: 'MA', country: 'USA' },
     short_summary: 'Quantum algorithms for logistics and finance.',
     pitch_summary: 'QuantumLeap develops quantum algorithms for optimization problems in logistics, finance, and drug discovery. Partnerships with IBM, Google, AWS. $15M ARR. Pre-IPO trajectory.',
-    current_readiness_score: 94,
+    current_Readiness_score: 94,
     score_delta: 1,
     latest_metrics: {
       mrr: 1250000,

@@ -42,6 +42,8 @@ export interface UseIntelligenceChatReturn {
   togglePin: (threadId: string) => void;
   responseMode: string;
   setResponseMode: (mode: string) => void;
+  webMode: boolean;
+  setWebMode: (enabled: boolean) => void;
   refreshThreads: () => Promise<void>;
 }
 
@@ -54,6 +56,7 @@ export function useIntelligenceChat(): UseIntelligenceChatReturn {
   const [isLoadingThreads, setIsLoadingThreads] = useState(true);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [responseMode, setResponseMode] = useState('concise');
+  const [webMode, setWebMode] = useState(false);
   const pinnedRef = useRef(loadPinnedIds());
   const abortRef = useRef(false);
 
@@ -174,6 +177,7 @@ export function useIntelligenceChat(): UseIntelligenceChatReturn {
       const stream = await streamChatMessage(threadId, text, {
         responseMode,
         attachments: attachments ?? [],
+        webSearch: webMode,
       });
 
       if (!stream) throw new Error('No stream');
@@ -235,7 +239,7 @@ export function useIntelligenceChat(): UseIntelligenceChatReturn {
         setMessages(prev => [...prev, cardMsg]);
       }
     }).catch(() => { /* ignore */ });
-  }, [activeThreadId, isStreaming, responseMode]);
+  }, [activeThreadId, isStreaming, responseMode, webMode]);
 
   return {
     threads,
@@ -252,6 +256,8 @@ export function useIntelligenceChat(): UseIntelligenceChatReturn {
     togglePin,
     responseMode,
     setResponseMode,
+    webMode,
+    setWebMode,
     refreshThreads,
   };
 }

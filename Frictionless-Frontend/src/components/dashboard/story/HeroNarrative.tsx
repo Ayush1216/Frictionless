@@ -55,9 +55,9 @@ export function HeroNarrative({ data }: HeroNarrativeProps) {
 
   // Score-aware gradient class
   const gradientStyle = {
-    background: data.readinessScore >= 86
+    background: data.readinessScore >= 80
       ? 'radial-gradient(ellipse 80% 60% at 20% 50%, rgba(34, 197, 94, 0.06) 0%, transparent 70%), radial-gradient(ellipse 60% 50% at 80% 30%, rgba(16, 185, 129, 0.04) 0%, transparent 70%), var(--fi-bg-card)'
-      : data.readinessScore >= 80
+      : data.readinessScore >= 60
         ? 'radial-gradient(ellipse 80% 60% at 20% 50%, rgba(250, 204, 21, 0.05) 0%, transparent 70%), radial-gradient(ellipse 60% 50% at 80% 30%, rgba(16, 185, 129, 0.03) 0%, transparent 70%), var(--fi-bg-card)'
         : 'radial-gradient(ellipse 80% 60% at 20% 50%, rgba(239, 68, 68, 0.04) 0%, transparent 70%), radial-gradient(ellipse 60% 50% at 80% 30%, rgba(16, 185, 129, 0.03) 0%, transparent 70%), var(--fi-bg-card)',
   };
@@ -212,6 +212,13 @@ export function HeroNarrative({ data }: HeroNarrativeProps) {
                 </div>
               </div>
             </div>
+
+            {/* Elevator Pitch */}
+            {data.elevatorPitch && (
+              <p className="text-xs leading-relaxed line-clamp-3 mt-2 italic" style={{ color: 'var(--fi-text-secondary)' }}>
+                &ldquo;{data.elevatorPitch}&rdquo;
+              </p>
+            )}
 
             {/* Key metrics */}
             <div className="space-y-2 pt-1">

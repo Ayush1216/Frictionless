@@ -30,7 +30,7 @@ function isValidMulti(val: unknown, allowed: readonly string[]): boolean {
 
 /**
  * POST /api/onboarding/questionnaire
- * Saves the 6 required startup readiness questionnaire answers.
+ * Saves the 6 required startup Frictionless questionnaire answers.
  * Startup only.
  */
 export async function POST(request: NextRequest) {
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Trigger readiness scoring on backend (runs asynchronously on backend)
+    // Trigger Frictionless scoring on backend (runs asynchronously on backend)
     const backendUrl = process.env.FRICTIONLESS_BACKEND_URL || 'http://localhost:8000';
     const url = `${backendUrl.replace(/\/$/, '')}/api/run-readiness-scoring`;
     try {
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (e) {
       const isTimeout = e instanceof DOMException && e.name === 'TimeoutError';
-      console.warn('[questionnaire] Failed to trigger readiness scoring:', isTimeout ? 'timeout (10s)' : e);
+      console.warn('[questionnaire] Failed to trigger Frictionless scoring:', isTimeout ? 'timeout (10s)' : e);
     }
 
     return NextResponse.json({ ok: true });

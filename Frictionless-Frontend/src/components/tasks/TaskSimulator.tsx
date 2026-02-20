@@ -47,7 +47,7 @@ export function TaskSimulator({ className }: TaskSimulatorProps) {
       <div className="space-y-2">
         <p className="text-xs text-muted-foreground">
           Complete these {topByPoints.length} task{topByPoints.length > 1 ? 's' : ''} to add{' '}
-          <span className="font-semibold text-score-excellent">+{potentialGain} pts</span> to your readiness.
+          <span className="font-semibold text-score-excellent">+{potentialGain} pts</span> to your Frictionless.
         </p>
         <ul className="space-y-1.5">
           {topByPoints.map((t) => (

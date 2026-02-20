@@ -1,10 +1,10 @@
 /**
- * Centralized score color coding for readiness scores.
+ * Centralized score color coding for Frictionless scores.
  * Single source of truth for score ranges, labels, and colors.
  *
- * 86-100 → "Excellent" (green)
- * 80-85  → "Good" (yellow)
- * <80    → "Need Improvement" (red)
+ * 80-100 → "Excellent" (green)
+ * 60-79  → "Good" (yellow)
+ * <60    → "Need Improvement" (red)
  */
 
 export type ScoreLevel = 'excellent' | 'good' | 'needs_improvement';
@@ -19,7 +19,7 @@ export interface ScoreInfo {
 }
 
 export function getScoreInfo(score: number): ScoreInfo {
-  if (score >= 86) {
+  if (score >= 80) {
     return {
       level: 'excellent',
       label: 'Excellent',
@@ -29,7 +29,7 @@ export function getScoreInfo(score: number): ScoreInfo {
       dotClass: 'bg-score-excellent',
     };
   }
-  if (score >= 81) {
+  if (score >= 60) {
     return {
       level: 'good',
       label: 'Good',

@@ -9,7 +9,7 @@ const sections = [
   },
   {
     title: '2. Description of Service',
-    content: `Frictionless Intelligence provides an AI-powered investment readiness platform that includes readiness scoring, investor matching, AI chat assistance, task management, data room hosting, and analytics tools ("Platform"). The Service is designed to help startups prepare for and execute fundraising activities, and to help investors discover and evaluate investment opportunities.`,
+    content: `Frictionless Intelligence provides an AI-powered investment Frictionless platform that includes Frictionless scoring, investor matching, AI chat assistance, task management, data room hosting, and analytics tools ("Platform"). The Service is designed to help startups prepare for and execute fundraising activities, and to help investors discover and evaluate investment opportunities.`,
   },
   {
     title: '3. User Accounts',
@@ -25,7 +25,7 @@ const sections = [
   },
   {
     title: '6. AI-Generated Content',
-    content: `The Service uses artificial intelligence to generate readiness scores, investor matches, recommendations, and other content. AI-generated content is provided for informational purposes only and should not be considered as financial, legal, or investment advice. We make no guarantees regarding the accuracy, completeness, or reliability of AI-generated content. You acknowledge that investment decisions should be made with the assistance of qualified professional advisors.`,
+    content: `The Service uses artificial intelligence to generate Frictionless scores, investor matches, recommendations, and other content. AI-generated content is provided for informational purposes only and should not be considered as financial, legal, or investment advice. We make no guarantees regarding the accuracy, completeness, or reliability of AI-generated content. You acknowledge that investment decisions should be made with the assistance of qualified professional advisors.`,
   },
   {
     title: '7. Data Room and Confidentiality',

@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Loader2, CheckCircle2, Upload, Sparkles, Info } from 'lucide-react';
+import { ChevronDown, Loader2, CheckCircle2, Sparkles, Info, Send } from 'lucide-react';
 import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import { streamChat } from '@/lib/ai/openai-client';
 import { useTasksSync } from '@/contexts/TasksSyncContext';
+import { getAuthHeaders } from '@/lib/api/tasks';
 import type { Task } from '@/types/database';
 
 interface ReadinessTaskCardProps {
@@ -32,16 +33,26 @@ function getImpactBadge(priority: string): { label: string; color: string; bg: s
   }
 }
 
+/**
+ * Convert a task title into a snake_case key for extraction_data patching.
+ * e.g. "Cash on hand (USD)" → "cash_on_hand_usd"
+ */
+function titleToFieldKey(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[()]/g, '')
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
 export function ReadinessTaskCard({ task, categoryName, onAsk, isExpanded, onToggleExpand, aiDescription, aiDescriptionLoading }: ReadinessTaskCardProps) {
   const impact = getImpactBadge(task.priority);
   const isDone = task.status === 'done';
   const tasksSync = useTasksSync();
 
+  const [inputValue, setInputValue] = useState('');
   const [isCompleting, setIsCompleting] = useState(false);
   const [completionAnalysis, setCompletionAnalysis] = useState<string | null>(null);
-  const [proofUploaded, setProofUploaded] = useState(() => {
-    try { return localStorage.getItem(`task-proof-${task.id}`) === 'true'; } catch { return false; }
-  });
 
   useEffect(() => {
     if (!isExpanded) {
@@ -49,17 +60,34 @@ export function ReadinessTaskCard({ task, categoryName, onAsk, isExpanded, onTog
     }
   }, [isExpanded]);
 
-  const handleMarkComplete = useCallback(async () => {
-    if (!proofUploaded) { onAsk(task); return; }
+  // Save input to company profile, then mark task complete
+  const handleCompleteTask = useCallback(async () => {
     if (!tasksSync || isCompleting) return;
-    setIsCompleting(true);
+    const trimmed = inputValue.trim();
+    if (!trimmed) return;
 
+    setIsCompleting(true);
     try {
-      const success = await tasksSync.completeTaskViaApi(task.id);
+      // Step 1: Save data to company profile via extraction_patch
+      const fieldKey = titleToFieldKey(task.title);
+      const headers = await getAuthHeaders();
+      await fetch('/api/company-profile', {
+        method: 'PATCH',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          extraction_patch: {
+            startup_kv: { initial_details: { [fieldKey]: trimmed } },
+          },
+          regenerate_readiness: false,
+        }),
+      });
+
+      // Step 2: Mark task complete (with the submitted value)
+      const success = await tasksSync.completeTaskViaApi(task.id, trimmed);
       if (success) {
         setCompletionAnalysis('generating');
-        const systemPrompt = `You are a startup advisor. The founder just completed a readiness task. Provide a brief congratulatory analysis (2-3 sentences) of the impact this has on their readiness. Be encouraging and specific.`;
-        const analysisMsg = `I just completed: "${task.title}" in "${categoryName}". Worth ${task.potential_points ?? 'several'} points.`;
+        const systemPrompt = `You are a startup advisor. The founder just completed a Frictionless task by providing data. Provide a brief congratulatory analysis (2-3 sentences) of the impact this has on their Frictionless. Be encouraging and specific.`;
+        const analysisMsg = `I just completed: "${task.title}" in "${categoryName}". Worth ${task.potential_points ?? 'several'} points. Value provided: "${trimmed}"`;
 
         let analysis = '';
         try {
@@ -71,22 +99,16 @@ export function ReadinessTaskCard({ task, categoryName, onAsk, isExpanded, onTog
             setCompletionAnalysis(analysis);
           }
         } catch {
-          analysis = `Great work completing "${task.title}"! This is worth ${task.potential_points ?? 'several'} points toward your readiness.`;
+          analysis = `Great work completing "${task.title}"! This is worth ${task.potential_points ?? 'several'} points toward your Frictionless score.`;
           setCompletionAnalysis(analysis);
         }
-        try { localStorage.removeItem(`task-proof-${task.id}`); } catch { /* ignore */ }
       }
     } catch {
-      setCompletionAnalysis('Failed to mark as complete. Please try again.');
+      setCompletionAnalysis('Failed to complete. Please try again.');
     } finally {
       setIsCompleting(false);
     }
-  }, [task, tasksSync, isCompleting, categoryName, proofUploaded, onAsk]);
-
-  const handleMarkProofDone = useCallback(() => {
-    setProofUploaded(true);
-    try { localStorage.setItem(`task-proof-${task.id}`, 'true'); } catch { /* ignore */ }
-  }, [task.id]);
+  }, [task, tasksSync, isCompleting, inputValue, categoryName]);
 
   // Use AI description if available, otherwise fall back to task.description
   const displayDescription = aiDescription || task.description || null;
@@ -141,7 +163,7 @@ export function ReadinessTaskCard({ task, categoryName, onAsk, isExpanded, onTog
           </div>
         </div>
 
-        {/* Ask AI button — styled with primary color */}
+        {/* Ask AI button */}
         <div onClick={(e) => { e.stopPropagation(); onAsk(task); }}>
           <button
             onClick={() => onAsk(task)}
@@ -178,8 +200,8 @@ export function ReadinessTaskCard({ task, categoryName, onAsk, isExpanded, onTog
             className="overflow-hidden"
           >
             <div style={{ borderTop: '1px solid var(--fi-border)' }}>
-              {/* Scrollable content area */}
-              <div className="px-5 pb-4 pt-4 space-y-4 max-h-[280px] overflow-y-auto">
+              {/* Content area */}
+              <div className="px-5 pb-4 pt-4 space-y-4">
                 {/* AI-generated description */}
                 {aiDescriptionLoading ? (
                   <div className="flex items-center gap-2 py-3 px-4 rounded-lg" style={{ background: 'var(--fi-bg-secondary)' }}>
@@ -209,7 +231,7 @@ export function ReadinessTaskCard({ task, categoryName, onAsk, isExpanded, onTog
                 <div className="flex items-center gap-1.5">
                   <Sparkles className="w-3 h-3" style={{ color: 'var(--fi-primary)', opacity: 0.7 }} />
                   <span className="text-[10px] font-medium" style={{ color: 'var(--fi-text-muted)' }}>
-                    Worth <strong style={{ color: 'var(--fi-primary)' }}>+{task.potential_points ?? '?'} pts</strong> toward your readiness score
+                    Worth <strong style={{ color: 'var(--fi-primary)' }}>+{task.potential_points ?? '?'} pts</strong> toward your Frictionless score
                   </span>
                 </div>
 
@@ -241,60 +263,52 @@ export function ReadinessTaskCard({ task, categoryName, onAsk, isExpanded, onTog
                 )}
               </div>
 
-              {/* Actions — pinned at bottom outside scroll area */}
+              {/* Input + Complete button — pinned at bottom */}
               {task.status !== 'done' && !completionAnalysis && (
                 <div className="px-5 pb-5 pt-2 space-y-3" style={{ borderTop: '1px solid var(--fi-border)' }}>
-                  {/* Proof status */}
-                  {!proofUploaded && (
-                    <div
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs"
-                      style={{ background: 'rgba(234,179,8,0.06)', border: '1px solid rgba(234,179,8,0.15)', color: 'var(--fi-score-good)' }}
+                  {/* Data input field */}
+                  <div>
+                    <label
+                      className="text-[11px] font-semibold uppercase tracking-wide block mb-1.5"
+                      style={{ color: 'var(--fi-text-muted)' }}
                     >
-                      <Upload className="w-4 h-4 shrink-0" />
-                      <span className="flex-1">Upload proof or evidence to mark complete</span>
-                      <button
-                        onClick={handleMarkProofDone}
-                        className="text-[11px] font-semibold underline hover:no-underline shrink-0"
-                      >
-                        I have proof
-                      </button>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => onAsk(task)}
-                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
+                      {task.title}
+                    </label>
+                    <input
+                      type="text"
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      placeholder={`Enter ${task.title.toLowerCase()}...`}
+                      className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all"
                       style={{
-                        background: 'rgba(16,185,129,0.08)',
-                        border: '1px solid var(--fi-primary)',
-                        color: 'var(--fi-primary)',
+                        background: 'var(--fi-bg-secondary)',
+                        border: '1px solid var(--fi-border)',
+                        color: 'var(--fi-text-primary)',
                       }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(16,185,129,0.15)'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(16,185,129,0.08)'; }}
-                    >
-                      <Image src="/ai-logo.png" alt="Frictionless" width={16} height={16} className="opacity-80" />
-                      Chat with AI
-                    </button>
-                    <button
-                      onClick={handleMarkComplete}
-                      disabled={isCompleting}
-                      className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
-                      style={{
-                        background: isCompleting ? 'rgba(16,185,129,0.5)' : proofUploaded ? 'var(--fi-score-excellent)' : 'rgba(16,185,129,0.1)',
-                        color: proofUploaded ? 'white' : 'var(--fi-primary)',
-                        border: proofUploaded ? 'none' : '1px solid var(--fi-primary)',
-                        cursor: isCompleting ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      {isCompleting ? (
-                        <><Loader2 className="w-4 h-4 animate-spin" /> Completing...</>
-                      ) : proofUploaded ? (
-                        <><CheckCircle2 className="w-4 h-4" /> Mark Complete</>
-                      ) : (
-                        <><Upload className="w-4 h-4" /> Submit Proof</>
-                      )}
-                    </button>
+                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--fi-primary)'; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--fi-border)'; }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && inputValue.trim()) handleCompleteTask(); }}
+                    />
                   </div>
+
+                  {/* Complete Task button */}
+                  <button
+                    onClick={handleCompleteTask}
+                    disabled={isCompleting || !inputValue.trim()}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all"
+                    style={{
+                      background: (!inputValue.trim() || isCompleting) ? 'rgba(16,185,129,0.1)' : 'var(--fi-primary)',
+                      color: (!inputValue.trim() || isCompleting) ? 'var(--fi-text-muted)' : 'white',
+                      cursor: (!inputValue.trim() || isCompleting) ? 'not-allowed' : 'pointer',
+                      opacity: (!inputValue.trim() || isCompleting) ? 0.6 : 1,
+                    }}
+                  >
+                    {isCompleting ? (
+                      <><Loader2 className="w-4 h-4 animate-spin" /> Saving &amp; completing...</>
+                    ) : (
+                      <><Send className="w-4 h-4" /> Complete Task</>
+                    )}
+                  </button>
                 </div>
               )}
             </div>

@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * PATCH /api/company-profile
- * Updates extraction_data and/or questionnaire. Optionally triggers readiness regeneration.
+ * Updates extraction_data and/or questionnaire. Optionally triggers Frictionless regeneration.
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -186,10 +186,10 @@ export async function PATCH(request: NextRequest) {
           body: JSON.stringify({ org_id: orgId }),
         });
         if (!readRes.ok) {
-          console.warn('[company-profile] Readiness regenerate failed:', readRes.status);
+          console.warn('[company-profile] Frictionless regenerate failed:', readRes.status);
         }
       } catch (e) {
-        console.warn('[company-profile] Readiness regenerate error:', e);
+        console.warn('[company-profile] Frictionless regenerate error:', e);
       }
     }
 

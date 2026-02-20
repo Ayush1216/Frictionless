@@ -69,7 +69,7 @@ export function DailyBrief({ data, onAskAI }: DailyBriefProps) {
           </h3>
         </div>
         <p className="text-sm" style={{ color: 'var(--fi-text-tertiary)' }}>
-          Complete your first readiness assessment to unlock AI-powered insights about your fundraising position.
+          Complete your first Frictionless assessment to unlock AI-powered insights about your fundraising position.
         </p>
         <Link href="/startup/readiness" className="fi-btn fi-btn-primary mt-4">
           <Sparkles className="w-4 h-4" />
@@ -148,7 +148,7 @@ export function DailyBrief({ data, onAskAI }: DailyBriefProps) {
           )}
         </div>
 
-        {/* RIGHT: Readiness Signals */}
+        {/* RIGHT: Frictionless Signals */}
         <div className="lg:col-span-2">
           <h4 className="text-sm font-semibold mb-4" style={{ color: 'var(--fi-text-primary)' }}>
             Frictionless Signals
@@ -182,7 +182,7 @@ export function DailyBrief({ data, onAskAI }: DailyBriefProps) {
           </div>
 
           <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--fi-border)' }}>
-            <AskButton onClick={() => onAskAI?.(`Give me a comprehensive AI analysis of my current readiness status. My score is ${data.readinessScore}% with ${data.topImpactTasks.length} high-impact tasks remaining. What should I focus on today to make the biggest progress?`)} size="md" variant="primary" />
+            <AskButton onClick={() => onAskAI?.(`Give me a comprehensive AI analysis of my current Frictionless status. My score is ${data.readinessScore}% with ${data.topImpactTasks.length} high-impact tasks remaining. What should I focus on today to make the biggest progress?`)} size="md" variant="primary" />
           </div>
         </div>
       </div>

@@ -92,7 +92,7 @@ const cardVariants = {
 };
 
 // ═══════════════════════════════════════════
-// MAIN READINESS PAGE
+// MAIN Frictionless PAGE
 // ═══════════════════════════════════════════
 
 function ReadinessContent() {
@@ -153,7 +153,7 @@ function ReadinessContent() {
           return `- ID: "${t.id}", Title: "${t.title}", Category: "${group?.category ?? 'Other'}", Priority: ${t.priority}`;
         }).join('\n');
 
-        const prompt = `You are a startup investment readiness advisor helping founders prepare for fundraising. For each task below, write a thorough description of EXACTLY 150-200 words (this is critical — each description must be at least 150 words) covering ALL of these points in detail:
+        const prompt = `You are a startup investment Frictionless advisor helping founders prepare for fundraising. For each task below, write a thorough description of EXACTLY 150-200 words (this is critical — each description must be at least 150 words) covering ALL of these points in detail:
 
 1. WHAT TO DO: Explain specifically what the founder needs to prepare, create, or demonstrate. Give concrete steps.
 2. WHY INVESTORS CARE: Explain why this matters to investors during due diligence. What questions will they ask about this? How does it affect their investment decision?
@@ -188,7 +188,7 @@ ${taskList}`;
     return () => { cancelled = true; };
   }, [tasksLoaded, tasks, taskGroups]);
 
-  // Readiness data
+  // Frictionless data
   const readinessScore = readiness?.score_summary?._overall?.raw_percentage ?? 0;
   const readinessDelta = readiness && scoreHistory.length >= 2
     ? Math.round((readinessScore - scoreHistory[scoreHistory.length - 2].score) * 10) / 10
@@ -278,7 +278,7 @@ ${taskList}`;
     const group = taskGroups.find((g) => g.id === task.task_group_id);
     const cat = group?.category ?? 'General';
     const desc = task.description ? ` Description: ${task.description}` : '';
-    const prompt = `Help me with this readiness task: "${task.title}" (${cat} category, ${task.priority} priority, +${task.potential_points ?? '?'} pts).${desc} Give me specific, actionable guidance to complete this.`;
+    const prompt = `Help me with this Frictionless task: "${task.title}" (${cat} category, ${task.priority} priority, +${task.potential_points ?? '?'} pts).${desc} Give me specific, actionable guidance to complete this.`;
     openAskWithPrompt(prompt);
   }, [taskGroups, openAskWithPrompt]);
 
@@ -329,10 +329,10 @@ ${taskList}`;
                 className="text-xl lg:text-2xl font-display font-bold"
                 style={{ color: 'var(--fi-text-primary)' }}
               >
-                Readiness
+                Frictionless Score
               </h1>
               <p className="text-sm mt-0.5" style={{ color: 'var(--fi-text-tertiary)' }}>
-                Your investor readiness score, category insights, and improvement roadmap.
+                Your Frictionless investment score, category insights, and improvement roadmap.
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -351,7 +351,7 @@ ${taskList}`;
           {/* ════════ TOP SECTION: Score + Progress (narrower score, wider chart) ════════ */}
           <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4">
 
-            {/* ── Left Card: Readiness Score ── */}
+            {/* ── Left Card: Frictionless Score ── */}
             <motion.div
               custom={0}
               variants={cardVariants}
@@ -363,7 +363,7 @@ ${taskList}`;
                 <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-secondary)' }}>
                   Frictionless Score
                 </h3>
-                <TooltipInfo text="Your overall investment readiness based on multiple assessment categories." />
+                <TooltipInfo text="Your overall investment Frictionless based on multiple assessment categories." />
               </div>
 
               <div className="flex-1 flex flex-col items-center justify-center py-4">
@@ -397,7 +397,7 @@ ${taskList}`;
               {/* Benefits */}
               <div className="mt-3 pt-3 space-y-1.5" style={{ borderTop: '1px solid var(--fi-border)' }}>
                 <p className="text-xs font-medium" style={{ color: 'var(--fi-text-muted)' }}>
-                  Improving your readiness increases:
+                  Improving your Frictionless increases:
                 </p>
                 {['Investor response rates', 'Warm intro success'].map((b) => (
                   <div key={b} className="flex items-center gap-2">
@@ -410,7 +410,7 @@ ${taskList}`;
                 ))}
               </div>
 
-              <AskButton onClick={() => openAskWithPrompt(`Analyze my readiness score of ${readinessScore}%. What does this mean for my fundraising? What are my strongest and weakest categories? Give me a breakdown in a table and specific actions to improve.`)} size="md" variant="outline" className="w-full justify-center mt-4" />
+              <AskButton onClick={() => openAskWithPrompt(`Analyze my Frictionless score of ${readinessScore}%. What does this mean for my fundraising? What are my strongest and weakest categories? Give me a breakdown in a table and specific actions to improve.`)} size="md" variant="outline" className="w-full justify-center mt-4" />
             </motion.div>
 
             {/* ── Right Card: Progress Over Time ── */}
@@ -422,7 +422,7 @@ ${taskList}`;
               className="fi-card flex flex-col"
             >
               <ProgressChart data={chartData} currentScore={readinessScore} />
-              <AskButton onClick={() => openAskWithPrompt(`Analyze my readiness score progress over time. My current score is ${readinessScore}% with a delta of ${readinessDelta}. What trends do you see? Am I improving fast enough? What pace should I target to be investor-ready?`)} size="md" variant="outline" className="w-full justify-center mt-4" />
+              <AskButton onClick={() => openAskWithPrompt(`Analyze my Frictionless score progress over time. My current score is ${readinessScore}% with a delta of ${readinessDelta}. What trends do you see? Am I improving fast enough? What pace should I target to be investor-ready?`)} size="md" variant="outline" className="w-full justify-center mt-4" />
             </motion.div>
           </div>
 
@@ -496,7 +496,7 @@ ${taskList}`;
                   </p>
                 </div>
                 <button
-                  onClick={() => openAskWithPrompt(`My weakest readiness category is "${lowestCategory.name}" at ${lowestCategory.score}%. Give me specific, actionable tips to improve this category. What do top-performing startups do differently here? Include examples.`)}
+                  onClick={() => openAskWithPrompt(`My weakest Frictionless category is "${lowestCategory.name}" at ${lowestCategory.score}%. Give me specific, actionable tips to improve this category. What do top-performing startups do differently here? Include examples.`)}
                   className="text-xs font-medium shrink-0 flex items-center gap-1 hover:underline"
                   style={{ color: 'var(--fi-primary)' }}
                 >
@@ -519,7 +519,7 @@ ${taskList}`;
                 <h3 className="text-base font-semibold" style={{ color: 'var(--fi-text-primary)' }}>
                   Visual breakdown
                 </h3>
-                <AskButton onClick={() => openAskWithPrompt(`Give me a detailed visual breakdown analysis of my readiness categories. Show me all categories in a table with their scores, what each means, and prioritized improvement actions.`)} size="sm" variant="outline" />
+                <AskButton onClick={() => openAskWithPrompt(`Give me a detailed visual breakdown analysis of my Frictionless categories. Show me all categories in a table with their scores, what each means, and prioritized improvement actions.`)} size="sm" variant="outline" />
               </div>
 
               {/* Two charts side by side */}
@@ -527,7 +527,7 @@ ${taskList}`;
                 {/* Left: Horizontal Bar Chart */}
                 <div>
                   <p className="text-xs font-semibold mb-3" style={{ color: 'var(--fi-text-muted)' }}>
-                    Readiness by category
+                    Frictionless by category
                   </p>
                   <div style={{ height: Math.max(220, parsedCategories.length * 40) }}>
                     <LazyResponsiveContainer width="100%" height="100%">
@@ -849,7 +849,7 @@ ${taskList}`;
               </DialogHeader>
               <div className="space-y-3 mt-2">
                 <p className="text-sm" style={{ color: 'var(--fi-text-secondary)' }}>
-                  Your readiness score is calculated by evaluating your startup across multiple weighted categories that investors care about most.
+                  Your Frictionless score is calculated by evaluating your startup across multiple weighted categories that investors care about most.
                 </p>
                 <div className="space-y-2">
                   {[

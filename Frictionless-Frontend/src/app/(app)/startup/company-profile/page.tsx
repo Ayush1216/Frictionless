@@ -255,20 +255,30 @@ export default function CompanyProfilePage() {
     if (!extraction || !questionnaire) return;
     const existing = extraction?.startup_kv?.initial_details?.elevator_pitch;
     if (existing) return; // already set
-    const problem = extraction?.startup_kv?.initial_details?.problem ?? '';
-    const solution = extraction?.startup_kv?.initial_details?.solution ?? '';
-    const uniqueValue = extraction?.startup_kv?.initial_details?.unique_value_proposition ?? extraction?.startup_kv?.initial_details?.uvp ?? '';
+    const id = extraction?.startup_kv?.initial_details ?? {};
+    const problem = (id as any).problem ?? '';
+    const solution = (id as any).solution ?? '';
+    const uniqueValue = (id as any).unique_value_proposition ?? (id as any).uvp ?? '';
+    const productName = (id as any).product_name ?? (id as any).name ?? '';
+    const targetMarket = (id as any).target_market ?? (id as any).target_customer ?? '';
+    const businessModel = (id as any).business_model ?? (id as any).revenue_model ?? '';
+    const traction = (id as any).traction ?? (id as any).key_metrics ?? '';
     const sector = questionnaire?.primary_sector ?? '';
     if (!problem && !solution && !uniqueValue) return; // nothing to work with
     getToken().then(async (token) => {
       if (!token) return;
       try {
+        const pitchContext: Record<string, string> = { problem, solution, unique_value: uniqueValue, sector };
+        if (productName) pitchContext.product_name = productName;
+        if (targetMarket) pitchContext.target_market = targetMarket;
+        if (businessModel) pitchContext.business_model = businessModel;
+        if (traction) pitchContext.traction = traction;
         const res = await fetch('/api/ai/summary', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            context: { problem, solution, unique_value: uniqueValue, sector },
-            systemPrompt: `You are a startup pitch expert. Write a concise 1-2 sentence elevator pitch for this startup. Use plain language. Focus on: who they help, the core problem solved, and the unique value. Do NOT start with "Introducing" or "Welcome". Output ONLY the pitch text, no labels or formatting. Maximum 200 characters.`,
+            context: pitchContext,
+            systemPrompt: `You are a startup pitch expert. Write a concise 1-2 sentence elevator pitch based ONLY on the company data provided (problem, solution, unique value, target market, business model, traction). Do NOT use the organization name. Focus on: who they help, the core problem solved, and the unique value. Do NOT start with "Introducing" or "Welcome". Output ONLY the pitch text, no labels or formatting. Maximum 200 characters.`,
           }),
         });
         if (res.ok) {
@@ -301,7 +311,7 @@ export default function CompanyProfilePage() {
     } catch { setCanonical(buildCanonicalCompanyProfile(rawSources)); }
   }, [orgId, extraction, apollo, questionnaire]);
 
-  // Readiness score
+  // Frictionless score
   useEffect(() => {
     if (!orgId) return;
     getToken().then((token) => {
@@ -359,7 +369,7 @@ export default function CompanyProfilePage() {
     setSaving(false);
   };
 
-  const regenerateReadiness = async () => {
+  const regenerateFrictionless = async () => {
     const token = await getToken();
     if (!token) return;
     setRegenerating(true);
@@ -370,8 +380,8 @@ export default function CompanyProfilePage() {
         body: JSON.stringify({ regenerate_readiness: true }),
       });
       if (!res.ok) throw new Error('Failed');
-      toast.success('Readiness score is being recalculated. This may take a minute.');
-    } catch { toast.error('Failed to regenerate readiness'); }
+      toast.success('Frictionless score is being recalculated. This may take a minute.');
+    } catch { toast.error('Failed to regenerate Frictionless'); }
     setRegenerating(false);
   };
 
@@ -389,7 +399,7 @@ export default function CompanyProfilePage() {
         body: JSON.stringify({ ...updates, regenerate_readiness: true }),
       });
       if (!res.ok) throw new Error('Failed');
-      toast.success('Saved and recalculating readiness score.');
+      toast.success('Saved and recalculating Frictionless score.');
       setQuestionnaireEdits({});
       await fetchProfile();
     } catch { toast.error('Failed'); }
@@ -400,7 +410,11 @@ export default function CompanyProfilePage() {
   const triggerLinkedInScrape = async () => {
     const token = await getToken();
     if (!token) return;
-    const url = linkedinUrl.trim();
+    // Use manually entered URL, or fall back to stored LinkedIn URL
+    const url = linkedinUrl.trim()
+      || extraction?.meta?.company_linkedin
+      || (apollo?.linkedin_url != null ? String(apollo.linkedin_url) : '')
+      || '';
     if (!url) { toast.error('Paste a company LinkedIn URL first'); return; }
     setScrapeInProgress(true);
     setScrapeError(null);
@@ -416,9 +430,11 @@ export default function CompanyProfilePage() {
         setExtraction(data.extraction_data);
         setScrapeError(data.status === 'failed' ? data.error ?? null : null);
       }
-      if (data.status === 'success') toast.success('Profile updated with fresh LinkedIn data');
-      else if (data.status === 'failed') toast.error(data.error || 'Scrape failed');
-      setLinkedinUrl('');
+      if (data.status === 'success') {
+        toast.success('Profile updated with fresh LinkedIn data');
+        setLinkedinUrl('');
+        await fetchProfile();
+      } else if (data.status === 'failed') toast.error(data.error || 'Scrape failed');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Scrape request failed';
       setScrapeError(msg);
@@ -434,18 +450,37 @@ export default function CompanyProfilePage() {
   const founders = extraction?.founder_linkedin?.data?.founders ?? [];
   const leadership = extraction?.founder_linkedin?.data?.leadership_team ?? [];
 
-  const teamMembers = useMemo(() =>
-    [...founders, ...leadership].reduce((acc: any[], curr) => {
-      const exists = acc.find(
-        (m) =>
-          (m.full_name && curr.full_name && m.full_name === curr.full_name) ||
-          (m.linkedin_url && curr.linkedin_url && m.linkedin_url === curr.linkedin_url)
-      );
-      if (!exists) acc.push(curr);
-      return acc;
-    }, []),
-    [founders, leadership]
-  );
+  // Also include people from Apollo organization data if not already in founder_linkedin
+  const apolloPeople = useMemo(() => {
+    const people = (apollo?.people ?? []) as any[];
+    return people
+      .filter((p) => p && typeof p === 'object')
+      .map((p) => ({
+        full_name: p.name || p.full_name || '',
+        title: p.title || '',
+        linkedin_url: p.linkedin_url || '',
+        bio: p.headline || p.bio || '',
+        location: p.city ? [p.city, p.state, p.country].filter(Boolean).join(', ') : (p.location || ''),
+      }))
+      .filter((p) => p.full_name.trim());
+  }, [apollo]);
+
+  const teamMembers = useMemo(() => {
+    const normName = (n: string) => (n || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const normUrl = (u: string) => (u || '').trim().toLowerCase().replace(/\/+$/, '').replace(/^https?:\/\/(www\.)?/, '');
+    const seen = new Map<string, boolean>();
+
+    return [...founders, ...leadership, ...apolloPeople].filter((curr) => {
+      const name = normName(curr.full_name);
+      const url = normUrl(curr.linkedin_url);
+      // Check both name and URL for duplicates
+      if (name && seen.has(`name:${name}`)) return false;
+      if (url && seen.has(`url:${url}`)) return false;
+      if (name) seen.set(`name:${name}`, true);
+      if (url) seen.set(`url:${url}`, true);
+      return true;
+    });
+  }, [founders, leadership, apolloPeople]);
 
   const str = (v: unknown): string => (v != null && v !== '' ? String(v).trim() : '');
   const get = (key: string) => str(initDetails[key]) || '';
@@ -467,7 +502,17 @@ export default function CompanyProfilePage() {
   const hasMeaningfulRevenue = organizationRevenueDisplay.trim() !== '' && organizationRevenueDisplay.trim() !== '0' && organizationRevenueDisplay.trim() !== '0.00';
   const employeesDisplay = canonical?.estimated_num_employees ?? (apollo?.estimated_num_employees != null ? String(apollo.estimated_num_employees) : '') ?? '—';
   const foundedYearDisplay = canonical?.founded_year ?? (apollo?.founded_year != null ? String(apollo.founded_year) : '');
-  const primarySectorDisplay = canonical?.primary_sector ?? canonical?.industry ?? (questionnaire?.primary_sector ? questionnaire.primary_sector.split(',').map((v: string) => QUESTIONNAIRE.primary_sector?.options?.find((o) => o.value === v.trim())?.label ?? v.trim()).join(', ') : '') ?? (apollo?.industry != null ? String(apollo.industry) : '');
+  const primarySectorDisplay = (() => {
+    const raw = canonical?.primary_sector ?? questionnaire?.primary_sector ?? '';
+    if (raw) {
+      const mapped = raw.split(',').map((v: string) => {
+        const trimmed = v.trim();
+        return QUESTIONNAIRE.primary_sector?.options?.find((o) => o.value === trimmed)?.label ?? trimmed.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      }).join(', ');
+      if (mapped) return mapped;
+    }
+    return canonical?.industry ?? (apollo?.industry != null ? String(apollo.industry) : '');
+  })();
 
   // Build unified fields for Details tab
   const unifiedFields = useMemo((): UnifiedField[] => {
@@ -482,7 +527,6 @@ export default function CompanyProfilePage() {
 
     add('Founded year', 'founded_year', canonical?.founded_year ?? str(apollo?.founded_year));
     add('Legal name', 'legal_name', str((apollo as any)?.legal_name) || str(apollo?.name) || (canonical?.company_name ?? ''));
-    add('Team size', 'team_size', canonical?.estimated_num_employees ?? str(apollo?.estimated_num_employees));
     const linkedinVal = canonical?.linkedin_url ?? str(apollo?.linkedin_url);
     addRo('LinkedIn URL', linkedinVal, linkedinVal || undefined);
     const websiteUrlRaw = canonical?.website_url ?? str(apollo?.website_url);
@@ -503,7 +547,7 @@ export default function CompanyProfilePage() {
     if (keywordsDisplay.length > 0) addRo('Keywords', keywordsDisplay.slice(0, 8).join(', '));
     if (industriesDisplay.length > 0) addRo('Industries', industriesDisplay.slice(0, 6).join(', '));
 
-    const unifiedKeys = new Set(['founded_year', 'legal_name', 'team_size', 'website_url', 'industry', 'hq_city', 'hq_state', 'hq_country', 'address', 'entity_type']);
+    const unifiedKeys = new Set(['founded_year', 'legal_name', 'website_url', 'industry', 'hq_city', 'hq_state', 'hq_country', 'address', 'entity_type']);
     Object.entries(initDetails).forEach(([key, val]) => {
       if (CORE_IDENTITY_KEYS_ALREADY_SHOWN.has(key) || unifiedKeys.has(key)) return;
       const v = String(val ?? '').trim();
@@ -559,7 +603,7 @@ export default function CompanyProfilePage() {
   };
 
   const hasApolloOrExtractionForFill = Boolean(apolloShortDesc || (extraction && Object.keys(initDetails).length > 0));
-  const businessFieldsEmpty = [initDetails.problem, initDetails.solution, initDetails.unique_value_proposition ?? initDetails.uvp, initDetails.why_now, initDetails.traction ?? initDetails.milestones].every((v) => !String(v ?? '').trim());
+  const businessFieldsEmpty = [initDetails.problem ?? initDetails.problem_statement, initDetails.solution ?? initDetails.solution_summary, initDetails.unique_value_proposition ?? initDetails.uvp, initDetails.why_now, initDetails.traction ?? initDetails.traction_summary ?? initDetails.milestones].every((v) => !String(v ?? '').trim());
 
   useEffect(() => {
     if (loading || fillProfileLoading) return;
@@ -579,9 +623,9 @@ export default function CompanyProfilePage() {
     { label: 'Problem statement', filled: !!(canonical?.problem || initDetails.problem) },
     { label: 'Solution', filled: !!(canonical?.solution || initDetails.solution) },
     { label: 'Value proposition', filled: !!(canonical?.unique_value_proposition || initDetails.unique_value_proposition || initDetails.uvp) },
-    { label: 'Team members', filled: teamMembers.length > 0 },
+    { label: 'Executive team', filled: teamMembers.length > 0 },
     { label: 'Funding stage', filled: !!questionnaire?.funding_stage },
-    { label: 'Traction/momentum', filled: !!(canonical?.traction || initDetails.traction || initDetails.milestones) },
+    { label: 'Traction/momentum', filled: !!(canonical?.traction || initDetails.traction || initDetails.traction_summary || initDetails.milestones) },
     { label: 'Location', filled: !!locationDisplay },
   ], [companyName, logoUrl, canonical, questionnaire, initDetails, teamMembers, locationDisplay]);
 
@@ -603,9 +647,8 @@ export default function CompanyProfilePage() {
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'business', label: 'Business & Product' },
-    { id: 'strategy', label: 'Strategy' },
     { id: 'financials', label: 'Financials' },
-    { id: 'team', label: 'Team', count: teamMembers.length || undefined },
+    { id: 'team', label: 'Executive Team' },
     { id: 'details', label: 'Details' },
   ];
 
@@ -778,13 +821,13 @@ export default function CompanyProfilePage() {
 
                 {/* Stat chips row */}
                 <div className="flex flex-wrap gap-3">
-                  {(teamMembers.length > 0 || (employeesDisplay && employeesDisplay !== '—')) && (
-                    <HeroStat icon={<Users className="w-4 h-4" />} label="Team" value={teamMembers.length > 0 ? String(teamMembers.length) : employeesDisplay} />
+                  {teamMembers.length > 0 && (
+                    <HeroStat icon={<Users className="w-4 h-4" />} label="Executive Team" value={String(teamMembers.length)} />
                   )}
                   {readinessScore != null && (
                     <HeroStat
                       icon={<Target className="w-4 h-4" />}
-                      label="Readiness"
+                      label="Frictionless"
                       value={`${Math.round(readinessScore)}%`}
                       valueColor={getScoreColor(readinessScore)}
                     />
@@ -809,7 +852,7 @@ export default function CompanyProfilePage() {
               {/* Action buttons */}
               <div className="flex items-start gap-2 shrink-0 self-start">
                 <button
-                  onClick={regenerateReadiness}
+                  onClick={regenerateFrictionless}
                   disabled={regenerating || saving}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
                   style={{ background: 'var(--fi-bg-secondary)', color: 'var(--fi-text-secondary)', border: '1px solid var(--fi-border)' }}
@@ -955,26 +998,26 @@ export default function CompanyProfilePage() {
                       accent="var(--fi-score-good)"
                       icon={<Lightbulb className="w-4 h-4" />}
                       label="Solution Summary"
-                      text={canonical?.solution ?? initDetails.solution}
+                      text={canonical?.solution ?? initDetails.solution ?? initDetails.solution_summary}
                       hint="product/solution description for investors"
                     />
                     <SummaryCard
                       accent="var(--fi-score-excellent)"
                       icon={<TrendingUp className="w-4 h-4" />}
                       label="Traction Summary"
-                      text={canonical?.traction ?? initDetails.traction ?? initDetails.milestones}
+                      text={canonical?.traction ?? initDetails.traction ?? initDetails.traction_summary ?? initDetails.milestones}
                       hint="traction and key metrics for investors"
                     />
                   </div>
 
                   {/* Problem statement */}
-                  {(canonical?.problem || initDetails.problem) && (
+                  {(canonical?.problem || initDetails.problem || initDetails.problem_statement) && (
                     <motion.div custom={1} variants={cardVariants} initial="hidden" animate="visible" className="fi-card">
                       <div className="flex items-center gap-2 mb-2">
                         <AlertTriangle className="w-4 h-4" style={{ color: 'var(--fi-score-good)' }} />
                         <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Problem Statement</h3>
                       </div>
-                      <ExpandableTextBlock text={canonical?.problem ?? initDetails.problem} clampLines={3} />
+                      <ExpandableTextBlock text={canonical?.problem ?? initDetails.problem ?? initDetails.problem_statement} clampLines={3} />
                     </motion.div>
                   )}
 
@@ -1004,13 +1047,13 @@ export default function CompanyProfilePage() {
                   )}
 
                   {/* Momentum & Milestones */}
-                  {(canonical?.traction || initDetails.traction || initDetails.milestones) && (
+                  {(canonical?.traction || initDetails.traction || initDetails.traction_summary || initDetails.milestones) && (
                     <motion.div custom={3} variants={cardVariants} initial="hidden" animate="visible" className="fi-card">
                       <div className="flex items-center gap-2 mb-2">
                         <Rocket className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
                         <h3 className="text-sm font-semibold" style={{ color: 'var(--fi-text-primary)' }}>Momentum & Milestones</h3>
                       </div>
-                      <ExpandableTextBlock text={(canonical?.traction ?? initDetails.traction) ?? initDetails.milestones} clampLines={4} />
+                      <ExpandableTextBlock text={(canonical?.traction ?? initDetails.traction ?? initDetails.traction_summary) ?? initDetails.milestones} clampLines={4} />
                     </motion.div>
                   )}
 
@@ -1069,104 +1112,7 @@ export default function CompanyProfilePage() {
                 </motion.div>
               )}
 
-              {/* ═══ TAB 3: STRATEGY ═══ */}
-              {activeTab === 'strategy' && (
-                <motion.div key="strategy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4">
-                  {(() => {
-                    // Helper: render bullet list from string (newline/dash-separated) or array
-                    const toBullets = (v: unknown): string[] => {
-                      if (!v) return [];
-                      if (Array.isArray(v)) return v.filter(Boolean).map(String);
-                      const s = String(v).trim();
-                      return s.split(/\n|(?:^|\n)\s*[-•]\s*/m).map((l) => l.replace(/^[-•]\s*/, '').trim()).filter(Boolean);
-                    };
-
-                    // Section definitions: [key in initDetails, label, icon color, icon]
-                    type StrategySec = { key: string; label: string; color: string; isList?: boolean; isObject?: boolean };
-                    const sections: StrategySec[] = [
-                      { key: 'key_strengths',           label: 'Key Strengths',           color: 'var(--fi-score-excellent)', isList: true },
-                      { key: 'founder_story',            label: 'Founder Story',            color: 'var(--fi-primary)' },
-                      { key: 'go_to_market',             label: 'Go-To-Market',             color: '#3B82F6', isList: true },
-                      { key: 'customer_segments',        label: 'Customer Segments',        color: '#8B5CF6', isList: true },
-                      { key: 'target_customers',         label: 'Target Customer Profiles', color: '#8B5CF6', isList: true },
-                      { key: 'value_proposition',        label: 'Value Proposition',        color: 'var(--fi-primary)' },
-                      { key: 'business_model',           label: 'Business Model',           color: '#F59E0B', isList: true },
-                      { key: 'revenue_streams',          label: 'Revenue Streams',          color: '#F59E0B', isList: true },
-                      { key: 'operating_model',          label: 'Operating Model',          color: '#EC4899' },
-                      { key: 'product_differentiation',  label: 'Product Differentiation',  color: '#3B82F6', isList: true },
-                      { key: 'strategic_moat',           label: 'Strategic Moat',           color: 'var(--fi-primary)', isList: true },
-                      { key: 'investor_fit',             label: 'Investor Fit',             color: 'var(--fi-score-excellent)', isList: true },
-                      { key: 'traction_highlights',      label: 'Traction Highlights',      color: 'var(--fi-score-excellent)', isList: true },
-                      { key: 'milestones_next_12_months',label: 'Milestones · Next 12 Months', color: '#3B82F6', isList: true },
-                      { key: 'milestones',               label: 'Key Milestones',           color: '#3B82F6', isList: true },
-                      { key: 'risk_mitigation',          label: 'Risk Mitigation Plan',     color: '#EF4444', isList: true },
-                      { key: 'key_risks',                label: 'Key Risks',                color: '#EF4444', isList: true },
-                      { key: 'capital_use',              label: 'Capital Use Outline',      color: '#F59E0B', isList: true },
-                      { key: 'media_validation',         label: 'Media Validation',         color: '#EC4899', isList: true },
-                      { key: 'readiness_focus_areas',    label: 'Readiness Focus Areas',    color: '#8B5CF6', isList: true },
-                      { key: 'challenge',                label: 'Challenge',                color: '#EF4444' },
-                      { key: 'competitors',              label: 'Competitors',              color: 'var(--fi-text-muted)', isList: true },
-                      { key: 'market_context',           label: 'Market Context',           color: '#3B82F6', isList: true },
-                    ];
-
-                    const rendered = sections.filter((s) => {
-                      const v = initDetails[s.key];
-                      if (!v) return false;
-                      if (Array.isArray(v)) return v.length > 0;
-                      if (typeof v === 'object') return Object.keys(v).length > 0;
-                      return String(v).trim().length > 0;
-                    });
-
-                    if (rendered.length === 0) {
-                      return (
-                        <EmptyState
-                          icon={<Target className="w-10 h-10" />}
-                          title="No strategy data yet"
-                          description="Upload a pitch deck or run AI analysis to extract your go-to-market, strengths, investor fit and more."
-                        />
-                      );
-                    }
-
-                    return rendered.map((sec, idx) => {
-                      const raw = initDetails[sec.key];
-                      const bullets = sec.isList ? toBullets(raw) : [];
-                      const text = !sec.isList ? String(raw ?? '').trim() : '';
-                      return (
-                        <motion.div
-                          key={sec.key}
-                          custom={idx}
-                          variants={cardVariants}
-                          initial="hidden"
-                          animate="visible"
-                          className="fi-card relative overflow-hidden p-0"
-                        >
-                          <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: sec.color }} />
-                          <div className="p-4">
-                            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--fi-text-primary)' }}>
-                              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: sec.color }} />
-                              {sec.label}
-                            </h3>
-                            {sec.isList && bullets.length > 0 ? (
-                              <ul className="space-y-1.5">
-                                {bullets.map((b, i) => (
-                                  <li key={i} className="flex items-start gap-2 text-sm" style={{ color: 'var(--fi-text-secondary)' }}>
-                                    <span className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: sec.color, opacity: 0.7 }} />
-                                    {b}
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : text ? (
-                              <ExpandableTextBlock text={text} clampLines={4} />
-                            ) : null}
-                          </div>
-                        </motion.div>
-                      );
-                    });
-                  })()}
-                </motion.div>
-              )}
-
-              {/* ═══ TAB 4: FINANCIALS ═══ */}
+              {/* ═══ TAB 3: FINANCIALS ═══ */}
               {activeTab === 'financials' && (
                 <motion.div key="financials" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
                   {/* Financial snapshot */}
@@ -1181,7 +1127,18 @@ export default function CompanyProfilePage() {
                           if (val === '' || val == null) return null;
                           const path = `startup_kv.financial_data.${key}`;
                           const isEditing = editingField === path;
-                          const displayValStr = String(val);
+                          const rawStr = String(val);
+                          const lk = key.toLowerCase();
+                          const isMonetary = lk.includes('usd') || lk.includes('funding') || lk.includes('revenue') || lk.includes('burn') || lk.includes('mrr') || lk.includes('arr') || lk.includes('cash') || lk.includes('round_amount') || lk.includes('valuation') || lk.includes('salary') || lk.includes('cost');
+                          const isPercent = lk.includes('percent') || lk.includes('margin') || lk.includes('growth') || lk.includes('churn') || lk.includes('rate');
+                          const numVal = Number(rawStr);
+                          const displayValStr = (!isNaN(numVal) && rawStr.trim() !== '')
+                            ? isMonetary
+                              ? `$${numVal.toLocaleString('en-US')}`
+                              : isPercent
+                                ? `${numVal.toLocaleString('en-US')}%`
+                                : numVal.toLocaleString('en-US')
+                            : rawStr;
                           const isLongText = displayValStr.length > 80;
                           return (
                             <div
@@ -1272,10 +1229,7 @@ export default function CompanyProfilePage() {
                   <div className="flex items-center justify-between mb-1">
                     <h3 className="text-sm font-semibold flex items-center gap-2" style={{ color: 'var(--fi-text-primary)' }}>
                       <Users className="w-4 h-4" style={{ color: 'var(--fi-primary)' }} />
-                      Founders & Team
-                      {teamMembers.length > 0 && (
-                        <span className="text-[10px] font-normal" style={{ color: 'var(--fi-text-muted)' }}>({teamMembers.length})</span>
-                      )}
+                      Executive Team
                     </h3>
                     <button
                       onClick={() => setAddPersonModalOpen(true)}
@@ -1332,8 +1286,8 @@ export default function CompanyProfilePage() {
                   ) : (
                     <EmptyState
                       icon={<Users className="w-10 h-10" />}
-                      title="No team members yet"
-                      description='Click "Add" to add founders and team members from LinkedIn.'
+                      title="No founders yet"
+                      description='Click "Add" to add founders from LinkedIn.'
                     />
                   )}
                 </motion.div>
@@ -1346,7 +1300,7 @@ export default function CompanyProfilePage() {
                     <>
                       {/* Group fields into sections */}
                       {(() => {
-                        const IDENTITY_LABELS = new Set(['Legal name', 'Founded year', 'Entity type', 'Team size', 'Industry']);
+                        const IDENTITY_LABELS = new Set(['Legal name', 'Founded year', 'Entity type', 'Industry']);
                         const LOCATION_LABELS = new Set(['HQ city', 'HQ state', 'HQ country', 'Address']);
                         const ONLINE_LABELS = new Set(['Website', 'LinkedIn URL', 'Phone']);
                         const FINANCIAL_LABELS = new Set(['Total funding', 'Revenue']);
@@ -1551,8 +1505,17 @@ export default function CompanyProfilePage() {
                 <Linkedin className="w-4 h-4" style={{ color: '#0A66C2' }} />
                 Refresh from LinkedIn
               </h3>
+              {/* Show stored URL as a badge if available */}
+              {(extraction?.meta?.company_linkedin || linkedinForDisplay) && !linkedinUrl && (
+                <div className="flex items-center gap-1.5 mb-2 px-2 py-1.5 rounded-lg text-[11px]" style={{ background: 'var(--fi-bg-secondary)', border: '1px solid var(--fi-border)', color: 'var(--fi-text-muted)' }}>
+                  <Linkedin className="w-3 h-3 shrink-0" style={{ color: '#0A66C2' }} />
+                  <span className="truncate flex-1 min-w-0">
+                    {(extraction?.meta?.company_linkedin || linkedinForDisplay).replace(/^https?:\/\/(www\.)?/, '')}
+                  </span>
+                </div>
+              )}
               <p className="text-[11px] mb-2" style={{ color: 'var(--fi-text-muted)' }}>
-                {linkedinForDisplay ? 'Re-scrape to refresh founder & leadership data.' : 'Paste LinkedIn URL to import data.'}
+                {(extraction?.meta?.company_linkedin || linkedinForDisplay) ? 'Re-scrape to refresh founder & leadership data.' : 'Paste LinkedIn URL to import data.'}
               </p>
               <Input
                 placeholder="https://linkedin.com/company/..."
@@ -1571,22 +1534,28 @@ export default function CompanyProfilePage() {
                   Last scraped: {new Date(lastScrapedAt).toLocaleString()}
                 </p>
               )}
-              <button
-                onClick={triggerLinkedInScrape}
-                disabled={scrapeInProgress || !linkedinUrl.trim()}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                style={{
-                  background: 'var(--fi-primary)',
-                  color: '#fff',
-                  opacity: scrapeInProgress || !linkedinUrl.trim() ? 0.5 : 1,
-                }}
-              >
-                {scrapeInProgress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                {scrapeInProgress ? 'Scraping...' : 'Re-scrape'}
-              </button>
+              {(() => {
+                const hasStoredUrl = !!(extraction?.meta?.company_linkedin || linkedinForDisplay);
+                const canScrape = !scrapeInProgress && (!!linkedinUrl.trim() || hasStoredUrl);
+                return (
+                  <button
+                    onClick={triggerLinkedInScrape}
+                    disabled={!canScrape}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                    style={{
+                      background: 'var(--fi-primary)',
+                      color: '#fff',
+                      opacity: canScrape ? 1 : 0.5,
+                    }}
+                  >
+                    {scrapeInProgress ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                    {scrapeInProgress ? 'Scraping...' : 'Re-scrape'}
+                  </button>
+                );
+              })()}
             </motion.div>
 
-            {/* Readiness Signals */}
+            {/* Company Information (formerly Frictionless Signals) */}
             {questionnaire && (
               <motion.div
                 initial={{ opacity: 0, x: 8 }}
@@ -1595,33 +1564,52 @@ export default function CompanyProfilePage() {
               >
                 <h3 className="text-sm font-semibold flex items-center gap-2 mb-3" style={{ color: 'var(--fi-text-primary)' }}>
                   <Globe className="w-4 h-4" style={{ color: '#6366F1' }} />
-                  Readiness Signals
+                  {companyName} Information
                 </h3>
                 <div className="space-y-3">
                   {QUESTION_ORDER.map((key) => {
                     const q = QUESTIONNAIRE[key];
                     const currentVal = (questionnaireEdits[key] ?? questionnaire[key]) as string | undefined;
                     const options = q?.options ?? [];
+                    const isMulti = (q as { multiSelect?: boolean }).multiSelect === true;
+                    // For multi-select, parse comma-separated stored values
+                    const selectedValues = isMulti
+                      ? (currentVal || '').split(',').map((v) => v.trim()).filter(Boolean)
+                      : [];
                     return (
                       <div key={key} className="space-y-1.5">
                         <label className="text-[10px] font-semibold uppercase tracking-tight" style={{ color: 'var(--fi-text-muted)' }}>
                           {q?.question}
                         </label>
                         <div className="flex flex-wrap gap-1">
-                          {options.map((o) => (
-                            <button
-                              key={o.value}
-                              onClick={() => setQuestionnaireEdits((p) => ({ ...p, [key]: o.value }))}
-                              className="px-2 py-0.5 rounded-md text-[11px] font-medium transition-all"
-                              style={{
-                                background: currentVal === o.value ? 'var(--fi-primary)' : 'var(--fi-bg-secondary)',
-                                color: currentVal === o.value ? '#fff' : 'var(--fi-text-muted)',
-                                border: `1px solid ${currentVal === o.value ? 'var(--fi-primary)' : 'var(--fi-border)'}`,
-                              }}
-                            >
-                              {o.label}
-                            </button>
-                          ))}
+                          {options.map((o) => {
+                            const isSelected = isMulti
+                              ? selectedValues.includes(o.value)
+                              : currentVal === o.value;
+                            return (
+                              <button
+                                key={o.value}
+                                onClick={() => {
+                                  if (isMulti) {
+                                    const next = isSelected
+                                      ? selectedValues.filter((v) => v !== o.value)
+                                      : [...selectedValues, o.value];
+                                    setQuestionnaireEdits((p) => ({ ...p, [key]: next.join(',') }));
+                                  } else {
+                                    setQuestionnaireEdits((p) => ({ ...p, [key]: o.value }));
+                                  }
+                                }}
+                                className="px-2 py-0.5 rounded-md text-[11px] font-medium transition-all"
+                                style={{
+                                  background: isSelected ? 'var(--fi-primary)' : 'var(--fi-bg-secondary)',
+                                  color: isSelected ? '#fff' : 'var(--fi-text-muted)',
+                                  border: `1px solid ${isSelected ? 'var(--fi-primary)' : 'var(--fi-border)'}`,
+                                }}
+                              >
+                                {o.label}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     );

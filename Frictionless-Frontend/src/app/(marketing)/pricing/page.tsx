@@ -17,9 +17,9 @@ import { useState } from 'react';
    ═══════════════════════════════════════════ */
 const comparisonCategories = [
   {
-    category: 'Readiness Assessment',
+    category: 'Frictionless Assessment',
     features: [
-      { name: 'Basic readiness score', starter: true, pro: true, enterprise: true },
+      { name: 'Basic Frictionless score', starter: true, pro: true, enterprise: true },
       { name: '12-dimension deep analysis', starter: false, pro: true, enterprise: true },
       { name: 'Custom scoring models', starter: false, pro: false, enterprise: true },
       { name: 'Benchmarking against peers', starter: false, pro: true, enterprise: true },

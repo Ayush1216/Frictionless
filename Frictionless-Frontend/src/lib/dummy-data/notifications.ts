@@ -12,7 +12,7 @@ export const dummyNotifications: DummyNotification[] = [
   {
     id: 'notif-1',
     type: 'score_change',
-    title: 'Readiness score improved',
+    title: 'Frictionless score improved',
     description: 'NeuralPay score increased from 79 to 82. You moved into the "Strong" badge tier.',
     read: false,
     created_at: '2025-02-10T16:00:00Z',
@@ -57,7 +57,7 @@ export const dummyNotifications: DummyNotification[] = [
   {
     id: 'notif-6',
     type: 'score_change',
-    title: 'Readiness score updated',
+    title: 'Frictionless score updated',
     description: 'NeuralPay score increased from 75 to 79.',
     read: true,
     created_at: '2025-02-05T11:45:00Z',
@@ -120,7 +120,7 @@ export const dummyNotifications: DummyNotification[] = [
   {
     id: 'notif-13',
     type: 'score_change',
-    title: 'Readiness score updated',
+    title: 'Frictionless score updated',
     description: 'NeuralPay score increased from 72 to 75.',
     read: true,
     created_at: '2025-01-29T09:15:00Z',

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Share2, Copy, Check, Loader2, Download, Link2, Calendar, FileText } from 'lucide-react';
+import { useState, useCallback, useRef } from 'react';
+import { Share2, Copy, Check, Loader2, Download, Link2, Calendar, FileText, QrCode } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
 import {
   Dialog,
   DialogContent,
@@ -46,7 +47,7 @@ async function generateShareInsights(
     .map((c) => `${c.name}: ${c.score}% (weight ${c.weight}%, ${c.items.filter((i) => ((i.Points as number) ?? 0) === 0).length} missing items)`)
     .join('\n');
 
-  const prompt = `You are a senior investment readiness analyst. Based on this startup's readiness data, generate insights for a shareable report.
+  const prompt = `You are a senior investment Frictionless analyst. Based on this startup's Frictionless data, generate insights for a shareable report.
 
 Overall Score: ${overallScore}%
 Tasks: ${completedTasks}/${totalTasks} completed
@@ -55,7 +56,7 @@ ${catSummary}
 
 Return ONLY valid JSON (no markdown, no backticks):
 {
-  "executive_summary": "2-3 sentence executive summary of readiness posture, mentioning specific strengths and gaps",
+  "executive_summary": "2-3 sentence executive summary of Frictionless posture, mentioning specific strengths and gaps",
   "investor_verdict": "2-3 sentence verdict from an investor perspective — would they take a meeting? What stands out?",
   "top_priorities": ["Priority 1 with expected impact", "Priority 2 with expected impact", "Priority 3 with expected impact"]
 }`;
@@ -70,7 +71,7 @@ Return ONLY valid JSON (no markdown, no backticks):
     if (isAIEnabled()) {
       let full = '';
       for await (const chunk of streamChat(
-        [{ role: 'system', content: 'You are a startup readiness analyst. Return only valid JSON.' }, { role: 'user', content: prompt }],
+        [{ role: 'system', content: 'You are a startup Frictionless analyst. Return only valid JSON.' }, { role: 'user', content: prompt }],
         { model: 'gpt-4.1-mini', temperature: 0.4 }
       )) {
         full += chunk;
@@ -83,14 +84,14 @@ Return ONLY valid JSON (no markdown, no backticks):
   }
 
   // Fallback
-  const strengths = categories.filter((c) => c.score >= 86).map((c) => c.name);
+  const strengths = categories.filter((c) => c.score >= 80).map((c) => c.name);
   const gaps = categories.filter((c) => c.score < 80).map((c) => c.name);
   return {
-    executive_summary: `This startup has an overall readiness score of ${overallScore}%, with ${strengths.length} strong categories${strengths.length > 0 ? ` (${strengths.slice(0, 2).join(', ')})` : ''} and ${gaps.length} areas needing attention${gaps.length > 0 ? ` (${gaps.slice(0, 2).join(', ')})` : ''}. ${completedTasks} of ${totalTasks} improvement tasks have been completed.`,
+    executive_summary: `This startup has an overall Frictionless score of ${overallScore}%, with ${strengths.length} strong categories${strengths.length > 0 ? ` (${strengths.slice(0, 2).join(', ')})` : ''} and ${gaps.length} areas needing attention${gaps.length > 0 ? ` (${gaps.slice(0, 2).join(', ')})` : ''}. ${completedTasks} of ${totalTasks} improvement tasks have been completed.`,
     investor_verdict: overallScore >= 80
-      ? `At ${overallScore}%, this startup shows strong readiness fundamentals. An investor would likely take a first meeting to explore further.`
+      ? `At ${overallScore}%, this startup shows strong Frictionless fundamentals. An investor would likely take a first meeting to explore further.`
       : `At ${overallScore}%, this startup has meaningful gaps to address before most institutional investors would engage. Focused effort on top priorities could significantly improve perception.`,
-    top_priorities: gaps.slice(0, 3).map((g) => `Improve ${g} category to close the readiness gap`),
+    top_priorities: gaps.slice(0, 3).map((g) => `Improve ${g} category to close the Frictionless gap`),
   };
 }
 
@@ -106,6 +107,8 @@ export function ReadinessShareButton({
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [expiresHours, setExpiresHours] = useState(168);
+  const [showQR, setShowQR] = useState(false);
+  const qrRef = useRef<HTMLCanvasElement>(null);
 
   const topCategories = [...categories].sort((a, b) => b.score - a.score).slice(0, 5);
   const progressPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -215,9 +218,18 @@ export function ReadinessShareButton({
   const handleOpenPDF = () => {
     if (shareUrl) {
       window.open(shareUrl, '_blank');
-      toast.success('Share page opened — use Download PDF there');
     }
   };
+
+  const handleDownloadQR = useCallback(() => {
+    const canvas = qrRef.current;
+    if (!canvas || !shareUrl) return;
+    const link = document.createElement('a');
+    link.download = 'frictionless-report-qr.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast.success('QR code downloaded');
+  }, [shareUrl]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -368,7 +380,7 @@ export function ReadinessShareButton({
             <div className="space-y-2">
               {/* URL display */}
               <div
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-mono truncate"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-mono"
                 style={{
                   background: 'var(--fi-bg-secondary)',
                   border: '1px solid var(--fi-border)',
@@ -376,8 +388,53 @@ export function ReadinessShareButton({
                 }}
               >
                 <Link2 className="w-3 h-3 shrink-0" style={{ color: 'var(--fi-primary)' }} />
-                <span className="truncate">{shareUrl}</span>
+                <span className="flex-1 truncate">{shareUrl}</span>
               </div>
+
+              {/* QR Code toggle */}
+              <div>
+                <button
+                  onClick={() => setShowQR((v) => !v)}
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-medium transition-colors"
+                  style={{
+                    background: showQR ? 'rgba(16,185,129,0.06)' : 'var(--fi-bg-secondary)',
+                    border: showQR ? '1px solid rgba(16,185,129,0.2)' : '1px solid var(--fi-border)',
+                    color: showQR ? 'var(--fi-primary)' : 'var(--fi-text-muted)',
+                  }}
+                >
+                  <QrCode className="w-3.5 h-3.5" />
+                  {showQR ? 'Hide QR Code' : 'Show QR Code'}
+                </button>
+
+                {showQR && (
+                  <div className="mt-2 flex flex-col items-center gap-2 py-3 rounded-lg" style={{ background: 'var(--fi-bg-secondary)', border: '1px solid var(--fi-border)' }}>
+                    <div className="p-2 rounded-lg bg-white">
+                      <QRCodeCanvas
+                        ref={qrRef}
+                        value={shareUrl}
+                        size={140}
+                        level="M"
+                        imageSettings={{
+                          src: '/logo.png',
+                          height: 24,
+                          width: 24,
+                          excavate: true,
+                        }}
+                      />
+                    </div>
+                    <p className="text-[10px]" style={{ color: 'var(--fi-text-muted)' }}>Scan to open report</p>
+                    <button
+                      onClick={handleDownloadQR}
+                      className="flex items-center gap-1 text-[10px] font-medium px-2.5 py-1 rounded-md transition-colors"
+                      style={{ color: 'var(--fi-text-muted)', border: '1px solid var(--fi-border)' }}
+                    >
+                      <Download className="w-3 h-3" />
+                      Download QR
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Action buttons */}
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -401,7 +458,7 @@ export function ReadinessShareButton({
                   }}
                 >
                   <Download className="w-3.5 h-3.5" />
-                  Download PDF
+                  Open & Download PDF
                 </button>
               </div>
             </div>

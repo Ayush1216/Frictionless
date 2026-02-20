@@ -18,7 +18,7 @@ export default function RiskMonitorPage() {
           </div>
           <div>
             <h1 className="text-2xl font-display font-bold text-foreground">Risk Monitor</h1>
-            <p className="text-sm text-muted-foreground">Track and mitigate investment readiness risks</p>
+            <p className="text-sm text-muted-foreground">Track and mitigate investment Frictionless risks</p>
           </div>
         </div>
         <div className="glass-card p-8 text-center">
@@ -32,7 +32,7 @@ export default function RiskMonitorPage() {
             className="inline-flex items-center gap-2 text-primary hover:text-chart-5 transition-colors text-sm font-medium"
           >
             <BarChart3 className="w-4 h-4" />
-            View Readiness Score
+            View Frictionless Score
           </Link>
         </div>
       </motion.div>

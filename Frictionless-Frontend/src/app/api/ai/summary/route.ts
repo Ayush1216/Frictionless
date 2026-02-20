@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const context = body.context ?? {};
-    const systemPrompt = body.systemPrompt || 'You are an investment readiness advisor. Given startup company profile data (extraction from pitch deck, questionnaire answers), write a concise 3-5 sentence executive summary. Highlight strengths, key metrics, stage, sector, and notable traction. Be professional and encouraging.';
+    const systemPrompt = body.systemPrompt || 'You are an investment Frictionless advisor. Given startup company profile data (extraction from pitch deck, questionnaire answers), write a concise 3-5 sentence executive summary. Highlight strengths, key metrics, stage, sector, and notable traction. Be professional and encouraging.';
 
     const openAiKey = process.env.OPENAI_API_KEY || process.env.NEXT_PUBLIC_OPENAI_API_KEY;
     const openAiModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';

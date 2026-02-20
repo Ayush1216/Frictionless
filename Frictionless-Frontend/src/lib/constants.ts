@@ -54,26 +54,26 @@ export const ASSESSMENT_CATEGORIES = [
 ] as const;
 
 export const SCORE_COLORS = {
-  excellent: { min: 86, color: '#10B981', label: 'Excellent' },
-  good: { min: 81, color: '#EAB308', label: 'Good' },
+  excellent: { min: 80, color: '#10B981', label: 'Excellent' },
+  good: { min: 60, color: '#EAB308', label: 'Good' },
   poor: { min: 0, color: '#EF4444', label: 'Need Improvement' },
   fair: { min: 0, color: '#F59E0B', label: 'Fair' },
 };
 
 export function getScoreColor(score: number): string {
-  if (score >= 86) return SCORE_COLORS.excellent.color;
-  if (score >= 81) return SCORE_COLORS.good.color;
+  if (score >= 80) return SCORE_COLORS.excellent.color;
+  if (score >= 60) return SCORE_COLORS.good.color;
   return SCORE_COLORS.poor.color;
 }
 
 export function getScoreLabel(score: number): string {
-  if (score >= 86) return SCORE_COLORS.excellent.label;
-  if (score >= 81) return SCORE_COLORS.good.label;
+  if (score >= 80) return SCORE_COLORS.excellent.label;
+  if (score >= 60) return SCORE_COLORS.good.label;
   return SCORE_COLORS.poor.label;
 }
 
 export function getBadge(score: number): string {
-  if (score >= 86) return 'excellent';
-  if (score >= 81) return 'good';
+  if (score >= 80) return 'excellent';
+  if (score >= 60) return 'good';
   return 'needs_improvement';
 }

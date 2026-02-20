@@ -13,12 +13,12 @@ export interface ScoreStyle {
 
 /**
  * Score → style mapping (used everywhere scores appear)
- *  86-100 = Green  "Excellent"
- *  80-85  = Yellow "Good"
- *  <80    = Red    "Need Improvement"
+ *  80-100 = Green  "Excellent"
+ *  60-79  = Yellow "Good"
+ *  <60    = Red    "Need Improvement"
  */
 export function getScoreStyle(score: number): ScoreStyle {
-  if (score >= 86)
+  if (score >= 80)
     return {
       label: 'Excellent',
       variantColor: '#10B981',
@@ -27,7 +27,7 @@ export function getScoreStyle(score: number): ScoreStyle {
       bgColor: 'bg-emerald-500/10',
       borderColor: 'border-emerald-500/20',
     };
-  if (score >= 81)
+  if (score >= 60)
     return {
       label: 'Good',
       variantColor: '#EAB308',

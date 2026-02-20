@@ -207,14 +207,14 @@ export default function StartupProfilePage() {
               </div>
             </div>
 
-            {/* Readiness Score summary */}
+            {/* Frictionless Score summary */}
             <div className="glass-card p-5">
               <h2 className="text-lg font-display font-semibold text-foreground mb-3">
-                Readiness Score
+                Frictionless Score
               </h2>
               <div className="flex items-center gap-4">
                 <div className="text-4xl font-mono font-bold text-foreground">
-                  {startup.current_readiness_score}
+                  {startup.current_Readiness_score}
                 </div>
                 <div>
                   <Badge className={cn(

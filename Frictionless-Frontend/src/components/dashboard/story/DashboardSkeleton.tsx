@@ -39,7 +39,7 @@ export function DashboardSkeleton() {
       {/* Daily Brief skeleton */}
       <SkeletonChart />
 
-      {/* Readiness + Timeline row */}
+      {/* Frictionless + Timeline row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <SkeletonChart />
         <SkeletonChart />

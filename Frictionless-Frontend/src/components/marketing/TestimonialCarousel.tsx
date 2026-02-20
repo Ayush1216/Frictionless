@@ -15,7 +15,7 @@ const testimonials = [
   },
   {
     quote:
-      "The readiness score gave us the clarity we needed. We knew exactly what to improve before going out to raise, and it made all the difference in our Series A.",
+      "The Frictionless score gave us the clarity we needed. We knew exactly what to improve before going out to raise, and it made all the difference in our Series A.",
     name: 'Marcus Johnson',
     title: 'Founder',
     company: 'DataPulse',

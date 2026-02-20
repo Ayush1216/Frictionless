@@ -27,13 +27,13 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Frictionless Intelligence - AI-Powered Investment Readiness",
+    default: "Frictionless Intelligence - AI-Powered Investment Frictionless",
     template: "%s | Frictionless Intelligence",
   },
   description:
-    "The AI-powered platform that scores startup investment readiness, matches with ideal investors, and accelerates fundraising success.",
+    "The AI-powered platform that scores startup investment Frictionless, matches with ideal investors, and accelerates fundraising success.",
   keywords: [
-    "investment readiness",
+    "investment Frictionless",
     "startup scoring",
     "investor matching",
     "AI investment",

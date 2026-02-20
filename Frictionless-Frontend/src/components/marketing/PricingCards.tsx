@@ -17,7 +17,7 @@ const tiers = [
     ctaLink: '/register',
     popular: false,
     features: [
-      'Basic readiness assessment',
+      'Basic Frictionless assessment',
       '3 investor matches per month',
       'AI chat (50 messages/mo)',
       'Basic task recommendations',
@@ -35,7 +35,7 @@ const tiers = [
     ctaLink: '/register?plan=pro',
     popular: true,
     features: [
-      'Advanced readiness scoring (12 dimensions)',
+      'Advanced Frictionless scoring (12 dimensions)',
       'Unlimited investor matches',
       'AI chat assistant (unlimited)',
       'Smart task engine with priorities',

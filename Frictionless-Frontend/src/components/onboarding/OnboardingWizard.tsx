@@ -504,7 +504,7 @@ export function OnboardingWizard() {
                           Analysis Complete!
                         </h2>
                         <p className="text-muted-foreground text-sm">
-                          Your initial readiness score has been calculated.
+                          Your initial Frictionless score has been calculated.
                         </p>
                       </div>
 

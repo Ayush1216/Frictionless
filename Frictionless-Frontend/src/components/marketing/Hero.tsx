@@ -54,7 +54,7 @@ export function Hero() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.4 }}
       >
-        The AI-powered platform that scores your investment readiness,
+        The AI-powered platform that scores your investment Frictionless,
         matches you with ideal investors, and accelerates fundraising success.
       </motion.p>
 

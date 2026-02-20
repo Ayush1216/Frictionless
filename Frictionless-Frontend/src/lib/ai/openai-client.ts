@@ -67,7 +67,7 @@ export async function analyzeFile(
     messages: [
       {
         role: 'system',
-        content: `You are an AI analyst for Frictionless Intelligence, an investment readiness platform. ${purpose}. Always respond in valid JSON only. No markdown, no backticks.`,
+        content: `You are an AI analyst for Frictionless Intelligence, an investment Frictionless platform. ${purpose}. Always respond in valid JSON only. No markdown, no backticks.`,
       },
       {
         role: 'user',

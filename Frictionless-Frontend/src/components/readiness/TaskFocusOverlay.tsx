@@ -52,7 +52,7 @@ function parseSteps(text: string): string[] {
   return steps;
 }
 
-const DEMO_EXPLANATION = `**Why this matters:** This task directly impacts how investors evaluate your readiness and can significantly improve your score in this category.
+const DEMO_EXPLANATION = `**Why this matters:** This task directly impacts how investors evaluate your Frictionless and can significantly improve your score in this category.
 
 **How to approach it:**
 1. Start by gathering all relevant data and documents
@@ -168,8 +168,8 @@ export function TaskFocusOverlay({
       const success = await tasksSync.completeTaskViaApi(task.id);
       if (success) {
         setCompletionAnalysis('generating');
-        const systemPrompt = `You are a startup advisor. The founder just completed a readiness task. Provide a brief congratulatory analysis (3-4 sentences) of the impact this has on their readiness. Mention the category and potential score improvement. Be encouraging and specific.`;
-        const analysisMsg = `I just completed the task: "${task.title}" in the "${categoryName}" category. It was worth ${task.potential_points ?? 'several'} points. Give me a brief analysis of what this means for my readiness.`;
+        const systemPrompt = `You are a startup advisor. The founder just completed a Frictionless task. Provide a brief congratulatory analysis (3-4 sentences) of the impact this has on their Frictionless. Mention the category and potential score improvement. Be encouraging and specific.`;
+        const analysisMsg = `I just completed the task: "${task.title}" in the "${categoryName}" category. It was worth ${task.potential_points ?? 'several'} points. Give me a brief analysis of what this means for my Frictionless.`;
 
         let analysis = '';
         try {
@@ -181,7 +181,7 @@ export function TaskFocusOverlay({
             setCompletionAnalysis(analysis);
           }
         } catch {
-          analysis = `Great work completing "${task.title}"! This task in the ${categoryName} category is worth ${task.potential_points ?? 'several'} points toward your readiness score. Run a new assessment to see your updated score.`;
+          analysis = `Great work completing "${task.title}"! This task in the ${categoryName} category is worth ${task.potential_points ?? 'several'} points toward your Frictionless score. Run a new assessment to see your updated score.`;
           setCompletionAnalysis(analysis);
         }
 

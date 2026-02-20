@@ -18,13 +18,13 @@ export const useOrgStore = create<OrgStore>((set) => ({
   setOrg: (currentOrg) => set({ currentOrg }),
   setStartupProfile: (startupProfile) => set({ startupProfile }),
   setCapitalProfile: (capitalProfile) => set({ capitalProfile }),
-  updateStartupScore: (current_readiness_score, score_delta) =>
+  updateStartupScore: (current_Readiness_score, score_delta) =>
     set((state) => {
       if (!state.startupProfile) return state;
       return {
         startupProfile: {
           ...state.startupProfile,
-          current_readiness_score,
+          current_Readiness_score,
           score_delta: score_delta ?? state.startupProfile.score_delta,
         },
       };

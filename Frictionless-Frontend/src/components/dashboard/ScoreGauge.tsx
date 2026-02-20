@@ -53,7 +53,7 @@ export function ScoreGauge({
       className={cn('glass-card p-6 flex flex-col items-center justify-center', className)}
     >
       <h3 className="text-sm font-body font-medium text-muted-foreground mb-4">
-        Readiness Score
+        Frictionless Score
       </h3>
       <AnimatedGauge score={score} size={180} strokeWidth={14} />
       <div className="mt-4 flex items-center gap-3">

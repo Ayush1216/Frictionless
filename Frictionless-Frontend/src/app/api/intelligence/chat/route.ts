@@ -5,15 +5,19 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
 const GEMINI_MODEL = process.env.NEXT_PUBLIC_GEMINI_MODEL || 'gemini-2.5-flash-lite';
 
-function getGeminiModel() {
+function getGeminiModel(systemPrompt?: string, webSearch = false) {
   if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your-gemini-key-here') return null;
   const client = new GoogleGenerativeAI(GEMINI_API_KEY);
-  return client.getGenerativeModel({ model: GEMINI_MODEL });
+  return client.getGenerativeModel({
+    model: GEMINI_MODEL,
+    ...(systemPrompt ? { systemInstruction: systemPrompt } : {}),
+    ...(webSearch ? { tools: [{ googleSearch: {} } as never] } : {}),
+  });
 }
 
-const SYSTEM_PROMPT = `You are "Ask Frictionless", the AI advisor inside Frictionless Intelligence — a startup investment readiness platform.
+const SYSTEM_PROMPT = `You are "Ask Frictionless", the AI advisor inside Frictionless Intelligence — a startup investment Frictionless platform.
 
-You help founders with readiness scores, fundraising strategy, investor matching, pitch prep, team building, metrics, competitive positioning, and anything related to their company or startups in general.
+You help founders with Frictionless scores, fundraising strategy, investor matching, pitch prep, team building, metrics, competitive positioning, and anything related to their company or startups in general.
 
 COMPANY CONTEXT:
 {{company_context}}
@@ -46,7 +50,7 @@ function buildSystemPrompt(
 function generateSmartTitle(message: string): string {
   // Strip boilerplate prompt prefixes
   let text = message
-    .replace(/^(help me with this readiness task:|based on all the company data.*?give me a|analyze my|give me a)\s*/i, '')
+    .replace(/^(help me with this Frictionless task:|based on all the company data.*?give me a|analyze my|give me a)\s*/i, '')
     .replace(/^[""]/, '')
     .replace(/[""].*$/, '')
     .trim();
@@ -80,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { thread_id, message, response_mode = 'concise', attachments } = body;
+    const { thread_id, message, response_mode = 'concise', attachments, web_search = false } = body;
 
     if (!thread_id || !message) {
       return NextResponse.json({ error: 'thread_id and message are required' }, { status: 400 });
@@ -295,11 +299,11 @@ export async function POST(request: NextRequest) {
       parts: [{ text: message }],
     });
 
-    const model = getGeminiModel();
+    const model = getGeminiModel(systemPrompt, web_search);
 
     if (!model) {
       // Demo mode: return a canned response
-      const demoResponse = `Thanks for your question! I'm the Frictionless AI advisor. To enable real AI responses, please configure your Gemini API key.\n\nIn the meantime, here are some general tips:\n- Focus on completing high-impact readiness tasks\n- Keep your financial metrics up to date\n- Prepare a concise elevator pitch`;
+      const demoResponse = `Thanks for your question! I'm the Frictionless AI advisor. To enable real AI responses, please configure your Gemini API key.\n\nIn the meantime, here are some general tips:\n- Focus on completing high-impact Frictionless tasks\n- Keep your financial metrics up to date\n- Prepare a concise elevator pitch`;
 
       await supabase.from('intelligence_messages').insert({
         thread_id,
@@ -331,17 +335,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Stream with Gemini
-    const chat = model.startChat({
-      history: conversationParts.slice(0, -1),
-      systemInstruction: { role: 'user', parts: [{ text: systemPrompt }] },
-      generationConfig: {
-        temperature: response_mode === 'deep_dive' ? 0.5 : 0.3,
-        maxOutputTokens: response_mode === 'deep_dive' ? 4096 : 1500,
-      },
-    });
+    const generationConfig = {
+      temperature: response_mode === 'deep_dive' ? 0.5 : 0.3,
+      maxOutputTokens: response_mode === 'deep_dive' ? 4096 : 1500,
+    };
 
-    const result = await chat.sendMessageStream(message);
+    // For web search, use generateContentStream directly (avoids startChat tool conflict)
+    // For regular mode, use startChat for better multi-turn context
+    const result = web_search
+      ? await model.generateContentStream({ contents: conversationParts, generationConfig })
+      : await (() => {
+          const chat = model.startChat({
+            history: conversationParts.slice(0, -1),
+            generationConfig,
+          });
+          return chat.sendMessageStream(message);
+        })();
 
     let fullContent = '';
     const encoder = new TextEncoder();
@@ -355,6 +364,26 @@ export async function POST(request: NextRequest) {
               fullContent += text;
               controller.enqueue(encoder.encode(text));
             }
+          }
+
+          // Append sources from Google Search grounding (web_search mode only)
+          if (web_search) {
+            try {
+              const response = await result.response;
+              const metadata = response.candidates?.[0]?.groundingMetadata as { groundingChunks?: { web?: { uri?: string; title?: string } }[] } | undefined;
+              if (metadata?.groundingChunks?.length) {
+                const seen = new Set<string>();
+                const sources = metadata.groundingChunks
+                  .filter((c) => c.web?.uri && c.web?.title)
+                  .filter((c) => { const ok = !seen.has(c.web!.uri!); seen.add(c.web!.uri!); return ok; })
+                  .map((c) => c.web!);
+                if (sources.length > 0) {
+                  const sourcesText = '\n\n---\n\n**Sources**\n\n' + sources.map((s) => `- [${s.title}](${s.uri})`).join('\n');
+                  fullContent += sourcesText;
+                  controller.enqueue(encoder.encode(sourcesText));
+                }
+              }
+            } catch { /* grounding metadata not always available */ }
           }
 
           // Save assistant response to DB

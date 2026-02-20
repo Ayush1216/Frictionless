@@ -13,7 +13,7 @@ const sections = [
 
 • Account Information: Name, email address, company name, role, and password when you create an account.
 • Profile Information: Company details, fundraising stage, industry, and other business information you provide.
-• Financial Data: Revenue metrics, financial projections, and other data submitted for readiness scoring.
+• Financial Data: Revenue metrics, financial projections, and other data submitted for Frictionless scoring.
 • Documents: Files you upload to data rooms, including pitch decks, financial models, and legal documents.
 • Communications: Messages sent through our AI chat assistant and any correspondence with our team.
 • Payment Information: Billing details processed securely through our payment provider (Stripe).
@@ -28,7 +28,7 @@ We also automatically collect certain information, including:
     content: `We use the information we collect to:
 
 • Provide, maintain, and improve the Service
-• Generate readiness scores and investor matches
+• Generate Frictionless scores and investor matches
 • Power our AI chat assistant with contextual responses
 • Send you technical notices, updates, and administrative messages
 • Respond to your comments, questions, and customer service requests
@@ -40,7 +40,7 @@ We do not sell your personal information to third parties. We do not use your up
   },
   {
     title: '4. AI and Machine Learning',
-    content: `Our AI systems process your data to generate readiness scores, investor matches, and recommendations. We may use aggregated, anonymized data to improve our AI models. Your individual data is never shared with other users or used to train models in a way that could expose your confidential information. You can request deletion of your data and its exclusion from our training datasets at any time.`,
+    content: `Our AI systems process your data to generate Frictionless scores, investor matches, and recommendations. We may use aggregated, anonymized data to improve our AI models. Your individual data is never shared with other users or used to train models in a way that could expose your confidential information. You can request deletion of your data and its exclusion from our training datasets at any time.`,
   },
   {
     title: '5. Data Sharing and Disclosure',

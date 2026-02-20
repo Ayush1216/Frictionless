@@ -52,7 +52,7 @@ import {
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { getScoreStyle, formatUsd, getInitials } from '@/lib/investor-utils';
-import { calculateFrictionlessScore, getScoreColor, getScoreLabel } from '@/lib/scores';
+import { calculateReadinessScore, getScoreColor, getScoreLabel } from '@/lib/scores';
 import { ScoreGauge } from '@/components/ui/ScoreGauge';
 import { TabGroup } from '@/components/ui/TabGroup';
 import { useInvestorStore } from '@/stores/investor-store';
@@ -414,7 +414,7 @@ export default function InvestorProfilePage() {
   const notablePortfolio: string[] = toStringArray(displayProfile.investor_notable_portfolio);
 
   const thesisFitScore = displayMatch?.fit_score_0_to_100;
-  const frictionlessScore = thesisFitScore != null ? calculateFrictionlessScore(readinessScore, thesisFitScore) : null;
+  const frictionlessScore = thesisFitScore != null ? calculateReadinessScore(readinessScore, thesisFitScore) : null;
   const breakdown = displayMatch?.category_breakdown || {};
 
   // Chart data
@@ -603,7 +603,7 @@ export default function InvestorProfilePage() {
                         {frictionlessScore}
                       </p>
                       <p className="text-xs mt-1" style={{ color: 'var(--fi-text-muted)' }}>
-                        = (Readiness: {readinessScore}% + Thesis Fit: {Math.round(thesisFitScore!)}%) / 2
+                        = (Frictionless: {readinessScore}% + Thesis Fit: {Math.round(thesisFitScore!)}%) / 2
                       </p>
                     </div>
 

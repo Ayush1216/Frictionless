@@ -10,7 +10,7 @@ const segmentLabels: Record<string, string> = {
   startup: 'Startup',
   capital: 'Capital',
   accelerator: 'Accelerator',
-  readiness: 'Frictionless',
+  Frictionless: 'Frictionless',
   investors: 'Investors',
   chat: 'AI Chat',
   tasks: 'Tasks',

@@ -18,8 +18,8 @@ interface AnimatedBarChartProps {
 }
 
 function getBarColor(score: number): string {
-  if (score >= 86) return '#10B981'; // Excellent — Green
-  if (score >= 81) return '#EAB308'; // Good — Yellow
+  if (score >= 80) return '#10B981'; // Excellent — Green
+  if (score >= 60) return '#EAB308'; // Good — Yellow
   return '#EF4444';                  // Need Improvement — Red
 }
 

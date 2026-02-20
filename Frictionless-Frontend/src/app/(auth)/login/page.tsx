@@ -3,67 +3,20 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import {
   Mail,
   Lock,
   Eye,
   EyeOff,
   Loader2,
-  Rocket,
-  TrendingUp,
-  GraduationCap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/auth-store';
-import { mockLogin } from '@/lib/auth';
 import { signInWithSupabase, signInWithGoogle } from '@/lib/supabase/auth';
-import type { User } from '@/types/database';
 import { toast } from 'sonner';
 
-const demoAccounts = [
-  {
-    type: 'startup' as const,
-    label: 'Startup Demo',
-    name: 'Sarah Chen',
-    org: 'NeuralPay',
-    icon: Rocket,
-    accent: 'blue',
-    borderColor: 'border-primary/30',
-    bgColor: 'bg-primary/10',
-    hoverBg: 'hover:bg-primary/20',
-    textColor: 'text-primary',
-    shadowColor: 'hover:shadow-glow',
-  },
-  {
-    type: 'investor' as const,
-    label: 'Investor Demo',
-    name: 'Hemant Taneja',
-    org: 'General Catalyst',
-    icon: TrendingUp,
-    accent: 'purple',
-    borderColor: 'border-accent/30',
-    bgColor: 'bg-accent/10',
-    hoverBg: 'hover:bg-accent/20',
-    textColor: 'text-accent',
-    shadowColor: 'hover:shadow-glow-purple',
-  },
-  {
-    type: 'accelerator' as const,
-    label: 'Accelerator Demo',
-    name: 'Lisa Wang',
-    org: 'SKU Accelerator',
-    icon: GraduationCap,
-    accent: 'cyan',
-    borderColor: 'border-accent/30',
-    bgColor: 'bg-accent/10',
-    hoverBg: 'hover:bg-accent/20',
-    textColor: 'text-accent',
-    shadowColor: 'hover:shadow-[0_0_20px_rgba(6,182,212,0.3)]',
-  },
-];
 
 export default function LoginPage() {
   const router = useRouter();
@@ -74,7 +27,6 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
-  const [loadingDemo, setLoadingDemo] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,14 +59,6 @@ export default function LoginPage() {
     } finally {
       setLoadingGoogle(false);
     }
-  };
-
-  const handleDemoLogin = async (type: 'startup' | 'investor' | 'accelerator') => {
-    setLoadingDemo(type);
-    await new Promise((r) => setTimeout(r, 600));
-    const user = mockLogin(type);
-    login(user as User);
-    router.push('/dashboard');
   };
 
   return (
@@ -268,74 +212,6 @@ export default function LoginPage() {
         </Link>
       </p>
 
-      {/* Demo Account Cards */}
-      <div className="space-y-3 pt-2">
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">
-              Quick Demo Access
-            </span>
-          </div>
-        </div>
-
-        <div className="grid gap-3 pt-1">
-          {demoAccounts.map((demo, index) => {
-            const Icon = demo.icon;
-            return (
-              <motion.button
-                key={demo.type}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 * index, duration: 0.3 }}
-                onClick={() => handleDemoLogin(demo.type)}
-                disabled={loadingDemo !== null}
-                className={`
-                  w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-200
-                  ${demo.borderColor} ${demo.bgColor} ${demo.hoverBg} ${demo.shadowColor}
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  group cursor-pointer text-left
-                `}
-              >
-                <div
-                  className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center ${demo.bgColor} ${demo.textColor}`}
-                >
-                  {loadingDemo === demo.type ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Icon className="h-5 w-5" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">
-                      {demo.label}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {demo.name} &middot; {demo.org}
-                  </p>
-                </div>
-                <svg
-                  className={`w-4 h-4 ${demo.textColor} opacity-0 group-hover:opacity-100 transition-opacity`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </motion.button>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }

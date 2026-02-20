@@ -118,10 +118,10 @@ export function RecommendedActionsSection({
           <div className="flex items-center gap-2 flex-1">
             <Sparkles className="w-5 h-5" style={{ color: 'var(--fi-primary)' }} />
             <h2 className="text-base font-semibold" style={{ color: 'var(--fi-text-primary)' }}>
-              Recommended actions to improve your readiness
+              Recommended actions to improve your Frictionless
             </h2>
           </div>
-          <AskButton onClick={() => onAskAI?.(`Analyze my recommended readiness tasks and help me prioritize. I have ${tasks.length} tasks with ${completedCount} completed. Which tasks should I focus on first for maximum impact on my fundraising readiness?`)} size="sm" variant="outline" />
+          <AskButton onClick={() => onAskAI?.(`Analyze my recommended Frictionless tasks and help me prioritize. I have ${tasks.length} tasks with ${completedCount} completed. Which tasks should I focus on first for maximum impact on my fundraising Frictionless?`)} size="sm" variant="outline" />
         </div>
         <p className="text-xs" style={{ color: 'var(--fi-text-muted)' }}>
           Informed by experienced founders, operators, and investors — with AI guidance on every task.

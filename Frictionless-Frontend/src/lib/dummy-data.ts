@@ -40,7 +40,7 @@ export const MOCK_STARTUP_PROFILE: StartupProfile = {
   short_summary: 'AI-powered payment processing for enterprises.',
   pitch_summary:
     'NeuralPay uses ML to optimize payment routing and reduce fraud by 40%.',
-  current_readiness_score: 78,
+  current_Readiness_score: 78,
   score_delta: 5,
   latest_metrics: {
     mrr: 45000,
@@ -287,7 +287,7 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: 'n-001',
     type: 'score_change',
-    title: 'Readiness score updated',
+    title: 'Frictionless score updated',
     description: 'Your score increased by 5 points to 78',
     read: false,
     created_at: '2024-02-10T14:35:00Z',

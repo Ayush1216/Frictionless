@@ -164,14 +164,14 @@ const CATEGORY_TIPS: Record<string, string[]> = {
 };
 
 function getScoreBgStyle(score: number): React.CSSProperties {
-  if (score >= 86) return { background: 'var(--fi-score-excellent-bg)' };
-  if (score >= 81) return { background: 'var(--fi-score-good-bg)' };
+  if (score >= 80) return { background: 'var(--fi-score-excellent-bg)' };
+  if (score >= 60) return { background: 'var(--fi-score-good-bg)' };
   return { background: 'var(--fi-score-need-improvement-bg)' };
 }
 
 function getScoreTextStyle(score: number): React.CSSProperties {
-  if (score >= 86) return { color: 'var(--fi-score-excellent)' };
-  if (score >= 81) return { color: 'var(--fi-score-good)' };
+  if (score >= 80) return { color: 'var(--fi-score-excellent)' };
+  if (score >= 60) return { color: 'var(--fi-score-good)' };
   return { color: 'var(--fi-score-need-improvement)' };
 }
 

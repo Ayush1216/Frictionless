@@ -131,7 +131,7 @@ export interface StartupProfile {
   hq_location: HQLocation | null;
   short_summary: string | null;
   pitch_summary: string | null;
-  current_readiness_score: number | null;
+  current_Readiness_score: number | null;
   score_delta: number | null;
   latest_metrics: StartupMetrics | null;
   tags: string[];

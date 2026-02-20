@@ -12,7 +12,7 @@ export const dummyActivities: DummyActivityEvent[] = [
   {
     id: 'act-1',
     type: 'score_change',
-    title: 'Readiness score updated',
+    title: 'Frictionless score updated',
     description: 'NeuralPay score increased from 79 to 82',
     actor: 'System',
     timestamp: '2025-02-10T16:00:00Z',
@@ -147,7 +147,7 @@ export const dummyActivities: DummyActivityEvent[] = [
   {
     id: 'act-16',
     type: 'score_change',
-    title: 'Readiness score updated',
+    title: 'Frictionless score updated',
     description: 'NeuralPay score increased from 75 to 79',
     actor: 'System',
     timestamp: '2025-02-05T11:45:00Z',
@@ -192,7 +192,7 @@ export const dummyActivities: DummyActivityEvent[] = [
   {
     id: 'act-21',
     type: 'score_change',
-    title: 'Readiness score updated',
+    title: 'Frictionless score updated',
     description: 'NeuralPay score increased from 72 to 75',
     actor: 'System',
     timestamp: '2025-01-29T09:15:00Z',
