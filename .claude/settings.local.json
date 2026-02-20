@@ -41,7 +41,10 @@
       "Bash(curl:*)",
       "Bash(python3 -c \":*)",
       "Bash(python -c:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(pip install:*)",
+      "Bash(npx next build:*)",
+      "Bash(git status:*)"
     ]
   }
 }
