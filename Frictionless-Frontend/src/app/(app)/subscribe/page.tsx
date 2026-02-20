@@ -14,10 +14,9 @@ import {
   Brain,
   FolderOpen,
   Target,
-  FileSearch,
-  Lightbulb,
   TrendingUp,
   Rocket,
+  Lock,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
@@ -70,41 +69,47 @@ const valueProps = [
     icon: BarChart3,
     title: '12-Dimension Readiness Score',
     description:
-      'Understand exactly where you stand across team, market, product, financials, and 8 more dimensions investors care about.',
+      'See exactly where you stand across team, market, product, traction, financials and 7 more dimensions that investors evaluate.',
+    gradient: 'from-blue-500/20 to-cyan-500/20',
   },
   {
     icon: Target,
     title: 'AI Investor Matching',
     description:
-      'Get matched with investors who actively fund your stage, sector, and geography — no more cold outreach.',
+      'Get matched with investors who actively fund your stage, sector, and geography. No more cold outreach — warm intros only.',
+    gradient: 'from-purple-500/20 to-blue-500/20',
   },
   {
     icon: Brain,
     title: 'Unlimited AI Assistant',
     description:
-      'Ask anything about fundraising, get pitch feedback, refine your narrative, and prepare for investor meetings.',
+      'Ask anything about fundraising. Get pitch feedback, refine your narrative, prep for due diligence, and sharpen your story.',
+    gradient: 'from-emerald-500/20 to-teal-500/20',
   },
   {
     icon: Zap,
     title: 'Smart Task Engine',
     description:
-      'Prioritized action items that move your readiness score up — know exactly what to work on next.',
+      'Prioritized action items that move your readiness score up fast. Always know exactly what to work on next.',
+    gradient: 'from-amber-500/20 to-orange-500/20',
   },
   {
     icon: FolderOpen,
     title: 'Secure Data Rooms',
     description:
-      'Share documents with investors through tracked, branded data rooms with real-time analytics.',
+      'Share documents with investors through tracked, branded data rooms. See who opened what and for how long.',
+    gradient: 'from-rose-500/20 to-pink-500/20',
   },
   {
     icon: TrendingUp,
-    title: 'Investor Analytics',
+    title: 'Investor Analytics & Tracking',
     description:
-      'Track which investors viewed your profile, how long they spent, and when to follow up.',
+      'Track which investors viewed your profile, how engaged they are, and get notified on the best moment to follow up.',
+    gradient: 'from-indigo-500/20 to-violet-500/20',
   },
 ];
 
-const features = [
+const allFeatures = [
   'Advanced readiness scoring (12 dimensions)',
   'Unlimited investor matches',
   'AI chat assistant (unlimited)',
@@ -126,35 +131,40 @@ export default function SubscribePage() {
   const paymentUrl = `${selectedPlan.link}?client_reference_id=${orgId}&prefilled_email=${encodeURIComponent(email)}`;
 
   return (
-    <div className="relative min-h-screen overflow-y-auto overflow-x-hidden bg-background">
-      {/* Atmospheric background */}
-      <div className="fixed inset-0 bg-mesh-gradient opacity-60 pointer-events-none" />
-      <div
-        className="fixed top-[-15%] left-[5%] w-[600px] h-[600px] rounded-full opacity-[0.06] blur-[140px] pointer-events-none"
-        style={{ background: 'linear-gradient(135deg, #3B82F6, #8B5CF6)' }}
-      />
-      <div
-        className="fixed bottom-[-10%] right-[0%] w-[500px] h-[500px] rounded-full opacity-[0.04] blur-[120px] pointer-events-none"
-        style={{ background: 'linear-gradient(135deg, #06B6D4, #3B82F6)' }}
-      />
+    <div className="relative min-h-screen overflow-y-auto overflow-x-hidden" style={{ background: 'var(--fi-bg-primary)' }}>
+      {/* ─── Hero Section ─── */}
+      <section className="relative overflow-hidden pt-12 sm:pt-20 pb-12">
+        {/* Background glow */}
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] rounded-full pointer-events-none"
+          style={{
+            background: 'radial-gradient(ellipse, rgba(16,185,129,0.12) 0%, rgba(59,130,246,0.06) 50%, transparent 70%)',
+          }}
+        />
 
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
-        {/* ─── Hero Section ─── */}
-        <div className="text-center mb-12">
+        <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 text-center">
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.05 }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-score-excellent/10 border border-score-excellent/20 mb-5"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.05 }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6"
+            style={{
+              background: 'rgba(16,185,129,0.1)',
+              border: '1px solid rgba(16,185,129,0.25)',
+            }}
           >
-            <Rocket className="w-3.5 h-3.5 text-score-excellent" />
-            <span className="text-xs font-display font-semibold text-score-excellent tracking-wide uppercase">
-              Your onboarding is complete
+            <Rocket className="w-3.5 h-3.5" style={{ color: 'var(--fi-primary)' }} />
+            <span
+              className="text-xs font-display font-semibold tracking-wide uppercase"
+              style={{ color: 'var(--fi-primary)' }}
+            >
+              Onboarding complete
             </span>
           </motion.div>
 
           <motion.h1
-            className="text-3xl sm:text-5xl font-display font-extrabold text-white mb-4 leading-tight"
+            className="text-3xl sm:text-5xl font-display font-extrabold mb-4 leading-[1.15]"
+            style={{ color: 'var(--fi-text-primary)' }}
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
@@ -165,7 +175,8 @@ export default function SubscribePage() {
           </motion.h1>
 
           <motion.p
-            className="text-muted-foreground font-body text-base sm:text-lg max-w-2xl mx-auto leading-relaxed"
+            className="font-body text-base sm:text-lg max-w-xl mx-auto leading-relaxed mb-2"
+            style={{ color: 'var(--fi-text-secondary)' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.2 }}
@@ -174,58 +185,107 @@ export default function SubscribePage() {
             and fundraising infrastructure that top startups use to close rounds faster.
           </motion.p>
         </div>
+      </section>
 
-        {/* ─── What You Get Section ─── */}
+      {/* ─── What You Get ─── */}
+      <section className="relative max-w-5xl mx-auto px-4 sm:px-6 pb-14">
         <motion.div
-          className="mb-14"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.25 }}
+          className="flex items-center justify-center gap-2.5 mb-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
         >
-          <div className="flex items-center justify-center gap-2 mb-8">
-            <Lightbulb className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-display font-semibold text-white uppercase tracking-wider">
-              What you get with Pro
-            </h2>
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'rgba(16,185,129,0.12)' }}
+          >
+            <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--fi-primary)' }} />
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {valueProps.map((item, i) => (
-              <motion.div
-                key={item.title}
-                className="glass-card p-5 group hover:border-primary/30 transition-all duration-300"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.3 + i * 0.06 }}
-              >
-                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary/15 transition-colors">
-                  <item.icon className="w-4.5 h-4.5 text-primary" />
-                </div>
-                <h3 className="text-sm font-display font-bold text-white mb-1.5">
-                  {item.title}
-                </h3>
-                <p className="text-xs font-body text-muted-foreground leading-relaxed">
-                  {item.description}
-                </p>
-              </motion.div>
-            ))}
-          </div>
+          <h2 className="text-base font-display font-bold" style={{ color: 'var(--fi-text-primary)' }}>
+            What you get with Frictionless Pro
+          </h2>
         </motion.div>
 
-        {/* ─── Pricing Cards ─── */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.55 }}
-        >
-          <div className="flex items-center justify-center gap-2 mb-8">
-            <Crown className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-display font-semibold text-white uppercase tracking-wider">
-              Choose your plan
-            </h2>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {valueProps.map((item, i) => (
+            <motion.div
+              key={item.title}
+              className="relative rounded-xl p-5 transition-all duration-300 group"
+              style={{
+                background: 'var(--fi-bg-card)',
+                border: '1px solid var(--fi-border)',
+              }}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.3 + i * 0.06 }}
+              whileHover={{ y: -2 }}
+            >
+              {/* Icon with colored gradient bg */}
+              <div
+                className={cn(
+                  'w-10 h-10 rounded-xl flex items-center justify-center mb-4 bg-gradient-to-br',
+                  item.gradient
+                )}
+              >
+                <item.icon className="w-5 h-5" style={{ color: 'var(--fi-text-primary)' }} />
+              </div>
+              <h3
+                className="text-sm font-display font-bold mb-2"
+                style={{ color: 'var(--fi-text-primary)' }}
+              >
+                {item.title}
+              </h3>
+              <p
+                className="text-[13px] font-body leading-relaxed"
+                style={{ color: 'var(--fi-text-secondary)' }}
+              >
+                {item.description}
+              </p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 max-w-3xl mx-auto mb-6">
+      {/* ─── Pricing Section ─── */}
+      <section
+        className="relative py-14"
+        style={{ background: 'var(--fi-bg-secondary)' }}
+      >
+        {/* Top separator line */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-neon-gradient opacity-30" />
+
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <motion.div
+            className="text-center mb-10"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.55 }}
+          >
+            <div
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
+              style={{
+                background: 'rgba(59,130,246,0.1)',
+                border: '1px solid rgba(59,130,246,0.2)',
+              }}
+            >
+              <Crown className="w-3.5 h-3.5 text-primary" />
+              <span className="text-xs font-display font-semibold text-primary uppercase tracking-wider">
+                Choose your plan
+              </span>
+            </div>
+            <h2
+              className="text-2xl sm:text-3xl font-display font-extrabold mb-2"
+              style={{ color: 'var(--fi-text-primary)' }}
+            >
+              Simple, transparent pricing
+            </h2>
+            <p className="font-body text-sm" style={{ color: 'var(--fi-text-secondary)' }}>
+              Every plan includes full access to all features. Pick the billing cycle that works for you.
+            </p>
+          </motion.div>
+
+          {/* Plan Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 mb-8">
             {plans.map((plan, i) => {
               const isSelected = selected === plan.id;
               return (
@@ -236,28 +296,42 @@ export default function SubscribePage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4, delay: 0.6 + i * 0.08 }}
                   className={cn(
-                    'relative glass-card p-6 text-left transition-all duration-300 cursor-pointer overflow-hidden',
-                    isSelected
-                      ? 'border-primary/50 shadow-glow'
-                      : 'hover:border-border-strong',
-                    plan.recommended && isSelected && 'sm:scale-[1.03]'
+                    'relative rounded-xl p-6 text-left transition-all duration-300 cursor-pointer overflow-hidden',
+                    plan.recommended && isSelected && 'sm:scale-[1.02]'
                   )}
+                  style={{
+                    background: isSelected ? 'var(--fi-bg-tertiary)' : 'var(--fi-bg-card)',
+                    border: isSelected
+                      ? '2px solid var(--fi-primary)'
+                      : '1px solid var(--fi-border)',
+                    boxShadow: isSelected
+                      ? '0 0 24px rgba(16,185,129,0.15), 0 4px 12px rgba(0,0,0,0.2)'
+                      : undefined,
+                  }}
                 >
-                  {/* Top gradient accent for selected */}
+                  {/* Top accent */}
                   {isSelected && (
-                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-neon-gradient" />
+                    <div
+                      className="absolute top-0 left-0 right-0 h-[3px]"
+                      style={{ background: 'linear-gradient(90deg, #10B981, #3B82F6, #8B5CF6)' }}
+                    />
                   )}
 
                   {/* Badge */}
                   {plan.badge && (
                     <div className="mb-3">
                       <span
-                        className={cn(
-                          'text-[10px] font-display font-bold px-2.5 py-1 rounded-full',
-                          plan.id === 'annual'
-                            ? 'bg-score-excellent/15 text-score-excellent'
-                            : 'bg-primary/15 text-primary'
-                        )}
+                        className="text-[10px] font-display font-bold px-2.5 py-1 rounded-full"
+                        style={{
+                          background:
+                            plan.id === 'annual'
+                              ? 'rgba(16,185,129,0.15)'
+                              : 'rgba(59,130,246,0.15)',
+                          color:
+                            plan.id === 'annual'
+                              ? 'var(--fi-primary)'
+                              : 'hsl(217 91% 60%)',
+                        }}
                       >
                         {plan.badge}
                       </span>
@@ -265,47 +339,64 @@ export default function SubscribePage() {
                   )}
 
                   {/* Plan name */}
-                  <p className="text-xs font-body text-muted-foreground mb-2 uppercase tracking-wider">
+                  <p
+                    className="text-xs font-body mb-3 uppercase tracking-wider font-medium"
+                    style={{ color: 'var(--fi-text-tertiary)' }}
+                  >
                     {plan.name}
                   </p>
 
                   {/* Price */}
-                  <div className="flex items-baseline gap-1 mb-1">
-                    <span className="text-4xl font-display font-extrabold text-white">
+                  <div className="flex items-baseline gap-1.5 mb-1">
+                    <span
+                      className="text-4xl font-display font-extrabold"
+                      style={{ color: 'var(--fi-text-primary)' }}
+                    >
                       ${plan.price.toLocaleString()}
                     </span>
-                    <span className="text-muted-foreground font-body text-sm">
+                    <span
+                      className="font-body text-sm"
+                      style={{ color: 'var(--fi-text-tertiary)' }}
+                    >
                       {plan.period}
                     </span>
                   </div>
 
-                  {/* Per month equivalent */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs text-muted-foreground font-body">
+                  {/* Per-month + saving */}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span
+                      className="text-xs font-body"
+                      style={{ color: 'var(--fi-text-secondary)' }}
+                    >
                       ${plan.perMonth}/mo equivalent
                     </span>
                   </div>
-
-                  {/* Saving badge */}
                   {plan.saving && (
-                    <span className="inline-block text-[11px] font-semibold text-score-excellent bg-score-excellent/10 px-2 py-0.5 rounded-full mb-2">
+                    <span
+                      className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-full mb-2"
+                      style={{
+                        background: 'rgba(16,185,129,0.12)',
+                        color: 'var(--fi-primary)',
+                      }}
+                    >
                       {plan.saving}
                     </span>
                   )}
 
-                  {/* Billed info */}
-                  <p className="text-[11px] text-muted-foreground/50 font-body">
+                  <p
+                    className="text-[11px] font-body"
+                    style={{ color: 'var(--fi-text-muted)' }}
+                  >
                     {plan.subtitle}
                   </p>
 
-                  {/* Selection indicator */}
+                  {/* Radio indicator */}
                   <div
-                    className={cn(
-                      'absolute top-5 right-5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200',
-                      isSelected
-                        ? 'border-primary bg-primary'
-                        : 'border-muted-foreground/30'
-                    )}
+                    className="absolute top-5 right-5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200"
+                    style={{
+                      borderColor: isSelected ? 'var(--fi-primary)' : 'var(--fi-border-strong)',
+                      background: isSelected ? 'var(--fi-primary)' : 'transparent',
+                    }}
                   >
                     {isSelected && <Check className="w-3 h-3 text-white" />}
                   </div>
@@ -314,78 +405,113 @@ export default function SubscribePage() {
             })}
           </div>
 
-          {/* CTA Button */}
+          {/* CTA */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.8 }}
-            className="max-w-3xl mx-auto mb-4"
+            className="mb-5"
           >
             <a
               href={paymentUrl}
-              className="group flex items-center justify-center gap-2.5 w-full py-4 rounded-xl font-display font-semibold text-base bg-neon-gradient animated-gradient text-white shadow-glow hover:shadow-glow-lg transition-all duration-300"
+              className="group flex items-center justify-center gap-2.5 w-full py-4 rounded-xl font-display font-semibold text-base text-white shadow-glow hover:shadow-glow-lg transition-all duration-300"
+              style={{
+                background: 'linear-gradient(135deg, #10B981, #059669)',
+                boxShadow: '0 0 24px rgba(16,185,129,0.25), 0 4px 12px rgba(0,0,0,0.15)',
+              }}
             >
-              <Sparkles className="w-4.5 h-4.5" />
-              Get Started — ${selectedPlan.price.toLocaleString()}
-              {selectedPlan.period}
-              <ArrowRight className="w-4.5 h-4.5 transition-transform group-hover:translate-x-0.5" />
+              <Lock className="w-4 h-4" />
+              Get Frictionless Pro — ${selectedPlan.price.toLocaleString()}{selectedPlan.period}
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
             </a>
           </motion.div>
 
-          {/* Trust line */}
-          <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground font-body mb-12">
-            <Shield className="w-3 h-3" />
-            Secured by Stripe. 30-day money-back guarantee. Cancel anytime.
-          </div>
-        </motion.div>
+          {/* Trust */}
+          <motion.div
+            className="flex items-center justify-center gap-4 flex-wrap"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.85 }}
+          >
+            <span className="flex items-center gap-1.5 text-xs font-body" style={{ color: 'var(--fi-text-tertiary)' }}>
+              <Shield className="w-3 h-3" />
+              Secured by Stripe
+            </span>
+            <span className="text-xs" style={{ color: 'var(--fi-border-strong)' }}>|</span>
+            <span className="text-xs font-body" style={{ color: 'var(--fi-text-tertiary)' }}>
+              30-day money-back guarantee
+            </span>
+            <span className="text-xs" style={{ color: 'var(--fi-border-strong)' }}>|</span>
+            <span className="text-xs font-body" style={{ color: 'var(--fi-text-tertiary)' }}>
+              Cancel anytime
+            </span>
+          </motion.div>
+        </div>
+      </section>
 
-        {/* ─── Full Feature List ─── */}
+      {/* ─── Full Feature Checklist ─── */}
+      <section className="max-w-3xl mx-auto px-4 sm:px-6 py-14">
         <motion.div
-          className="glass-card p-6 sm:p-8 overflow-hidden relative max-w-3xl mx-auto mb-8"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.85 }}
+          transition={{ duration: 0.5, delay: 0.9 }}
         >
-          <div className="absolute top-0 left-0 right-0 h-px bg-neon-gradient opacity-40" />
-
-          <div className="flex items-center gap-2 mb-5">
-            <Zap className="w-4 h-4 text-primary" />
-            <span className="text-sm font-display font-semibold text-white">
-              Everything included with every plan
-            </span>
+          <div className="flex items-center gap-2.5 mb-6">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: 'rgba(59,130,246,0.12)' }}
+            >
+              <Zap className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <h3
+              className="text-base font-display font-bold"
+              style={{ color: 'var(--fi-text-primary)' }}
+            >
+              Everything included in every plan
+            </h3>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {features.map((feature, i) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {allFeatures.map((feature, i) => (
               <motion.div
                 key={feature}
-                className="flex items-start gap-2.5"
-                initial={{ opacity: 0, x: -6 }}
+                className="flex items-start gap-3 py-2.5 px-3 rounded-lg"
+                style={{ background: 'var(--fi-bg-card)' }}
+                initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: 0.9 + i * 0.03 }}
+                transition={{ duration: 0.3, delay: 0.95 + i * 0.04 }}
               >
-                <Check className="w-4 h-4 mt-0.5 text-score-excellent flex-shrink-0" />
-                <span className="text-sm font-body text-muted-foreground leading-snug">
+                <div
+                  className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ background: 'rgba(16,185,129,0.15)' }}
+                >
+                  <Check className="w-3 h-3" style={{ color: 'var(--fi-primary)' }} />
+                </div>
+                <span
+                  className="text-sm font-body leading-snug"
+                  style={{ color: 'var(--fi-text-secondary)' }}
+                >
                   {feature}
                 </span>
               </motion.div>
             ))}
           </div>
         </motion.div>
+      </section>
 
-        {/* ─── Social Proof / Closing ─── */}
-        <motion.div
-          className="text-center pb-8"
+      {/* ─── Closing ─── */}
+      <section className="text-center pb-12 px-4">
+        <motion.p
+          className="text-sm font-body max-w-md mx-auto leading-relaxed"
+          style={{ color: 'var(--fi-text-tertiary)' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 1.0 }}
+          transition={{ duration: 0.4, delay: 1.1 }}
         >
-          <p className="text-sm font-body text-muted-foreground max-w-md mx-auto leading-relaxed">
-            Join startups already using Frictionless to understand their readiness,
-            connect with the right investors, and raise with confidence.
-          </p>
-        </motion.div>
-      </div>
+          Join hundreds of startups using Frictionless to understand their readiness,
+          connect with the right investors, and raise with confidence.
+        </motion.p>
+      </section>
     </div>
   );
 }
