@@ -175,12 +175,16 @@ export default function AppLayout({
       try {
         if (!supabase) {
           // Demo mode — allow through
-          setSubscriptionChecked(true);
+          if (!cancelled) setSubscriptionChecked(true);
           return;
         }
         const { data } = await supabase.auth.getSession();
         const token = data?.session?.access_token ?? null;
-        if (!token || cancelled) return;
+        if (!token || cancelled) {
+          // No token but authenticated — block until we can verify
+          if (!cancelled) router.replace('/subscribe');
+          return;
+        }
 
         const res = await fetch('/api/subscription/status', {
           headers: { Authorization: `Bearer ${token}` },
@@ -197,12 +201,14 @@ export default function AppLayout({
 
         if (!active) {
           router.replace('/subscribe');
-          return;
+          return; // Don't set subscriptionChecked — keep spinner until navigation
         }
+
+        // Subscription is active — let them through
+        setSubscriptionChecked(true);
       } catch {
-        // allow through on error to avoid blocking users
-      } finally {
-        if (!cancelled) setSubscriptionChecked(true);
+        // On error, redirect to subscribe — never grant free access
+        if (!cancelled) router.replace('/subscribe');
       }
     })();
     return () => { cancelled = true; };
