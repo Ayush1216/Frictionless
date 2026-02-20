@@ -12,8 +12,8 @@
           "Question": "Entity type (e.g., C-Corp, LLC, Ltd)",
           "options": {
             "C-Corp (or local equivalent)": 8,
-            "LLC (conversion planned)": 5,
-            "LLC (no conversion plan)": 2,
+            "LLC (conversion planned)": 6,
+            "LLC (no conversion plan)": 4,
             "Other / Unknown": 0
           },
           "required_value": true

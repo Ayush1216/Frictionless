@@ -2,19 +2,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClientForRequest, getCurrentUserOrgId } from '@/lib/supabase/server';
 
 const VALID_PRIMARY_SECTOR = [
-  'b2b_saas', 'b2c_consumer', 'marketplace', 'd2c_ecommerce', 'platform',
-  'hardware_deeptech', 'services', 'fintech', 'healthtech', 'other',
+  'saas_b2b', 'marketplace', 'consumer_app', 'saas_enterprise',
+  'fintech', 'healthtech', 'hardware_iot', 'deeptech_ip', 'cpg_d2c', 'other',
 ];
 const VALID_PRODUCT_STATUS = ['idea', 'mvp', 'beta', 'launched', 'scaling'];
 const VALID_FUNDING_STAGE = ['preseed', 'seed', 'series_a', 'series_b', 'series_c_plus'];
 const VALID_ROUND_TARGET = [
   'under_100k', '100k_250k', '250k_500k', '500k_1m', '1m_2m', '2m_5m', '5m_plus', 'other',
 ];
-const VALID_ENTITY_TYPE = ['c_corp', 'llc', 'other', 'unknown'];
+const VALID_ENTITY_TYPE = [
+  'c_corp', 'non_us_equiv', 'pbc_bcorp',
+  'llc_converting', 'scorp_converting', 'partnership_converting',
+  'llc_no_convert', 'scorp_no_convert', 'sole_proprietorship',
+  'no_entity', 'nonprofit', 'other_unknown',
+];
 const VALID_REVENUE_MODEL = ['subscription', 'usage', 'transaction', 'licensing', 'ad', 'not_monetizing'];
 
 function isValid<T extends string>(val: unknown, allowed: readonly T[]): val is T {
   return typeof val === 'string' && (allowed as readonly string[]).includes(val);
+}
+
+/** Validate a comma-separated multiselect value. Each part must be in the allowed list. */
+function isValidMulti(val: unknown, allowed: readonly string[]): boolean {
+  if (typeof val !== 'string' || !val.trim()) return false;
+  return val.split(',').every((v) => allowed.includes(v.trim()));
 }
 
 /**
@@ -57,10 +68,10 @@ export async function POST(request: NextRequest) {
     const round_target_other = typeof body.round_target_other === 'string' ? body.round_target_other.trim() : '';
     const entity_type_other = typeof body.entity_type_other === 'string' ? body.entity_type_other.trim() : '';
 
-    if (!isValid(primary_sector, VALID_PRIMARY_SECTOR)) {
+    if (!isValidMulti(primary_sector, VALID_PRIMARY_SECTOR)) {
       return NextResponse.json({ error: 'Invalid primary_sector' }, { status: 400 });
     }
-    if (primary_sector === 'other' && !primary_sector_other) {
+    if (typeof primary_sector === 'string' && primary_sector.split(',').includes('other') && !primary_sector_other) {
       return NextResponse.json({ error: 'Please specify your primary sector when selecting Other' }, { status: 400 });
     }
     if (!isValid(product_status, VALID_PRODUCT_STATUS)) {
@@ -78,10 +89,7 @@ export async function POST(request: NextRequest) {
     if (!isValid(entity_type, VALID_ENTITY_TYPE)) {
       return NextResponse.json({ error: 'Invalid entity_type' }, { status: 400 });
     }
-    if (entity_type === 'other' && !entity_type_other) {
-      return NextResponse.json({ error: 'Please specify your entity type when selecting Other' }, { status: 400 });
-    }
-    if (!isValid(revenue_model, VALID_REVENUE_MODEL)) {
+    if (!isValidMulti(revenue_model, VALID_REVENUE_MODEL)) {
       return NextResponse.json({ error: 'Invalid revenue_model' }, { status: 400 });
     }
 
@@ -94,9 +102,8 @@ export async function POST(request: NextRequest) {
       round_target,
       entity_type,
       revenue_model,
-      ...(primary_sector === 'other' && primary_sector_other && { primary_sector_other }),
+      ...(typeof primary_sector === 'string' && primary_sector.split(',').includes('other') && primary_sector_other && { primary_sector_other }),
       ...(round_target === 'other' && round_target_other && { round_target_other }),
-      ...(entity_type === 'other' && entity_type_other && { entity_type_other }),
       updated_at: now,
     };
 

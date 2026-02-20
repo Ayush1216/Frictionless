@@ -1,22 +1,23 @@
 /**
  * Startup readiness questionnaire options.
  * Matches API validation and rubric schema (company.*, overview.*, funds.*, biz.*).
- * Each question is single-choice with multiple options.
+ * Questions are single-choice unless multiSelect is true.
  */
 export const QUESTIONNAIRE = {
   primary_sector: {
-    question: 'What best describes your company\'s primary business model or sector?',
+    question: 'What category describes you the best?',
+    multiSelect: true,
     options: [
-    { value: 'b2b_saas', label: 'B2B SaaS' },
-    { value: 'b2c_consumer', label: 'B2C Consumer' },
-    { value: 'marketplace', label: 'Marketplace' },
-    { value: 'd2c_ecommerce', label: 'D2C / E-commerce' },
-    { value: 'platform', label: 'Platform' },
-    { value: 'hardware_deeptech', label: 'Hardware / Deep Tech' },
-    { value: 'services', label: 'Services' },
-    { value: 'fintech', label: 'Fintech' },
-    { value: 'healthtech', label: 'Healthtech' },
-    { value: 'other', label: 'Other' },
+    { value: 'saas_b2b', label: 'B2B Software (SaaS)' },
+    { value: 'marketplace', label: 'Marketplace / Platform' },
+    { value: 'consumer_app', label: 'Consumer App (Digital)' },
+    { value: 'saas_enterprise', label: 'Enterprise Software' },
+    { value: 'fintech', label: 'Fintech / Financial Services' },
+    { value: 'healthtech', label: 'Healthcare / Life Sciences' },
+    { value: 'hardware_iot', label: 'Hardware / IoT / Robotics' },
+    { value: 'deeptech_ip', label: 'Deep Tech / Research-heavy' },
+    { value: 'cpg_d2c', label: 'Consumer Products / CPG / D2C' },
+    { value: 'other', label: 'Other / Not Sure' },
   ] as const,
   },
   product_status: {
@@ -55,14 +56,23 @@ export const QUESTIONNAIRE = {
   entity_type: {
     question: 'What type of legal entity is your company?',
     options: [
-    { value: 'c_corp', label: 'C-Corp' },
-    { value: 'llc', label: 'LLC' },
-    { value: 'other', label: 'Other' },
-    { value: 'unknown', label: 'Unknown' },
+    { value: 'c_corp', label: 'C-Corp (Delaware or other state)' },
+    { value: 'non_us_equiv', label: 'Non-US equivalent (Ltd, GmbH, etc.)' },
+    { value: 'pbc_bcorp', label: 'Public Benefit Corp / B-Corp' },
+    { value: 'llc_converting', label: 'LLC – converting to C-Corp' },
+    { value: 'scorp_converting', label: 'S-Corp – conversion planned' },
+    { value: 'partnership_converting', label: 'Partnership / LP – conversion planned' },
+    { value: 'llc_no_convert', label: 'LLC – no conversion plan' },
+    { value: 'scorp_no_convert', label: 'S-Corp – no conversion plan' },
+    { value: 'sole_proprietorship', label: 'Sole Proprietorship' },
+    { value: 'no_entity', label: 'No entity formed yet' },
+    { value: 'nonprofit', label: 'Nonprofit / Fiscal Sponsorship' },
+    { value: 'other_unknown', label: 'Other / Unknown' },
   ] as const,
   },
   revenue_model: {
     question: 'How does your company generate (or plan to generate) revenue?',
+    multiSelect: true,
     options: [
     { value: 'subscription', label: 'Subscription' },
     { value: 'usage', label: 'Usage-based' },

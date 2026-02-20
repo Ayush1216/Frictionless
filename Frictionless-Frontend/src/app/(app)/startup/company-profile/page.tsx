@@ -467,7 +467,7 @@ export default function CompanyProfilePage() {
   const hasMeaningfulRevenue = organizationRevenueDisplay.trim() !== '' && organizationRevenueDisplay.trim() !== '0' && organizationRevenueDisplay.trim() !== '0.00';
   const employeesDisplay = canonical?.estimated_num_employees ?? (apollo?.estimated_num_employees != null ? String(apollo.estimated_num_employees) : '') ?? '—';
   const foundedYearDisplay = canonical?.founded_year ?? (apollo?.founded_year != null ? String(apollo.founded_year) : '');
-  const primarySectorDisplay = canonical?.primary_sector ?? canonical?.industry ?? (questionnaire?.primary_sector ? (QUESTIONNAIRE.primary_sector?.options?.find((o) => o.value === questionnaire.primary_sector)?.label ?? questionnaire.primary_sector) : '') ?? (apollo?.industry != null ? String(apollo.industry) : '');
+  const primarySectorDisplay = canonical?.primary_sector ?? canonical?.industry ?? (questionnaire?.primary_sector ? questionnaire.primary_sector.split(',').map((v: string) => QUESTIONNAIRE.primary_sector?.options?.find((o) => o.value === v.trim())?.label ?? v.trim()).join(', ') : '') ?? (apollo?.industry != null ? String(apollo.industry) : '');
 
   // Build unified fields for Details tab
   const unifiedFields = useMemo((): UnifiedField[] => {

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bot, User, Send, Paperclip, Loader2 } from 'lucide-react';
+import { Bot, User, Send, Paperclip, Loader2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuthStore } from '@/stores/auth-store';
@@ -13,6 +13,41 @@ import { format } from 'date-fns';
 import { QUESTIONNAIRE } from '@/lib/onboarding-questionnaire';
 
 const QUESTION_ORDER = ['primary_sector', 'product_status', 'funding_stage', 'round_target', 'entity_type', 'revenue_model'] as const;
+
+const ENTITY_TYPE_GROUPS = [
+  {
+    title: 'US Corporation',
+    options: [
+      { value: 'c_corp', label: 'C-Corp (Delaware or other state)' },
+      { value: 'pbc_bcorp', label: 'Public Benefit Corp / B-Corp' },
+      { value: 'scorp_converting', label: 'S-Corp — conversion planned' },
+      { value: 'scorp_no_convert', label: 'S-Corp — no conversion plan' },
+    ],
+  },
+  {
+    title: 'International Corporation',
+    options: [
+      { value: 'non_us_equiv', label: 'Non-US equivalent (Ltd, GmbH, etc.)' },
+    ],
+  },
+  {
+    title: 'LLC / Partnership',
+    options: [
+      { value: 'llc_converting', label: 'LLC — converting to C-Corp' },
+      { value: 'llc_no_convert', label: 'LLC — no conversion plan' },
+      { value: 'partnership_converting', label: 'Partnership / LP — conversion planned' },
+    ],
+  },
+  {
+    title: 'Early Stage / Other',
+    options: [
+      { value: 'sole_proprietorship', label: 'Sole Proprietorship' },
+      { value: 'no_entity', label: 'No entity formed yet' },
+      { value: 'nonprofit', label: 'Nonprofit / Fiscal Sponsorship' },
+      { value: 'other_unknown', label: 'Other / Unknown' },
+    ],
+  },
+] as const;
 
 type Step = 'website' | 'pitch_deck' | 'waiting_extraction' | 'questionnaire' | 'calculating' | 'thesis_document' | 'done';
 
@@ -63,9 +98,9 @@ export default function OnboardingChatPage() {
   const [questionnaireOther, setQuestionnaireOther] = useState({
     primary_sector: '',
     round_target: '',
-    entity_type: '',
   });
   const [questionnaireIndex, setQuestionnaireIndex] = useState(0);
+  const [multiSelectPending, setMultiSelectPending] = useState<string[]>([]);
   const [pendingOtherFor, setPendingOtherFor] = useState<keyof typeof questionnaireOther | null>(null);
   const [otherInputValue, setOtherInputValue] = useState('');
   const [submittingQuestionnaire, setSubmittingQuestionnaire] = useState(false);
@@ -368,16 +403,12 @@ export default function OnboardingChatPage() {
       toast.error('Please answer all 6 questions.');
       return;
     }
-    if (primary_sector === 'other' && !(otherData.primary_sector || '').trim()) {
+    if (primary_sector.split(',').includes('other') && !(otherData.primary_sector || '').trim()) {
       toast.error('Please specify your primary sector when you selected Other.');
       return;
     }
     if (round_target === 'other' && !(otherData.round_target || '').trim()) {
       toast.error('Please specify your round target when you selected Other.');
-      return;
-    }
-    if (entity_type === 'other' && !(otherData.entity_type || '').trim()) {
-      toast.error('Please specify your entity type when you selected Other.');
       return;
     }
     setSubmittingQuestionnaire(true);
@@ -396,9 +427,8 @@ export default function OnboardingChatPage() {
         round_target,
         entity_type,
         revenue_model,
-        ...(primary_sector === 'other' && { primary_sector_other: (otherData.primary_sector || '').trim() }),
+        ...(primary_sector.split(',').includes('other') && { primary_sector_other: (otherData.primary_sector || '').trim() }),
         ...(round_target === 'other' && { round_target_other: (otherData.round_target || '').trim() }),
-        ...(entity_type === 'other' && { entity_type_other: (otherData.entity_type || '').trim() }),
       } as Record<string, string>;
 
       // If extraction isn't ready yet, wait before submitting
@@ -430,9 +460,46 @@ export default function OnboardingChatPage() {
     setSubmittingQuestionnaire(false);
   };
 
+  const isMultiSelect = (key: (typeof QUESTION_ORDER)[number]) => {
+    const q = QUESTIONNAIRE[key] as { multiSelect?: boolean };
+    return !!q.multiSelect;
+  };
+
+  const toggleMultiOption = (value: string) => {
+    setMultiSelectPending((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  };
+
+  const confirmMultiSelect = (key: (typeof QUESTION_ORDER)[number]) => {
+    if (multiSelectPending.length === 0) return;
+    const qDef = QUESTIONNAIRE[key];
+    const labels = multiSelectPending
+      .map((v) => qDef.options.find((o) => o.value === v)?.label ?? v)
+      .join(', ');
+    const joined = multiSelectPending.join(',');
+    const idx = QUESTION_ORDER.indexOf(key);
+    const updated = { ...questionnaire, [key]: joined };
+    setQuestionnaire(updated);
+    addMessage('user', labels);
+    setMultiSelectPending([]);
+    setQuestionnaireIndex(idx + 1);
+    if (idx >= 5) {
+      submitQuestionnaire({ [key]: joined });
+      return;
+    }
+    const nextKey = QUESTION_ORDER[idx + 1];
+    const nextQ = QUESTIONNAIRE[nextKey];
+    addMessage('assistant', nextQ.question);
+  };
+
   const selectOption = (key: (typeof QUESTION_ORDER)[number], value: string, label: string) => {
+    if (isMultiSelect(key)) {
+      toggleMultiOption(value);
+      return;
+    }
     if (value === 'other') {
-      if (key === 'primary_sector' || key === 'round_target' || key === 'entity_type') {
+      if (key === 'primary_sector' || key === 'round_target') {
         setPendingOtherFor(key);
       }
       setOtherInputValue('');
@@ -448,6 +515,7 @@ export default function OnboardingChatPage() {
     addMessage('user', label);
     setPendingOtherFor(null);
     setOtherInputValue('');
+    setMultiSelectPending([]);
     setQuestionnaireIndex(idx + 1);
     if (idx >= 5) {
       submitQuestionnaire({ [key]: value });
@@ -466,12 +534,9 @@ export default function OnboardingChatPage() {
     if (pendingOtherFor === 'primary_sector') {
       setQuestionnaireOther((p) => ({ ...p, primary_sector: val }));
       setQuestionnaire((p) => ({ ...p, primary_sector: 'other' }));
-    } else if (pendingOtherFor === 'round_target') {
+    } else {
       setQuestionnaireOther((p) => ({ ...p, round_target: val }));
       setQuestionnaire((p) => ({ ...p, round_target: 'other' }));
-    } else {
-      setQuestionnaireOther((p) => ({ ...p, entity_type: val }));
-      setQuestionnaire((p) => ({ ...p, entity_type: 'other' }));
     }
     addMessage('user', val);
     setPendingOtherFor(null);
@@ -587,21 +652,44 @@ export default function OnboardingChatPage() {
                 </div>
               </div>
             ) : (
+              /* ── Default: flat pill layout ── */
               <div className="flex flex-row-reverse gap-3">
-                <div className="max-w-[85%]">
-                  <p className="text-xs text-muted-foreground text-right mb-2">Choose one:</p>
+                <div className="max-w-[70%]">
+                  <p className="text-xs text-muted-foreground text-right mb-2">
+                    {isMultiSelect(QUESTION_ORDER[questionnaireIndex]) ? 'Select all that apply:' : 'Choose one:'}
+                  </p>
                   <div className="flex flex-wrap gap-2 justify-end">
-                    {QUESTIONNAIRE[QUESTION_ORDER[questionnaireIndex]].options.map((o) => (
-                      <button
-                        key={o.value}
-                        type="button"
-                        onClick={() => selectOption(QUESTION_ORDER[questionnaireIndex], o.value, o.label)}
-                        className="px-3 py-2 rounded-xl text-sm font-medium bg-primary/20 hover:bg-primary/30 border border-primary/40 text-foreground transition-colors"
-                      >
-                        {o.label}
-                      </button>
-                    ))}
+                    {QUESTIONNAIRE[QUESTION_ORDER[questionnaireIndex]].options.map((o) => {
+                      const isSelected = multiSelectPending.includes(o.value);
+                      return (
+                        <button
+                          key={o.value}
+                          type="button"
+                          onClick={() => selectOption(QUESTION_ORDER[questionnaireIndex], o.value, o.label)}
+                          className={`px-3 py-2 rounded-xl text-sm font-medium border transition-colors flex items-center gap-1.5 ${
+                            isSelected
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'bg-primary/20 hover:bg-primary/30 border-primary/40 text-foreground'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3.5 h-3.5" />}
+                          {o.label}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {isMultiSelect(QUESTION_ORDER[questionnaireIndex]) && (
+                    <div className="flex justify-end mt-4">
+                      <Button
+                        size="sm"
+                        onClick={() => confirmMultiSelect(QUESTION_ORDER[questionnaireIndex])}
+                        disabled={multiSelectPending.length === 0}
+                        className="bg-primary hover:bg-primary/90 text-sm px-4"
+                      >
+                        Continue
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-border text-foreground">
                   <User className="w-4 h-4" />

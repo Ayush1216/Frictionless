@@ -21,8 +21,24 @@ MAX_CONTEXT_CHARS = 12000
 
 # Questionnaire value -> rubric option string mapping (for the 3 overlapping items)
 QUESTIONNAIRE_ENTITY_MAP = {
+    # C-Corp (or local equivalent) — 8 pts
     "c_corp": ("C-Corp (or local equivalent)", 8),
-    "llc": ("LLC (no conversion plan)", 2),
+    "non_us_equiv": ("C-Corp (or local equivalent)", 8),
+    "pbc_bcorp": ("C-Corp (or local equivalent)", 8),
+    # LLC (conversion planned) — 6 pts
+    "llc_converting": ("LLC (conversion planned)", 6),
+    "scorp_converting": ("LLC (conversion planned)", 6),
+    "partnership_converting": ("LLC (conversion planned)", 6),
+    # LLC (no conversion plan) — 4 pts
+    "llc_no_convert": ("LLC (no conversion plan)", 4),
+    "scorp_no_convert": ("LLC (no conversion plan)", 4),
+    "sole_proprietorship": ("LLC (no conversion plan)", 4),
+    # Other / Unknown — 0 pts
+    "no_entity": ("Other / Unknown", 0),
+    "nonprofit": ("Other / Unknown", 0),
+    "other_unknown": ("Other / Unknown", 0),
+    # Legacy values (backward compat)
+    "llc": ("LLC (no conversion plan)", 4),
     "other": ("Other / Unknown", 0),
     "unknown": ("Other / Unknown", 0),
 }
@@ -245,7 +261,9 @@ def _inject_questionnaire(
     """Override rubric items for entity_type, product_status, revenue_model with questionnaire answers."""
     entity = (questionnaire.get("entity_type") or "").strip().lower()
     product = (questionnaire.get("product_status") or "").strip().lower()
-    revenue = (questionnaire.get("revenue_model") or "").strip().lower()
+    revenue_raw = (questionnaire.get("revenue_model") or "").strip().lower()
+    # revenue_model may be comma-separated (multiselect); use first value for scoring
+    revenue = revenue_raw.split(",")[0].strip() if revenue_raw else ""
 
     for cat_val in scored_rubric.values():
         if not isinstance(cat_val, dict):

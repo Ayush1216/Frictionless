@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m uvicorn:*)",
+      "Bash(npm run dev:*)",
+      "Bash(cloudflared --version:*)",
+      "Bash(winget install:*)",
+      "Bash(cmd.exe //c \"where cloudflared\")",
+      "Bash(powershell -Command \"Get-Command cloudflared -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell -Command:*)",
+      "Bash(where:*)",
+      "Bash(echo:*)",
+      "Bash(npm root:*)",
+      "Bash(cmd.exe //c \"where claude\")",
+      "Bash(export PATH=\"$PATH:/c/Users/91970/.local/bin\")",
+      "Bash(claude:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)",
+      "Bash(git add:*)",
+      "Bash(git reset:*)",
+      "Bash(yarn dev)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git restore:*)",
+      "Bash(git pull:*)",
+      "Bash(tr:*)",
+      "Bash(cursor --version:*)",
+      "Bash(uvicorn:*)",
+      "Bash(npx next dev:*)",
+      "Bash(node:*)",
+      "Bash(npm install:*)",
+      "Bash(yarn add:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}
