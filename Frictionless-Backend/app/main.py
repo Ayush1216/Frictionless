@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 # Load .env from backend root (reliable when cwd differs under uvicorn --reload)
@@ -80,6 +80,10 @@ from app.services.investor_matching import (
     _file_logger as investor_file_logger,
 )
 from app.utils.domain import extract_domain
+import stripe
+
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -2332,3 +2336,110 @@ async def get_investor_profile_endpoint(
         headers={"Cache-Control": "private, max-age=60"},
     )
 
+
+# ---------------------------------------------------------------------------
+# Stripe Webhook
+# ---------------------------------------------------------------------------
+
+@app.post("/api/webhooks/stripe")
+async def stripe_webhook(request: Request):
+    """Handle incoming Stripe webhook events."""
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    if not STRIPE_WEBHOOK_SECRET:
+        log.error("STRIPE_WEBHOOK_SECRET not configured")
+        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+    except ValueError:
+        log.warning("Stripe webhook: invalid payload")
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    except stripe.SignatureVerificationError:
+        log.warning("Stripe webhook: invalid signature")
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    event_type = event["type"]
+    data = event["data"]["object"]
+    log.info("Stripe webhook received: %s", event_type)
+
+    supabase = get_supabase()
+
+    now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    # --- Checkout completed: activate subscription ---
+    if event_type == "checkout.session.completed":
+        org_id = data.get("client_reference_id")
+        customer_id = data.get("customer")
+        subscription_id = data.get("subscription")
+        amount = data.get("amount_total")
+        payment_intent = data.get("payment_intent")
+        log.info("Checkout completed for org=%s (customer=%s, sub=%s)", org_id, customer_id, subscription_id)
+
+        if supabase and org_id:
+            supabase.table("subscriptions").upsert({
+                "org_id": org_id,
+                "stripe_customer_id": customer_id,
+                "stripe_subscription_id": subscription_id,
+                "stripe_payment_intent_id": payment_intent,
+                "payment_status": "paid",
+                "subscription_status": "active",
+                "amount_paid": (amount or 0) / 100,
+                "currency": data.get("currency", "usd").upper(),
+                "subscription_start_date": now,
+                "updated_at": now,
+            }, on_conflict="org_id").execute()
+
+    # --- Subscription updated ---
+    elif event_type == "customer.subscription.updated":
+        subscription_id = data.get("id")
+        status = data.get("status")  # active, past_due, canceled, unpaid
+        log.info("Subscription updated: %s → %s", subscription_id, status)
+
+        if supabase:
+            supabase.table("subscriptions").update({
+                "subscription_status": status,
+                "updated_at": now,
+            }).eq("stripe_subscription_id", subscription_id).execute()
+
+    # --- Subscription deleted (canceled) ---
+    elif event_type == "customer.subscription.deleted":
+        subscription_id = data.get("id")
+        log.info("Subscription canceled: %s", subscription_id)
+
+        if supabase:
+            supabase.table("subscriptions").update({
+                "subscription_status": "canceled",
+                "updated_at": now,
+            }).eq("stripe_subscription_id", subscription_id).execute()
+
+    # --- Invoice paid ---
+    elif event_type == "invoice.paid":
+        subscription_id = data.get("subscription")
+        amount = data.get("amount_paid")
+        log.info("Invoice paid: sub=%s ($%s)", subscription_id, (amount or 0) / 100)
+
+        if supabase and subscription_id:
+            supabase.table("subscriptions").update({
+                "payment_status": "paid",
+                "amount_paid": (amount or 0) / 100,
+                "updated_at": now,
+            }).eq("stripe_subscription_id", subscription_id).execute()
+
+    # --- Invoice payment failed ---
+    elif event_type == "invoice.payment_failed":
+        subscription_id = data.get("subscription")
+        log.info("Payment failed for sub=%s", subscription_id)
+
+        if supabase and subscription_id:
+            supabase.table("subscriptions").update({
+                "payment_status": "failed",
+                "subscription_status": "past_due",
+                "updated_at": now,
+            }).eq("stripe_subscription_id", subscription_id).execute()
+
+    else:
+        log.info("Unhandled Stripe event: %s", event_type)
+
+    return {"status": "ok"}

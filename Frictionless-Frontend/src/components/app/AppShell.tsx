@@ -25,6 +25,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setMobile = useUIStore((s) => s.setMobile);
   const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
   const isOnboardingChat = pathname === '/onboarding/chat';
+  const isSubscribePage = pathname === '/subscribe' || pathname?.startsWith('/subscribe/');
+  const isFullScreenPage = isOnboardingChat || isSubscribePage;
 
   useEffect(() => {
     setMobile(isMobile);
@@ -44,19 +46,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      {/* Desktop Sidebar — hidden on onboarding chat so user cannot exit */}
-      {!isMobile && !isOnboardingChat && <Sidebar />}
+      {/* Desktop Sidebar — hidden on onboarding/subscribe so user cannot exit */}
+      {!isMobile && !isFullScreenPage && <Sidebar />}
 
       {/* Main content area */}
       <div className={cn(
         "flex-1 flex flex-col min-w-0 overflow-hidden",
-        !isMobile && !isOnboardingChat && sidebarCollapsed && "pl-6"
+        !isMobile && !isFullScreenPage && sidebarCollapsed && "pl-6"
       )}>
-        {/* Mobile TopBar — hidden on onboarding chat */}
-        {isMobile && !isOnboardingChat && <TopBar />}
+        {/* Mobile TopBar — hidden on onboarding/subscribe */}
+        {isMobile && !isFullScreenPage && <TopBar />}
 
         {/* Desktop breadcrumb + controls */}
-        {!isMobile && !isOnboardingChat && (
+        {!isMobile && !isFullScreenPage && (
           <div className="flex items-center justify-between px-6 pt-4">
             <BreadcrumbNav />
             <div className="flex items-center gap-2">
@@ -80,12 +82,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </AnimatePresence>
         </main>
 
-        {/* Mobile Bottom Navigation — hidden on onboarding chat */}
-        {isMobile && !isOnboardingChat && <MobileBottomNav />}
+        {/* Mobile Bottom Navigation — hidden on onboarding/subscribe */}
+        {isMobile && !isFullScreenPage && <MobileBottomNav />}
       </div>
 
-      {/* Global overlays — hidden on onboarding chat so user cannot navigate away */}
-      {!isOnboardingChat && (
+      {/* Global overlays — hidden on onboarding/subscribe so user cannot navigate away */}
+      {!isFullScreenPage && (
         <>
           <SpotlightSearch />
           <NotificationCenter />

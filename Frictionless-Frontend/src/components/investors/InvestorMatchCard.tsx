@@ -120,8 +120,8 @@ export function InvestorMatchCard({ match, index = 0, readinessScore = 0, isNew 
       : [];
   const sectors = Array.isArray(inv?.sectors) ? inv.sectors : [];
   const name = inv?.name || 'Unknown Investor';
-  const isCustom = (inv as Record<string, unknown>)?.is_custom === true;
-  const aiReasoning = (inv as Record<string, unknown>)?.ai_reasoning as string | undefined;
+  const isCustom = (inv as unknown as Record<string, unknown>)?.is_custom === true;
+  const aiReasoning = (inv as unknown as Record<string, unknown>)?.ai_reasoning as string | undefined;
 
   // Top reasons
   const topReasons = match.eligible

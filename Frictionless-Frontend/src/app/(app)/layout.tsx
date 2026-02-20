@@ -13,6 +13,18 @@ import { fetchBootstrap } from '@/lib/api/bootstrap';
 let _onboardingCache: { userId: string; completed: boolean; expiresAt: number } | null = null;
 const ONBOARDING_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Cache subscription status to avoid redundant checks on navigation
+let _subscriptionCache: { orgId: string; active: boolean; expiresAt: number } | null = null;
+const SUBSCRIPTION_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Expose cache clearing on window for the success page to call
+if (typeof window !== 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).__clearSubscriptionCache = () => {
+    _subscriptionCache = null;
+  };
+}
+
 export default function AppLayout({
   children,
 }: {
@@ -22,6 +34,7 @@ export default function AppLayout({
   const pathname = usePathname();
   const { isAuthenticated, isLoading, user } = useAuthStore();
   const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [subscriptionChecked, setSubscriptionChecked] = useState(false);
   const bootstrapRan = useRef(false);
 
   useEffect(() => {
@@ -122,6 +135,79 @@ export default function AppLayout({
     return () => { cancelled = true; };
   }, [isAuthenticated, isLoading, user, pathname, router]);
 
+  // Subscription check — runs AFTER onboarding is confirmed complete
+  useEffect(() => {
+    if (!isAuthenticated || isLoading || !user || !onboardingChecked) return;
+
+    // Subscribe pages are exempt (avoid redirect loop)
+    const isSubscribePage = pathname === '/subscribe' || pathname?.startsWith('/subscribe/');
+    if (isSubscribePage) {
+      setSubscriptionChecked(true);
+      return;
+    }
+
+    // Onboarding page is exempt
+    if (pathname === '/onboarding/chat') {
+      setSubscriptionChecked(true);
+      return;
+    }
+
+    // Only startup and capital_provider need subscriptions
+    const needsSub = user.org_type === 'startup' || user.org_type === 'capital_provider';
+    if (!needsSub) {
+      setSubscriptionChecked(true);
+      return;
+    }
+
+    // Check subscription cache first
+    const now = Date.now();
+    if (_subscriptionCache && _subscriptionCache.orgId === user.org_id && _subscriptionCache.expiresAt > now) {
+      if (!_subscriptionCache.active) {
+        router.replace('/subscribe');
+        return;
+      }
+      setSubscriptionChecked(true);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!supabase) {
+          // Demo mode — allow through
+          setSubscriptionChecked(true);
+          return;
+        }
+        const { data } = await supabase.auth.getSession();
+        const token = data?.session?.access_token ?? null;
+        if (!token || cancelled) return;
+
+        const res = await fetch('/api/subscription/status', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = await res.json().catch(() => ({}));
+        if (cancelled) return;
+
+        const active = json.active === true;
+        _subscriptionCache = {
+          orgId: user.org_id,
+          active,
+          expiresAt: Date.now() + SUBSCRIPTION_CACHE_TTL,
+        };
+
+        if (!active) {
+          router.replace('/subscribe');
+          return;
+        }
+      } catch {
+        // allow through on error to avoid blocking users
+      } finally {
+        if (!cancelled) setSubscriptionChecked(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthenticated, isLoading, user, onboardingChecked, pathname, router]);
+
   // Show nothing while checking auth or redirecting
   if (!isAuthenticated) {
     return (
@@ -134,6 +220,16 @@ export default function AppLayout({
   // Avoid flash of dashboard before redirect to onboarding
   const needsOnboardingCheck = user?.org_type === 'startup' || user?.org_type === 'capital_provider';
   if (needsOnboardingCheck && !onboardingChecked && pathname !== '/onboarding/chat') {
+    return (
+      <div className="flex items-center justify-center h-screen bg-background">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Avoid flash of dashboard before redirect to subscribe
+  const isSubscribePage = pathname === '/subscribe' || pathname?.startsWith('/subscribe/');
+  if (needsOnboardingCheck && onboardingChecked && !subscriptionChecked && !isSubscribePage) {
     return (
       <div className="flex items-center justify-center h-screen bg-background">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />

@@ -138,7 +138,7 @@ In exactly 2-3 sentences, explain WHY this investor is the best match for this s
 
 function AITopPickCard({ match, readinessScore }: { match: InvestorMatchResult; readinessScore: number }) {
   // Use DB-stored reasoning (generated server-side) if available, otherwise stream via Gemini
-  const dbReasoning = (match.investor_profile as Record<string, unknown>)?.ai_reasoning as string | undefined;
+  const dbReasoning = (match.investor_profile as unknown as Record<string, unknown>)?.ai_reasoning as string | undefined;
   const [reasoning, setReasoning] = useState(dbReasoning || '');
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(true);

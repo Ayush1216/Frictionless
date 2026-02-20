@@ -2,18 +2,19 @@
 -- Run in Supabase SQL Editor
 
 CREATE TABLE IF NOT EXISTS public.subscriptions (
-  id                     UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  org_id                 UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
-  stripe_customer_id     TEXT,
-  stripe_subscription_id TEXT,
-  plan                   TEXT NOT NULL DEFAULT 'pro',
-  status                 TEXT NOT NULL DEFAULT 'active',
-  billing_interval       TEXT DEFAULT 'monthly',
-  current_period_start   TIMESTAMPTZ,
-  current_period_end     TIMESTAMPTZ,
-  cancel_at_period_end   BOOLEAN DEFAULT FALSE,
-  created_at             TIMESTAMPTZ DEFAULT NOW(),
-  updated_at             TIMESTAMPTZ DEFAULT NOW(),
+  id                        UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  org_id                    UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  stripe_customer_id        TEXT,
+  stripe_subscription_id    TEXT,
+  stripe_payment_intent_id  TEXT,
+  payment_status            TEXT DEFAULT 'pending',
+  subscription_status       TEXT NOT NULL DEFAULT 'active',
+  amount_paid               NUMERIC(10,2),
+  currency                  TEXT DEFAULT 'USD',
+  subscription_start_date   TIMESTAMPTZ,
+  cancel_at_period_end      BOOLEAN DEFAULT FALSE,
+  created_at                TIMESTAMPTZ DEFAULT NOW(),
+  updated_at                TIMESTAMPTZ DEFAULT NOW(),
 
   UNIQUE(org_id)
 );

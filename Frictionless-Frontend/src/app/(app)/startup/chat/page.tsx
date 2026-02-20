@@ -30,11 +30,11 @@ const RESPONSE_MODES: { value: ResponseMode; label: string; icon: React.ElementT
   { value: 'deep_dive', label: 'Deep Dive', icon: BookOpen, description: 'Thorough analysis with evidence' },
 ];
 
-function groupThreadsByDate(threads: { id: string; title: string; updated_at: string; pinned?: boolean }[]) {
-  const pinned: typeof threads = [];
-  const today: typeof threads = [];
-  const yesterday: typeof threads = [];
-  const earlier: typeof threads = [];
+function groupThreadsByDate<T extends { updated_at: string; pinned?: boolean }>(threads: T[]) {
+  const pinned: T[] = [];
+  const today: T[] = [];
+  const yesterday: T[] = [];
+  const earlier: T[] = [];
 
   for (const t of threads) {
     if (t.pinned) { pinned.push(t); continue; }

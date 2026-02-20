@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClientForRequest, getCurrentUserOrgId } from '@/lib/supabase/server';
 import { isValidPersonLinkedInUrl } from '@/lib/linkedin-url';
 
-const BACKEND_URL = process.env.FRICTIONLESS_BACKEND_URL || 'http://127.0.0.1:8001';
+const BACKEND_URL = process.env.FRICTIONLESS_BACKEND_URL || 'https://api.frictionlessintelligence.com';
 const BACKEND_TIMEOUT_MS = 60_000; // Gemini + search can take 30–60s
 
 /**
