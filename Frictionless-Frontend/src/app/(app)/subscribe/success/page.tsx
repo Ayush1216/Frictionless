@@ -1,62 +1,61 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { CheckCircle2, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
 
 export default function SubscribeSuccessPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [confirmed, setConfirmed] = useState(false);
-  const attempts = useRef(0);
-  const polling = useRef(false);
+  const started = useRef(false);
 
   useEffect(() => {
-    if (polling.current) return;
-    polling.current = true;
+    if (started.current) return;
+    started.current = true;
 
-    const poll = async () => {
-      if (!supabase) {
-        // No supabase = demo mode, just redirect
+    const sessionId = searchParams.get('session_id');
+
+    const verify = async () => {
+      if (!sessionId) {
+        // No session_id — just redirect to dashboard (edge case)
         setConfirmed(true);
-        // Clear subscription cache before redirect
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (window as any).__clearSubscriptionCache?.();
         setTimeout(() => router.replace('/dashboard'), 1500);
         return;
       }
 
-      const { data } = await supabase.auth.getSession();
-      const token = data?.session?.access_token;
-      if (!token) return;
-
       try {
-        const res = await fetch('/api/subscription/status', {
-          headers: { Authorization: `Bearer ${token}` },
+        const res = await fetch('/api/stripe/verify-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId }),
         });
         const json = await res.json().catch(() => ({}));
 
         if (json.active) {
           setConfirmed(true);
-          // Clear subscription cache so layout re-checks and finds active
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (window as any).__clearSubscriptionCache?.();
           setTimeout(() => router.replace('/dashboard'), 2000);
           return;
         }
       } catch {
-        // Network error, keep polling
+        // Verification failed — fall through
       }
 
-      attempts.current += 1;
-      if (attempts.current < 30) {
-        setTimeout(poll, 2000);
-      }
+      // Fallback: still redirect to dashboard after a delay
+      // The webhook may catch up, or the user can retry
+      setConfirmed(true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (window as any).__clearSubscriptionCache?.();
+      setTimeout(() => router.replace('/dashboard'), 3000);
     };
 
-    poll();
-  }, [router]);
+    verify();
+  }, [router, searchParams]);
 
   return (
     <div

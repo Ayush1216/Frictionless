@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseClientForRequest, getCurrentUserOrgId } from '@/lib/supabase/server';
+import { createSupabaseClientForRequest, getCurrentUserOrgId, getSupabaseServer } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,11 +15,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ active: false }, { status: 200 });
     }
 
-    const { data: sub } = await supabase
+    // Use service role client to bypass RLS on subscriptions table
+    const adminClient = getSupabaseServer();
+    if (!adminClient) {
+      return NextResponse.json({ error: 'DB not configured' }, { status: 500 });
+    }
+
+    const { data: sub, error } = await adminClient
       .from('subscriptions')
       .select('subscription_status, payment_status, subscription_start_date')
       .eq('org_id', orgId)
       .single();
+
+    console.log('[subscription/status] orgId:', orgId, '| sub:', JSON.stringify(sub), '| error:', error?.message ?? 'none');
+
+    if (error) {
+      console.error('[subscription/status] Query error:', error.message);
+    }
 
     const active = sub?.subscription_status === 'active';
     return NextResponse.json({

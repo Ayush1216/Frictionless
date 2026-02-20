@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       line_items: [{ price: priceId, quantity: 1 }],
       client_reference_id: orgId,
       customer_email: user?.email ?? undefined,
-      success_url: `${origin}/subscribe/success`,
+      success_url: `${origin}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/subscribe`,
     });
 
