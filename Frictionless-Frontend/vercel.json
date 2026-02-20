@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "src/app/api/ai/*/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "src/app/api/intelligence/*/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "src/app/api/stripe/webhook/route.ts": {
+      "maxDuration": 30
+    }
+  }
+}

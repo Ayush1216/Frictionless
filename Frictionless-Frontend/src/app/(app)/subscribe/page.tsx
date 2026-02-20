@@ -17,13 +17,11 @@ import {
   TrendingUp,
   Rocket,
   Lock,
+  Loader2,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
+import { supabase } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
-
-const MONTHLY_LINK = process.env.NEXT_PUBLIC_STRIPE_MONTHLY_LINK ?? '';
-const QUARTERLY_LINK = process.env.NEXT_PUBLIC_STRIPE_QUARTERLY_LINK ?? '';
-const ANNUAL_LINK = process.env.NEXT_PUBLIC_STRIPE_ANNUAL_LINK ?? '';
 
 const plans = [
   {
@@ -33,7 +31,6 @@ const plans = [
     period: '/mo',
     subtitle: 'Billed monthly',
     perMonth: 200,
-    link: MONTHLY_LINK,
     badge: null,
     saving: null,
     recommended: false,
@@ -45,7 +42,6 @@ const plans = [
     period: '/quarter',
     subtitle: 'Billed every 3 months',
     perMonth: Math.round(500 / 3),
-    link: QUARTERLY_LINK,
     badge: 'Most Popular',
     saving: 'Save 17%',
     recommended: true,
@@ -57,7 +53,6 @@ const plans = [
     period: '/year',
     subtitle: 'Billed annually',
     perMonth: 150,
-    link: ANNUAL_LINK,
     badge: 'Best Value',
     saving: 'Save 25%',
     recommended: false,
@@ -123,12 +118,35 @@ const allFeatures = [
 export default function SubscribePage() {
   const user = useAuthStore((s) => s.user);
   const [selected, setSelected] = useState('quarterly');
-
-  const orgId = user?.org_id ?? '';
-  const email = user?.email ?? '';
+  const [loading, setLoading] = useState(false);
 
   const selectedPlan = plans.find((p) => p.id === selected)!;
-  const paymentUrl = `${selectedPlan.link}?client_reference_id=${orgId}&prefilled_email=${encodeURIComponent(email)}`;
+
+  const handleCheckout = async () => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const token = (await supabase?.auth.getSession())?.data?.session?.access_token;
+      const res = await fetch('/api/stripe/create-checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ plan: selected }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        console.error('[subscribe] Checkout error:', data.error);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('[subscribe] Checkout failed:', err);
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="relative min-h-screen overflow-y-auto overflow-x-hidden" style={{ background: 'var(--fi-bg-primary)' }}>
@@ -412,18 +430,23 @@ export default function SubscribePage() {
             transition={{ duration: 0.4, delay: 0.8 }}
             className="mb-5"
           >
-            <a
-              href={paymentUrl}
-              className="group flex items-center justify-center gap-2.5 w-full py-4 rounded-xl font-display font-semibold text-base text-white shadow-glow hover:shadow-glow-lg transition-all duration-300"
+            <button
+              onClick={handleCheckout}
+              disabled={loading}
+              className="group flex items-center justify-center gap-2.5 w-full py-4 rounded-xl font-display font-semibold text-base text-white shadow-glow hover:shadow-glow-lg transition-all duration-300 disabled:opacity-70"
               style={{
                 background: 'linear-gradient(135deg, #10B981, #059669)',
                 boxShadow: '0 0 24px rgba(16,185,129,0.25), 0 4px 12px rgba(0,0,0,0.15)',
               }}
             >
-              <Lock className="w-4 h-4" />
-              Get Frictionless Pro — ${selectedPlan.price.toLocaleString()}{selectedPlan.period}
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Lock className="w-4 h-4" />
+              )}
+              {loading ? 'Redirecting to checkout...' : `Get Frictionless Pro — $${selectedPlan.price.toLocaleString()}${selectedPlan.period}`}
+              {!loading && <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />}
+            </button>
           </motion.div>
 
           {/* Trust */}

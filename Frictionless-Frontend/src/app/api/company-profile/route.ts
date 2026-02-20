@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseClientForRequest, getCurrentUserOrgId, getSupabaseServer } from '@/lib/supabase/server';
 
-const BACKEND_URL = process.env.FRICTIONLESS_BACKEND_URL || 'https://api.frictionlessintelligence.com';
+const BACKEND_URL = process.env.FRICTIONLESS_BACKEND_URL || 'http://98.88.87.143:8000';
 
 /**
  * GET /api/company-profile
